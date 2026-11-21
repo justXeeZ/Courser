@@ -216,4 +216,42 @@ describe('useCourseStore CRUD, migration, and repository boundaries', () => {
     window.localStorage.setItem(COURSES_STORAGE_KEY, '{corrupt');
     expect(loadCoursesCatalog(window.localStorage)).toHaveLength(2);
   });
+
+  it('rejects dangling, cross-course, and self-referencing prerequisites in addCourse', () => {
+    const { result } = renderHook(() => useCourses(), { wrapper });
+
+    act(() => {
+      const dangling = result.current.addCourse({
+        ...sampleNewCourse,
+        slug: 'math201-dangling',
+        chapters: [
+          {
+            ...sampleNewCourse.chapters[0],
+            prerequisites: ['non-existent-id'],
+          },
+        ],
+      });
+      expect(dangling.ok).toBe(false);
+      if (!dangling.ok) {
+        expect(dangling.error).toContain('non-existent-id');
+      }
+
+      const selfRef = result.current.addCourse({
+        ...sampleNewCourse,
+        slug: 'math201-selfref',
+        chapters: [
+          {
+            ...sampleNewCourse.chapters[0],
+            prerequisites: ['temp-ch1'],
+          },
+        ],
+      });
+      expect(selfRef.ok).toBe(false);
+      if (!selfRef.ok) {
+        expect(selfRef.error).toContain('temp-ch1');
+      }
+    });
+
+    expect(result.current.courses).toHaveLength(2);
+  });
 });

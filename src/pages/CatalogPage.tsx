@@ -13,7 +13,7 @@ type CatalogTab = 'all' | 'bookmarked' | 'in-progress';
 export function CatalogPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const { courses, deleteCourse, resetCatalogToDefaults } = useCourses();
-  const { isBookmarked, toggleBookmark, getCourseStats } = useProgress();
+  const { isBookmarked, toggleBookmark, getCourseStats, forgetCourse } = useProgress();
   const [courseToDelete, setCourseToDelete] = useState<CourseTree | null>(null);
 
   const rawTab = searchParams.get('tab');
@@ -161,6 +161,7 @@ export function CatalogPage() {
         confirmLabel="Delete Course"
         onConfirm={() => {
           if (courseToDelete) {
+            forgetCourse(courseToDelete.slug);
             deleteCourse(courseToDelete.slug);
           }
           setCourseToDelete(null);

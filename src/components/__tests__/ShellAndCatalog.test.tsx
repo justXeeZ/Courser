@@ -7,7 +7,7 @@ import { SearchModal } from '@/components/SearchModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { CatalogPage } from '@/pages/CatalogPage';
 import { CourseProvider } from '@/store/useCourseStore';
-import { ProgressProvider } from '@/store/useProgressStore';
+import { ProgressProvider, loadProgressState, saveProgressState } from '@/store/useProgressStore';
 import { THEME_STORAGE_KEY, ThemeProvider } from '@/store/useThemeStore';
 import { deleteFile, listFileIds, putFile } from '@/lib/fileStore';
 
@@ -104,6 +104,8 @@ describe('Navbar theme toggle and mobile layout', () => {
 describe('CatalogPage & CourseCard', () => {
   beforeEach(() => {
     localStorage.clear();
+    document.documentElement.classList.remove('dark');
+    mockMatchMedia(false);
   });
 
   it('groups courses by Department, displays semester on CourseCard, and renders the docs footer link', () => {
@@ -136,6 +138,45 @@ describe('CatalogPage & CourseCard', () => {
 
     const mainEl = screen.getByRole('main');
     expect(mainEl).toHaveClass('bg-black', 'text-white');
+  });
+
+  it('clears saved progress and bookmarks (and Navbar badge) when deleting a course from CatalogPage', () => {
+    saveProgressState({
+      version: 1,
+      statuses: {
+        'guide101-quick-start': {
+          'guide101-browsing-bookmarks': 'done',
+        },
+      },
+      bookmarks: ['guide101-quick-start'],
+    });
+
+    render(
+      <MemoryRouter initialEntries={['/']}>
+        <Routes>
+          <Route path="*" element={<App />} />
+        </Routes>
+      </MemoryRouter>
+    );
+
+    // Navbar bookmark badge initially shows 1
+    const bookmarkedLink = screen.getByRole('link', { name: /Bookmarked/i });
+    expect(within(bookmarkedLink).getByText('1')).toBeInTheDocument();
+
+    // Delete GUIDE101 from CatalogPage card trash button
+    fireEvent.click(
+      screen.getByRole('button', { name: 'Delete Quick Start: Using Course Trees' })
+    );
+    const confirmDialog = screen.getByRole('dialog');
+    fireEvent.click(within(confirmDialog).getByRole('button', { name: /^Delete Course$/i }));
+
+    // Course removed, Navbar badge cleared, and progress/bookmark state cleaned up
+    expect(screen.queryByText('Quick Start: Using Course Trees')).not.toBeInTheDocument();
+    expect(within(bookmarkedLink).queryByText('1')).not.toBeInTheDocument();
+
+    const progress = loadProgressState();
+    expect(progress.bookmarks).toEqual([]);
+    expect(progress.statuses['guide101-quick-start']).toBeUndefined();
   });
 });
 

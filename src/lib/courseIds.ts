@@ -146,6 +146,122 @@ export function rekeyCourseContentIdsWithMap(course: CourseTree): {
   };
 }
 
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * Validates raw chapter/lesson IDs and prerequisite references BEFORE re-keying
+ * so duplicate raw IDs, self-references, and dangling/cross-course prerequisite IDs
+ * fail loudly instead of being silently pruned during re-keying.
+ */
+export function validateRawCourseReferences(rawCourse: unknown): string | null {
+  if (!isPlainObject(rawCourse) || !Array.isArray(rawCourse.chapters)) {
+    return null;
+  }
+
+  const declaredRawIds = new Set<string>();
+  const chapterRawIds: Array<string | null> = [];
+  const lessonRawIds: Array<Array<string | null>> = [];
+
+  for (let cIdx = 0; cIdx < rawCourse.chapters.length; cIdx += 1) {
+    const rawChapter = rawCourse.chapters[cIdx];
+    if (!isPlainObject(rawChapter)) {
+      chapterRawIds.push(null);
+      lessonRawIds.push([]);
+      continue;
+    }
+
+    const chapterId =
+      typeof rawChapter.id === 'string' && rawChapter.id.trim().length > 0
+        ? rawChapter.id
+        : null;
+
+    if (chapterId !== null) {
+      if (declaredRawIds.has(chapterId)) {
+        return `chapters.${cIdx}.id: Duplicate item id "${chapterId}".`;
+      }
+      declaredRawIds.add(chapterId);
+    }
+    chapterRawIds.push(chapterId);
+
+    const chapterLessonIds: Array<string | null> = [];
+    if (Array.isArray(rawChapter.lessons)) {
+      for (let lIdx = 0; lIdx < rawChapter.lessons.length; lIdx += 1) {
+        const rawLesson = rawChapter.lessons[lIdx];
+        if (!isPlainObject(rawLesson)) {
+          chapterLessonIds.push(null);
+          continue;
+        }
+        const lessonId =
+          typeof rawLesson.id === 'string' && rawLesson.id.trim().length > 0
+            ? rawLesson.id
+            : null;
+        if (lessonId !== null) {
+          if (declaredRawIds.has(lessonId)) {
+            return `chapters.${cIdx}.lessons.${lIdx}.id: Duplicate item id "${lessonId}".`;
+          }
+          declaredRawIds.add(lessonId);
+        }
+        chapterLessonIds.push(lessonId);
+      }
+    }
+    lessonRawIds.push(chapterLessonIds);
+  }
+
+  for (let cIdx = 0; cIdx < rawCourse.chapters.length; cIdx += 1) {
+    const rawChapter = rawCourse.chapters[cIdx];
+    if (!isPlainObject(rawChapter)) continue;
+
+    const chapterId = chapterRawIds[cIdx];
+    if (rawChapter.prerequisites !== undefined) {
+      if (!Array.isArray(rawChapter.prerequisites)) {
+        return `chapters.${cIdx}.prerequisites: Expected an array of prerequisite IDs.`;
+      }
+      for (let pIdx = 0; pIdx < rawChapter.prerequisites.length; pIdx += 1) {
+        const prereqId = rawChapter.prerequisites[pIdx];
+        if (typeof prereqId !== 'string' || prereqId.trim().length === 0) {
+          return `chapters.${cIdx}.prerequisites.${pIdx}: Prerequisite id must be a non-empty string.`;
+        }
+        if (chapterId !== null && prereqId === chapterId) {
+          return `chapters.${cIdx}.prerequisites.${pIdx}: Chapter "${chapterId}" cannot depend on itself.`;
+        }
+        if (!declaredRawIds.has(prereqId)) {
+          return `chapters.${cIdx}.prerequisites.${pIdx}: Unknown prerequisite id "${prereqId}".`;
+        }
+      }
+    }
+
+    if (Array.isArray(rawChapter.lessons)) {
+      for (let lIdx = 0; lIdx < rawChapter.lessons.length; lIdx += 1) {
+        const rawLesson = rawChapter.lessons[lIdx];
+        if (!isPlainObject(rawLesson)) continue;
+
+        const lessonId = lessonRawIds[cIdx]?.[lIdx] ?? null;
+        if (rawLesson.prerequisites !== undefined) {
+          if (!Array.isArray(rawLesson.prerequisites)) {
+            return `chapters.${cIdx}.lessons.${lIdx}.prerequisites: Expected an array of prerequisite IDs.`;
+          }
+          for (let pIdx = 0; pIdx < rawLesson.prerequisites.length; pIdx += 1) {
+            const prereqId = rawLesson.prerequisites[pIdx];
+            if (typeof prereqId !== 'string' || prereqId.trim().length === 0) {
+              return `chapters.${cIdx}.lessons.${lIdx}.prerequisites.${pIdx}: Prerequisite id must be a non-empty string.`;
+            }
+            if (lessonId !== null && prereqId === lessonId) {
+              return `chapters.${cIdx}.lessons.${lIdx}.prerequisites.${pIdx}: Lesson "${lessonId}" cannot depend on itself.`;
+            }
+            if (!declaredRawIds.has(prereqId)) {
+              return `chapters.${cIdx}.lessons.${lIdx}.prerequisites.${pIdx}: Unknown prerequisite id "${prereqId}".`;
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return null;
+}
+
 /**
  * Re-derives all chapter and lesson IDs from the course's current `code`,
  * automatically remapping every prerequisite reference.

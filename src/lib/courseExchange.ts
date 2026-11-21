@@ -1,5 +1,10 @@
-import { deriveFileId, rekeyCourseContentIdsWithMap } from '@/lib/courseIds';
+import {
+  deriveFileId,
+  rekeyCourseContentIdsWithMap,
+  validateRawCourseReferences,
+} from '@/lib/courseIds';
 import { collectReferencedFileIds, getFile, putFile } from '@/lib/fileStore';
+import { validateMaterialFile } from '@/lib/materialValidation';
 import {
   CourseTreeSchema,
   type CourseTree,
@@ -267,6 +272,14 @@ export async function parseCourseImport(
     rawCourseInput = parsedJson;
   }
 
+  const rawRefError = validateRawCourseReferences(rawCourseInput);
+  if (rawRefError) {
+    return {
+      ok: false,
+      error: rawRefError,
+    };
+  }
+
   const prepassed = applyLenientPrepass(rawCourseInput);
   const candidate = canRekeyCourseStructure(prepassed)
     ? rekeyCourseContentIdsWithMap(prepassed as unknown as CourseTree).course
@@ -333,6 +346,19 @@ export async function parseCourseImport(
     const name = attachment.name.trim() || oldFileRef.name;
     const mimeType =
       attachment.mimeType.trim() || oldFileRef.mimeType || 'application/octet-stream';
+
+    const validation = validateMaterialFile({
+      name,
+      size: bytes.byteLength,
+      type: mimeType,
+    });
+    if (!validation.ok) {
+      warnings.push(
+        `Dropped file resource "${resource.title}" (${name}): ${validation.error}`
+      );
+      return null;
+    }
+
     const newFileId = deriveFileId(course.code);
     const blob = new Blob([new Uint8Array(bytes)], { type: mimeType });
 

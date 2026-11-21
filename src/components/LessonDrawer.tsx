@@ -6,7 +6,7 @@ import {
   ChevronRight,
   GitBranch,
 } from 'lucide-react';
-import { findCourseItem, getTrackableItems } from '@/lib/courseItems';
+import { findCourseItem, getTrackableItems, isStandaloneChapter } from '@/lib/courseItems';
 import { computeChapterStats } from '@/store/useProgressStore';
 import type { Chapter, CourseTree, LessonStatus, SubLesson } from '@/types/course';
 import { DrawerShell } from '@/components/DrawerShell';
@@ -227,12 +227,28 @@ export function LessonDrawer({
           <div className="flex flex-wrap gap-1.5">
             {prereqItems.map((item) => {
               const title = item.kind === 'chapter' ? item.chapter.title : item.lesson.title;
+              const isStandalone =
+                item.kind === 'chapter' && isStandaloneChapter(item.chapter);
+              const chapterStats =
+                item.kind === 'chapter' && !isStandalone
+                  ? computeChapterStats(item.chapter, statuses)
+                  : null;
+              const isSkipped =
+                item.kind === 'lesson' || isStandalone
+                  ? statuses[item.id] === 'skipped'
+                  : Boolean(
+                      chapterStats &&
+                        chapterStats.total > 0 &&
+                        chapterStats.skipped === chapterStats.total
+                    );
               const isDone =
-                item.kind === 'chapter'
-                  ? computeChapterStats(item.chapter, statuses).percentDone === 100 &&
-                    computeChapterStats(item.chapter, statuses).total > 0
-                  : statuses[item.id] === 'done';
-              const isSkipped = statuses[item.id] === 'skipped';
+                item.kind === 'lesson' || isStandalone
+                  ? statuses[item.id] === 'done'
+                  : Boolean(
+                      chapterStats &&
+                        chapterStats.required > 0 &&
+                        chapterStats.percentDone === 100
+                    );
 
               return (
                 <button

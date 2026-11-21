@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { COURSES } from '@/data/courses';
 import { ChapterDrawer } from '@/components/ChapterDrawer';
+import type { CourseTree } from '@/types/course';
 
 describe('ChapterDrawer', () => {
   const demoCourse = COURSES[1]; // DEMO201
@@ -100,5 +101,54 @@ describe('ChapterDrawer', () => {
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onClose).toHaveBeenCalled();
+  });
+
+  it('renders a skipped standalone chapter prerequisite chip in slate gray with Ban icon only (not emerald Done)', () => {
+    const customCourse: CourseTree = {
+      slug: 'test102-prereqs',
+      code: 'TEST102',
+      title: 'Prereq Display Course',
+      department: 'Preparatory',
+      description: 'Test course',
+      chapters: [
+        {
+          id: 'test102-ch1-standalone-prereq',
+          order: 1,
+          title: '1. Optional Warmup',
+          description: 'Standalone warmup chapter',
+          lessons: [],
+        },
+        {
+          id: 'test102-ch2-target',
+          order: 2,
+          title: '2. Main Module',
+          description: 'Depends on skipped standalone chapter',
+          prerequisites: ['test102-ch1-standalone-prereq'],
+          lessons: [],
+        },
+      ],
+    };
+
+    render(
+      <ChapterDrawer
+        course={customCourse}
+        chapter={customCourse.chapters[1]}
+        status="todo"
+        statuses={{ 'test102-ch1-standalone-prereq': 'skipped' }}
+        onChangeStatus={vi.fn()}
+        onSelectItem={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    const prereqHeading = screen.getByText(/Recommended Prerequisites/i);
+    const prereqSection = prereqHeading.parentElement!;
+    const prereqChip = within(prereqSection).getByRole('button', {
+      name: /1\. Optional Warmup/i,
+    });
+    expect(prereqChip).toHaveClass('border-slate-300', 'bg-slate-100', 'text-slate-700');
+    expect(prereqChip).not.toHaveClass('border-emerald-300', 'bg-emerald-50');
+    expect(prereqChip.querySelectorAll('svg')).toHaveLength(1);
+    expect(prereqChip.querySelector('svg')).toHaveClass('lucide-ban');
   });
 });

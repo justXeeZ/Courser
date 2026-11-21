@@ -8,7 +8,11 @@ import {
   type ReactNode,
 } from 'react';
 import { COURSES as DEFAULT_COURSES } from '@/data/courses';
-import { rekeyCourseContentIds, rekeyCourseContentIdsWithMap } from '@/lib/courseIds';
+import {
+  rekeyCourseContentIds,
+  rekeyCourseContentIdsWithMap,
+  validateRawCourseReferences,
+} from '@/lib/courseIds';
 import {
   USER_ROADMAPS_STORAGE_KEY,
   createLocalPremadeRoadmapRepository,
@@ -202,6 +206,11 @@ export function CourseProvider({
 
   const addCourse = useCallback(
     (rawCourse: CourseTree): CourseMutationResult => {
+      const refError = validateRawCourseReferences(rawCourse);
+      if (refError) {
+        return { ok: false, error: refError };
+      }
+
       const normalized = rekeyCourseContentIds(rawCourse);
       const parsed = CourseTreeSchema.safeParse(normalized);
       if (!parsed.success) {
@@ -232,6 +241,11 @@ export function CourseProvider({
           ok: false,
           error: `Course "${existingSlug}" was not found.`,
         };
+      }
+
+      const refError = validateRawCourseReferences(rawUpdated);
+      if (refError) {
+        return { ok: false, error: refError };
       }
 
       const { course: normalized, idMap } = rekeyCourseContentIdsWithMap(rawUpdated);

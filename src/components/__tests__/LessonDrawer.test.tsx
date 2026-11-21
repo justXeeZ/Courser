@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor, within } from '@testing-library/react';
 import { COURSES } from '@/data/courses';
 import { putFile } from '@/lib/fileStore';
 import { LessonDrawer } from '@/components/LessonDrawer';
@@ -204,5 +204,62 @@ describe('LessonDrawer', () => {
     await waitFor(() => {
       expect(screen.getByRole('alert')).toHaveTextContent(/missing\.pdf/i);
     });
+  });
+
+  it('renders a skipped standalone chapter prerequisite chip in slate gray with Ban icon only (not emerald Done)', () => {
+    const customCourse: CourseTree = {
+      slug: 'test103-lesson-prereq',
+      code: 'TEST103',
+      title: 'Lesson Prereq Display',
+      department: 'Preparatory',
+      description: 'Test course',
+      chapters: [
+        {
+          id: 'test103-ch1-standalone-prereq',
+          order: 1,
+          title: '1. Skipped Standalone Prereq',
+          description: 'Standalone chapter',
+          lessons: [],
+        },
+        {
+          id: 'test103-ch2-core',
+          order: 2,
+          title: '2. Core Lessons',
+          description: 'Core chapter',
+          lessons: [
+            {
+              id: 'test103-target-lesson',
+              title: 'Target Lesson',
+              summary: 'Depends on skipped standalone chapter',
+              prerequisites: ['test103-ch1-standalone-prereq'],
+              resources: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    render(
+      <LessonDrawer
+        course={customCourse}
+        chapter={customCourse.chapters[1]}
+        lesson={customCourse.chapters[1].lessons[0]}
+        status="todo"
+        statuses={{ 'test103-ch1-standalone-prereq': 'skipped' }}
+        onChangeStatus={vi.fn()}
+        onSelectItem={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    const prereqHeading = screen.getByText(/Recommended Prerequisites/i);
+    const prereqSection = prereqHeading.parentElement!;
+    const prereqChip = within(prereqSection).getByRole('button', {
+      name: /1\. Skipped Standalone Prereq/i,
+    });
+    expect(prereqChip).toHaveClass('border-slate-300', 'bg-slate-100', 'text-slate-700');
+    expect(prereqChip).not.toHaveClass('border-emerald-300', 'bg-emerald-50');
+    expect(prereqChip.querySelectorAll('svg')).toHaveLength(1);
+    expect(prereqChip.querySelector('svg')).toHaveClass('lucide-ban');
   });
 });

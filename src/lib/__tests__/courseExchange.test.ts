@@ -278,4 +278,253 @@ describe('courseExchange', () => {
       expect(badSchema.error).toContain('slug:');
     }
   });
+
+  it('rejects dangling, cross-course, self-referencing, and duplicate raw item IDs before re-keying', async () => {
+    // (a) Dangling prerequisite on chapter
+    const danglingPayload = {
+      slug: 'math101-calc',
+      code: 'MATH101',
+      title: 'Calculus',
+      department: 'Mathematics',
+      description: 'Calculus',
+      chapters: [
+        {
+          id: 'math101-ch1-limits',
+          order: 1,
+          title: 'Limits',
+          description: 'Limits',
+          prerequisites: ['does-not-exist'],
+          lessons: [],
+        },
+      ],
+    };
+    const danglingResult = await parseCourseImport(JSON.stringify(danglingPayload), []);
+    expect(danglingResult.ok).toBe(false);
+    if (!danglingResult.ok) {
+      expect(danglingResult.error).toContain('does-not-exist');
+    }
+
+    // (b) Cross-course prerequisite on lesson
+    const crossCoursePayload = {
+      slug: 'math101-calc',
+      code: 'MATH101',
+      title: 'Calculus',
+      department: 'Mathematics',
+      description: 'Calculus',
+      chapters: [
+        {
+          id: 'math101-ch1-limits',
+          order: 1,
+          title: 'Limits',
+          description: 'Limits',
+          lessons: [
+            {
+              id: 'math101-derivatives',
+              title: 'Derivatives',
+              summary: 'Rates of change',
+              prerequisites: ['guide101-ch1-navigating-the-catalog'],
+              resources: [],
+            },
+          ],
+        },
+      ],
+    };
+    const crossCourseResult = await parseCourseImport(JSON.stringify(crossCoursePayload), []);
+    expect(crossCourseResult.ok).toBe(false);
+    if (!crossCourseResult.ok) {
+      expect(crossCourseResult.error).toContain('guide101-ch1-navigating-the-catalog');
+    }
+
+    // (c) Self-prerequisite on chapter and lesson
+    const selfChapterPayload = {
+      slug: 'math101-calc',
+      code: 'MATH101',
+      title: 'Calculus',
+      department: 'Mathematics',
+      description: 'Calculus',
+      chapters: [
+        {
+          id: 'raw-ch1',
+          order: 1,
+          title: 'Limits',
+          description: 'Limits',
+          prerequisites: ['raw-ch1'],
+          lessons: [],
+        },
+      ],
+    };
+    const selfChapterResult = await parseCourseImport(JSON.stringify(selfChapterPayload), []);
+    expect(selfChapterResult.ok).toBe(false);
+    if (!selfChapterResult.ok) {
+      expect(selfChapterResult.error).toContain('raw-ch1');
+    }
+
+    const selfLessonPayload = {
+      slug: 'math101-calc',
+      code: 'MATH101',
+      title: 'Calculus',
+      department: 'Mathematics',
+      description: 'Calculus',
+      chapters: [
+        {
+          id: 'raw-ch1',
+          order: 1,
+          title: 'Limits',
+          description: 'Limits',
+          lessons: [
+            {
+              id: 'raw-l1',
+              title: 'Derivatives',
+              summary: 'Rates of change',
+              prerequisites: ['raw-l1'],
+              resources: [],
+            },
+          ],
+        },
+      ],
+    };
+    const selfLessonResult = await parseCourseImport(JSON.stringify(selfLessonPayload), []);
+    expect(selfLessonResult.ok).toBe(false);
+    if (!selfLessonResult.ok) {
+      expect(selfLessonResult.error).toContain('raw-l1');
+    }
+
+    // (d) Duplicate raw item IDs
+    const duplicateIdPayload = {
+      slug: 'math101-calc',
+      code: 'MATH101',
+      title: 'Calculus',
+      department: 'Mathematics',
+      description: 'Calculus',
+      chapters: [
+        {
+          id: 'dup-id',
+          order: 1,
+          title: 'Limits',
+          description: 'Limits',
+          lessons: [
+            {
+              id: 'dup-id',
+              title: 'Derivatives',
+              summary: 'Rates of change',
+              resources: [],
+            },
+          ],
+        },
+      ],
+    };
+    const duplicateResult = await parseCourseImport(JSON.stringify(duplicateIdPayload), []);
+    expect(duplicateResult.ok).toBe(false);
+    if (!duplicateResult.ok) {
+      expect(duplicateResult.error).toContain('dup-id');
+    }
+  });
+
+  it('drops dangerous or empty (.exe, .html, 0-byte) embedded attachments with warnings and does not store them in IndexedDB', async () => {
+    const craftedEnvelope = {
+      format: 'college-course-tree',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      course: {
+        slug: 'sec101-appsec',
+        code: 'SEC101',
+        title: 'Application Security',
+        department: 'Computer Science',
+        description: 'Security fundamentals',
+        chapters: [
+          {
+            id: 'sec101-ch1-intro',
+            order: 1,
+            title: '1. Threat Modeling',
+            description: 'Basics',
+            resources: [
+              {
+                title: 'Malware Binary',
+                kind: 'lab',
+                file: {
+                  id: 'sec101-file-11111111',
+                  name: 'malware.exe',
+                  mimeType: 'application/x-msdownload',
+                  sizeBytes: 4,
+                },
+              },
+              {
+                title: 'Safe Reference Link',
+                kind: 'reading',
+                url: 'https://example.com/sec101',
+              },
+            ],
+            lessons: [
+              {
+                id: 'sec101-xss',
+                title: 'XSS Defense',
+                summary: 'Sanitization',
+                resources: [
+                  {
+                    title: 'HTML Payload',
+                    kind: 'reading',
+                    file: {
+                      id: 'sec101-file-22222222',
+                      name: 'xss.html',
+                      mimeType: 'text/html',
+                      sizeBytes: 29,
+                    },
+                  },
+                  {
+                    title: 'Empty PDF',
+                    kind: 'slides',
+                    file: {
+                      id: 'sec101-file-33333333',
+                      name: 'empty.pdf',
+                      mimeType: 'application/pdf',
+                      sizeBytes: 0,
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      attachments: [
+        {
+          id: 'sec101-file-11111111',
+          name: 'malware.exe',
+          mimeType: 'application/x-msdownload',
+          sizeBytes: 4,
+          dataBase64: btoa('MZ\x90\x00'),
+        },
+        {
+          id: 'sec101-file-22222222',
+          name: 'xss.html',
+          mimeType: 'text/html',
+          sizeBytes: 29,
+          dataBase64: btoa('<script>alert(1)</script>'),
+        },
+        {
+          id: 'sec101-file-33333333',
+          name: 'empty.pdf',
+          mimeType: 'application/pdf',
+          sizeBytes: 0,
+          dataBase64: '',
+        },
+      ],
+    };
+
+    const result = await parseCourseImport(JSON.stringify(craftedEnvelope), []);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // All 3 invalid attachments dropped with warnings; safe URL resource preserved
+    expect(result.warnings).toHaveLength(3);
+    expect(result.warnings[0]).toContain('malware.exe');
+    expect(result.warnings[1]).toContain('xss.html');
+    expect(result.warnings[2]).toContain('empty.pdf');
+    expect(result.course.chapters[0].resources).toHaveLength(1);
+    expect(result.course.chapters[0].resources?.[0].title).toBe('Safe Reference Link');
+    expect(result.course.chapters[0].lessons[0].resources).toHaveLength(0);
+
+    // Confirm NONE of the invalid attachments were stored in IndexedDB
+    expect(await listFileIds()).toEqual([]);
+  });
 });
