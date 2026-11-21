@@ -5,7 +5,6 @@ import {
   Ban,
   X,
   ExternalLink,
-  Clock,
   ChevronLeft,
   ChevronRight,
   GitBranch,
@@ -198,12 +197,6 @@ export function LessonDrawer({
                 {chapter.weekRange}
               </span>
             )}
-            {lesson.estimatedMinutes && (
-              <span className="inline-flex items-center gap-1 text-gray-500">
-                <Clock className="h-3 w-3" />
-                {lesson.estimatedMinutes} min
-              </span>
-            )}
           </div>
 
           <h2 className="mb-3 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl">
@@ -256,9 +249,9 @@ export function LessonDrawer({
               ) : (
                 <ul className="space-y-2.5">
                   {lesson.resources.map((res, idx) => (
-                    <li key={`${res.url}-${idx}`}>
+                    <li key={`${res.url ?? res.file?.id ?? res.title}-${idx}`}>
                       <a
-                        href={res.url}
+                        href={res.url ?? '#'}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="group flex items-start gap-2.5 rounded-md border border-transparent p-1.5 transition-colors hover:border-gray-200 hover:bg-gray-50"
@@ -266,11 +259,6 @@ export function LessonDrawer({
                         <ResourceBadge kind={res.kind} />
                         <span className="flex-1 text-sm font-medium text-gray-900 underline decoration-gray-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500">
                           {res.title}
-                          {res.durationMinutes ? (
-                            <span className="ml-1.5 text-xs font-normal text-gray-500 no-underline">
-                              ({res.durationMinutes} min)
-                            </span>
-                          ) : null}
                         </span>
                         <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-gray-400 group-hover:text-blue-600" />
                       </a>

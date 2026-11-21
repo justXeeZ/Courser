@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 @import "@fontsource/balsamiq-sans/400.css";
 @import "@fontsource/balsamiq-sans/700.css";
 
@@ -48,7 +49,7 @@
 }
 
 .roadmap-svg g.node-skipped > rect.node-rect {
-  fill: #496b69 !important;
+  fill: #64748b !important;
 }
 
 .roadmap-svg g.node-skipped > text.node-label {

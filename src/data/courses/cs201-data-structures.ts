@@ -1,11 +1,11 @@
-import type { CourseTree } from '@/types/course';
+﻿import type { CourseTree } from '@/types/course';
 
 export const cs201DataStructures: CourseTree = {
   slug: 'cs201-data-structures',
   code: 'CS201',
   title: 'Data Structures & Algorithms',
   department: 'Computer Science',
-  semester: 'Year 2 · Fall',
+  semester: 'Year 2 - First Semester',
   credits: 4,
   description:
     'Master core linear, hierarchical, and graph data structures alongside asymptotic complexity analysis and practical implementation labs.',
@@ -14,7 +14,7 @@ export const cs201DataStructures: CourseTree = {
       id: 'cs201-ch1-linear',
       order: 1,
       title: '1. Complexity & Linear Data',
-      weekRange: 'Weeks 1–3',
+      weekRange: 'Weeks 1â€“3',
       description:
         'Big-O analysis, amortized bounds, contiguous memory arrays, and pointer-based linked structures.',
       lessons: [
@@ -26,7 +26,6 @@ export const cs201DataStructures: CourseTree = {
           notes:
             'Key takeaways:\n- Drop lower-order terms and constant factors when comparing asymptotic growth.\n- Know the Master Theorem cases for divide-and-conquer recurrences.\n- Practice counting primitive operations inside nested loops with dependent bounds.',
           side: 'left',
-          estimatedMinutes: 45,
           resources: [
             {
               title: 'Lecture 01 Slides: Growth of Functions & Recurrences',
@@ -42,7 +41,6 @@ export const cs201DataStructures: CourseTree = {
               title: 'MIT 6.006 Lecture 1: Algorithms & Computation',
               url: 'https://www.youtube.com/watch?v=ZA-tUyM_y7s',
               kind: 'video',
-              durationMinutes: 49,
             },
           ],
         },
@@ -55,7 +53,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Doubling capacity on overflow yields O(1) amortized append by the accounting method.\n- Random access is O(1), while inserting/deleting at arbitrary indices is O(n).\n- Contiguous memory gives strong CPU cache locality compared to pointer-heavy structures.',
           side: 'left',
           prerequisites: ['cs201-big-o-analysis'],
-          estimatedMinutes: 50,
           resources: [
             {
               title: 'Lab 01: Implement a Generic Resizable Vector',
@@ -78,7 +75,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Use dummy head/tail sentinels to eliminate edge cases on empty lists.\n- Fast/slow pointer technique detects cycles in O(n) time and O(1) extra space.',
           side: 'right',
           prerequisites: ['cs201-dynamic-arrays'],
-          estimatedMinutes: 60,
           resources: [
             {
               title: 'Lab 02: Doubly Linked List & LRU Cache Skeleton',
@@ -101,7 +97,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Compute mid as lo + Math.floor((hi - lo) / 2) to prevent integer overflow.\n- Distinguish lower_bound (first >= target) from upper_bound (first > target).',
           side: 'right',
           prerequisites: ['cs201-dynamic-arrays'],
-          estimatedMinutes: 40,
           resources: [
             {
               title: 'Binary Search Invariants Guide',
@@ -121,7 +116,7 @@ export const cs201DataStructures: CourseTree = {
       id: 'cs201-ch2-adts-hashing',
       order: 2,
       title: '2. Stacks, Queues & Hashing',
-      weekRange: 'Weeks 4–6',
+      weekRange: 'Weeks 4â€“6',
       description:
         'Abstract data types for ordered access plus expected O(1) dictionaries via hash tables.',
       lessons: [
@@ -134,7 +129,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Circular arrays avoid O(n) shifts during dequeue.\n- Stacks underpin call frames, DFS, and expression evaluation.',
           side: 'left',
           prerequisites: ['cs201-linked-lists'],
-          estimatedMinutes: 45,
           resources: [
             {
               title: 'Lecture 04 Slides: Stacks, Queues & Deques',
@@ -157,7 +151,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Maintain load factor alpha = n / m below threshold (typically 0.75) via rehashing.\n- Open addressing requires tombstones on delete to preserve probe chains.',
           side: 'right',
           prerequisites: ['cs201-dynamic-arrays'],
-          estimatedMinutes: 65,
           resources: [
             {
               title: 'Lab 03: Hash Map with Linear Probing',
@@ -168,7 +161,6 @@ export const cs201DataStructures: CourseTree = {
               title: 'Hashing & Universal Hash Families',
               url: 'https://www.youtube.com/watch?v=Nu8YGzuaxQU',
               kind: 'video',
-              durationMinutes: 47,
             },
           ],
         },
@@ -181,7 +173,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Parent of i is floor((i-1)/2); children are 2i+1 and 2i+2.\n- Floyd bottom-up heapify runs in O(n), not O(n log n).',
           side: 'left',
           prerequisites: ['cs201-dynamic-arrays'],
-          estimatedMinutes: 55,
           resources: [
             {
               title: 'Binary Heaps & Heapsort Notes',
@@ -201,7 +192,7 @@ export const cs201DataStructures: CourseTree = {
       id: 'cs201-ch3-trees',
       order: 3,
       title: '3. Trees & Balanced Search',
-      weekRange: 'Weeks 7–9',
+      weekRange: 'Weeks 7â€“9',
       description:
         'Recursive hierarchical structures, binary search trees, rotations, and guaranteed O(log n) balance.',
       lessons: [
@@ -214,7 +205,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Express tree properties recursively by combining left and right subtree results.\n- Level-order traversal uses a FIFO queue.',
           side: 'left',
           prerequisites: ['cs201-stacks-queues'],
-          estimatedMinutes: 50,
           resources: [
             {
               title: 'Lecture 07 Slides: Tree Traversals & Recursion',
@@ -237,7 +227,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Inorder traversal of a valid BST yields keys in sorted order.\n- Deleting a two-child node swaps with its inorder successor.',
           side: 'right',
           prerequisites: ['cs201-binary-trees'],
-          estimatedMinutes: 55,
           resources: [
             {
               title: 'Lab 04: Ordered Map Using a BST',
@@ -260,13 +249,11 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Four AVL rotation cases: LL, RR, LR, RL.\n- Red-Black trees relax height balance slightly for fewer rotations during updates.',
           side: 'left',
           prerequisites: ['cs201-bst-operations'],
-          estimatedMinutes: 70,
           resources: [
             {
               title: 'Balanced Search Trees Lecture Video',
               url: 'https://www.youtube.com/watch?v=U1JYwHcFfso',
               kind: 'video',
-              durationMinutes: 51,
             },
             {
               title: 'AVL & Red-Black Rotation Reference',
@@ -281,7 +268,7 @@ export const cs201DataStructures: CourseTree = {
       id: 'cs201-ch4-graphs',
       order: 4,
       title: '4. Graphs & Shortest Paths',
-      weekRange: 'Weeks 10–13',
+      weekRange: 'Weeks 10â€“13',
       description:
         'Model networks as graphs and solve reachability, topological ordering, shortest path, and spanning tree problems.',
       lessons: [
@@ -294,7 +281,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Adjacency lists use O(V + E) memory and excel on sparse real-world graphs.\n- Adjacency matrices give O(1) edge lookup at O(V^2) space cost.',
           side: 'left',
           prerequisites: ['cs201-hash-tables'],
-          estimatedMinutes: 40,
           resources: [
             {
               title: 'Lecture 10 Slides: Graph Representations',
@@ -312,7 +298,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- BFS explores vertices in non-decreasing distance from the source.\n- DFS discovery/finish timestamps classify tree, back, forward, and cross edges.',
           side: 'right',
           prerequisites: ['cs201-graph-representations', 'cs201-stacks-queues'],
-          estimatedMinutes: 65,
           resources: [
             {
               title: 'Lab 05: Course Prerequisite Topological Sorter',
@@ -335,7 +320,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Greedy relaxation fails when negative edge weights exist (use Bellman-Ford instead).\n- Runs in O((V + E) log V) with a binary heap.',
           side: 'left',
           prerequisites: ['cs201-bfs-dfs', 'cs201-heaps-priority-queues'],
-          estimatedMinutes: 60,
           resources: [
             {
               title: 'Shortest Paths Chapter (Princeton algs4)',
@@ -358,7 +342,6 @@ export const cs201DataStructures: CourseTree = {
             'Key takeaways:\n- Both algorithms rely on the cut property.\n- Union-Find with path compression + union by rank runs in near-O(1) amortized time.',
           side: 'right',
           prerequisites: ['cs201-dijkstra-shortest-path'],
-          estimatedMinutes: 60,
           resources: [
             {
               title: 'MST & Union-Find Reference',

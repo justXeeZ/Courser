@@ -17,12 +17,37 @@ export const ResourceKindSchema = z.enum([
 ]);
 export type ResourceKind = z.infer<typeof ResourceKindSchema>;
 
-export const LessonResourceSchema = z.object({
-  title: z.string().min(1),
-  url: z.string().url(),
-  kind: ResourceKindSchema,
-  durationMinutes: z.number().int().positive().optional(),
+export const SEMESTER_OPTIONS = [
+  'Year 1 - First Semester',
+  'Year 1 - Second Semester',
+  'Year 2 - First Semester',
+  'Year 2 - Second Semester',
+  'Year 3 - First Semester',
+  'Year 3 - Second Semester',
+  'Year 4 - First Semester',
+  'Year 4 - Second Semester',
+] as const;
+export const SemesterSchema = z.enum(SEMESTER_OPTIONS);
+export type SemesterOption = z.infer<typeof SemesterSchema>;
+
+export const StoredFileRefSchema = z.object({
+  id: z.string().min(1),
+  name: z.string().min(1),
+  mimeType: z.string(),
+  sizeBytes: z.number().int().nonnegative(),
 });
+export type StoredFileRef = z.infer<typeof StoredFileRefSchema>;
+
+export const LessonResourceSchema = z
+  .object({
+    title: z.string().min(1),
+    kind: ResourceKindSchema,
+    url: z.string().url().optional(),
+    file: StoredFileRefSchema.optional(),
+  })
+  .refine((r) => Boolean(r.url) !== Boolean(r.file), {
+    message: 'Provide either a URL or an uploaded file',
+  });
 export type LessonResource = z.infer<typeof LessonResourceSchema>;
 
 export const SubLessonSchema = z.object({
@@ -32,7 +57,6 @@ export const SubLessonSchema = z.object({
   notes: z.string().optional(),
   side: z.enum(['left', 'right']).optional(),
   prerequisites: z.array(z.string().min(1)).optional(),
-  estimatedMinutes: z.number().int().positive().optional(),
   resources: z.array(LessonResourceSchema),
 });
 export type SubLesson = z.infer<typeof SubLessonSchema>;
@@ -43,6 +67,9 @@ export const ChapterSchema = z.object({
   title: z.string().min(1),
   weekRange: z.string().optional(),
   description: z.string().min(1),
+  notes: z.string().optional(),
+  prerequisites: z.array(z.string().min(1)).optional(),
+  resources: z.array(LessonResourceSchema).optional(),
   lessons: z.array(SubLessonSchema),
 });
 export type Chapter = z.infer<typeof ChapterSchema>;
@@ -52,16 +79,15 @@ export const CourseTreeSchema = z
     slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be lowercase kebab-case'),
     code: z.string().min(2),
     title: z.string().min(2),
-    department: z.string().min(2),
-    semester: z.string().optional(),
+    department: z.string().trim().min(2).catch('Preparatory'),
+    semester: SemesterSchema.optional().catch(undefined),
     credits: z.number().int().positive().optional(),
     description: z.string().min(1),
     chapters: z.array(ChapterSchema).min(1),
   })
   .superRefine((course, ctx) => {
     const requiredPrefix = `${deriveCoursePrefix(course.code)}-`;
-    const chapterIds = new Set<string>();
-    const lessonIds = new Set<string>();
+    const itemIds = new Set<string>();
 
     course.chapters.forEach((chapter, cIdx) => {
       if (!chapter.id.startsWith(requiredPrefix)) {
@@ -71,14 +97,14 @@ export const CourseTreeSchema = z
           path: ['chapters', cIdx, 'id'],
         });
       }
-      if (chapterIds.has(chapter.id)) {
+      if (itemIds.has(chapter.id)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Duplicate chapter id "${chapter.id}"`,
+          message: `Duplicate item id "${chapter.id}"`,
           path: ['chapters', cIdx, 'id'],
         });
       }
-      chapterIds.add(chapter.id);
+      itemIds.add(chapter.id);
 
       chapter.lessons.forEach((lesson, lIdx) => {
         if (!lesson.id.startsWith(requiredPrefix)) {
@@ -88,18 +114,34 @@ export const CourseTreeSchema = z
             path: ['chapters', cIdx, 'lessons', lIdx, 'id'],
           });
         }
-        if (lessonIds.has(lesson.id)) {
+        if (itemIds.has(lesson.id)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Duplicate lesson id "${lesson.id}"`,
+            message: `Duplicate item id "${lesson.id}"`,
             path: ['chapters', cIdx, 'lessons', lIdx, 'id'],
           });
         }
-        lessonIds.add(lesson.id);
+        itemIds.add(lesson.id);
       });
     });
 
     course.chapters.forEach((chapter, cIdx) => {
+      chapter.prerequisites?.forEach((prereqId, pIdx) => {
+        if (prereqId === chapter.id) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Chapter "${chapter.id}" cannot depend on itself`,
+            path: ['chapters', cIdx, 'prerequisites', pIdx],
+          });
+        } else if (!itemIds.has(prereqId)) {
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            message: `Unknown prerequisite id "${prereqId}"`,
+            path: ['chapters', cIdx, 'prerequisites', pIdx],
+          });
+        }
+      });
+
       chapter.lessons.forEach((lesson, lIdx) => {
         lesson.prerequisites?.forEach((prereqId, pIdx) => {
           if (prereqId === lesson.id) {
@@ -108,10 +150,10 @@ export const CourseTreeSchema = z
               message: `Lesson "${lesson.id}" cannot depend on itself`,
               path: ['chapters', cIdx, 'lessons', lIdx, 'prerequisites', pIdx],
             });
-          } else if (!lessonIds.has(prereqId)) {
+          } else if (!itemIds.has(prereqId)) {
             ctx.addIssue({
               code: z.ZodIssueCode.custom,
-              message: `Unknown prerequisite lesson id "${prereqId}"`,
+              message: `Unknown prerequisite id "${prereqId}"`,
               path: ['chapters', cIdx, 'lessons', lIdx, 'prerequisites', pIdx],
             });
           }

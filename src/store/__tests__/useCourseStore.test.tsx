@@ -18,7 +18,7 @@ const sampleNewCourse: CourseTree = {
   code: 'MATH201',
   title: 'Linear Algebra',
   department: 'Mathematics',
-  semester: 'Year 2 · Spring',
+  semester: 'Year 2 - Second Semester',
   credits: 3,
   description: 'Vector spaces, linear transformations, eigenvalues, and SVD.',
   chapters: [

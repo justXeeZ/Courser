@@ -8,7 +8,7 @@ export const ROADMAP_COLORS = {
   edgeBlue: '#2b78e4',
   statusDoneFill: '#cbcbcb',
   statusLearningFill: '#dad1fd',
-  statusSkippedFill: '#496b69',
+  statusSkippedFill: '#64748b',
   statusSkippedText: '#ffffff',
   canvasBg: '#f9fafb',
   darkNavBg: '#0f172b',

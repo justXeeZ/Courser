@@ -1,4 +1,12 @@
 import { CourseTreeSchema, type Chapter, type CourseTree, type SubLesson } from '@/types/course';
+export {
+  findCourseItem,
+  getAllItemRefs,
+  getTrackableItems,
+  isStandaloneChapter,
+  type CourseItem,
+  type CourseItemRef,
+} from '@/lib/courseItems';
 
 export function parseCourseTree(input: unknown): CourseTree {
   return CourseTreeSchema.parse(input);

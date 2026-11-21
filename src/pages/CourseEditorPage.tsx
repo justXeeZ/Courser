@@ -39,7 +39,7 @@ function createBlankCourse(): CourseTree {
     code,
     title,
     department: 'Computer Science',
-    semester: 'Year 1 · Fall',
+    semester: 'Year 1 - First Semester',
     credits: 3,
     description: 'Course overview and learning outcomes.',
     chapters: [
@@ -55,7 +55,6 @@ function createBlankCourse(): CourseTree {
             title: 'Course Introduction',
             summary: 'Key terminology, setup, and roadmap for the semester.',
             side: 'left',
-            estimatedMinutes: 30,
             resources: [],
           },
         ],
@@ -495,8 +494,12 @@ export function CourseEditorPage() {
                     id="course-semester"
                     type="text"
                     value={draft.semester ?? ''}
-                    onChange={(e) => updateMeta({ semester: e.target.value || undefined })}
-                    placeholder="e.g. Year 2 · Spring"
+                    onChange={(e) =>
+                      updateMeta({
+                        semester: (e.target.value || undefined) as CourseTree['semester'],
+                      })
+                    }
+                    placeholder="e.g. Year 2 - Second Semester"
                     className="w-full rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
                   />
                 </div>
@@ -742,7 +745,7 @@ export function CourseEditorPage() {
                               {/* Sub-lesson Expanded Fields */}
                               {isExpanded && (
                                 <div className="mt-2.5 space-y-3 rounded-md border border-gray-200 bg-gray-50/70 p-3.5">
-                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-4">
+                                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                                     <div className="sm:col-span-2">
                                       <label className="mb-1 block text-xs font-medium text-gray-700">
                                         Sub-Lesson Title *
@@ -782,27 +785,6 @@ export function CourseEditorPage() {
                                         <option value="left">Left</option>
                                         <option value="right">Right</option>
                                       </select>
-                                    </div>
-
-                                    <div>
-                                      <label className="mb-1 block text-xs font-medium text-gray-700">
-                                        Est. Minutes
-                                      </label>
-                                      <input
-                                        type="number"
-                                        min={5}
-                                        value={lesson.estimatedMinutes ?? ''}
-                                        onChange={(e) => {
-                                          const val = parseInt(e.target.value, 10);
-                                          updateLesson(cIdx, lIdx, (l) => ({
-                                            ...l,
-                                            estimatedMinutes:
-                                              Number.isFinite(val) && val > 0 ? val : undefined,
-                                          }));
-                                        }}
-                                        placeholder="45"
-                                        className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none"
-                                      />
                                     </div>
                                   </div>
 
@@ -931,7 +913,7 @@ export function CourseEditorPage() {
                                             />
                                             <input
                                               type="url"
-                                              value={res.url}
+                                              value={res.url ?? ''}
                                               onChange={(e) =>
                                                 updateResource(cIdx, lIdx, rIdx, {
                                                   url: e.target.value,

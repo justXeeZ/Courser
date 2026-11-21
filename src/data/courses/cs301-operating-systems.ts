@@ -1,11 +1,11 @@
-import type { CourseTree } from '@/types/course';
+﻿import type { CourseTree } from '@/types/course';
 
 export const cs301OperatingSystems: CourseTree = {
   slug: 'cs301-operating-systems',
   code: 'CS301',
   title: 'Operating Systems',
   department: 'Computer Science',
-  semester: 'Year 3 · Spring',
+  semester: 'Year 3 - Second Semester',
   credits: 4,
   description:
     'Explore how operating systems virtualize CPUs and memory, coordinate concurrent threads safely, and manage durable storage.',
@@ -14,7 +14,7 @@ export const cs301OperatingSystems: CourseTree = {
       id: 'cs301-ch1-processes',
       order: 1,
       title: '1. Processes & Scheduling',
-      weekRange: 'Weeks 1–3',
+      weekRange: 'Weeks 1â€“3',
       description:
         'User vs. kernel mode, system calls, process control blocks, context switching, and CPU scheduling policies.',
       lessons: [
@@ -26,7 +26,6 @@ export const cs301OperatingSystems: CourseTree = {
           notes:
             'Key takeaways:\n- Hardware timer interrupts let the OS regain CPU control from runaway processes.\n- Trap tables are configured by the kernel at boot time.',
           side: 'left',
-          estimatedMinutes: 45,
           resources: [
             {
               title: 'OSTEP Ch. 6: Limited Direct Execution',
@@ -49,7 +48,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Key takeaways:\n- Separating fork() and exec() makes shell pipelines and I/O redirection clean.\n- Always reap child processes with wait() to avoid zombies.',
           side: 'right',
           prerequisites: ['cs301-syscalls-trap'],
-          estimatedMinutes: 55,
           resources: [
             {
               title: 'Lab 01: Build a Mini Unix Shell',
@@ -72,7 +70,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Key takeaways:\n- Priority boost prevents starvation in MLFQ.\n- Short time slices improve interactivity at the cost of higher context-switch overhead.',
           side: 'left',
           prerequisites: ['cs301-process-api'],
-          estimatedMinutes: 50,
           resources: [
             {
               title: 'OSTEP Ch. 8: Multi-Level Feedback Queue',
@@ -92,7 +89,7 @@ export const cs301OperatingSystems: CourseTree = {
       id: 'cs301-ch2-concurrency',
       order: 2,
       title: '2. Concurrency & Locks',
-      weekRange: 'Weeks 4–6',
+      weekRange: 'Weeks 4â€“6',
       description:
         'Shared-memory threads, race conditions, mutexes, condition variables, semaphores, and deadlock prevention.',
       lessons: [
@@ -103,7 +100,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Understand shared address spaces, per-thread stacks, critical sections, and atomic hardware primitives.',
           side: 'left',
           prerequisites: ['cs301-process-api'],
-          estimatedMinutes: 45,
           resources: [
             {
               title: 'OSTEP Ch. 26: Concurrency Intro',
@@ -121,7 +117,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Key takeaways:\n- Always check condition predicates in a while loop (Mesa semantics), never an if statement.\n- Hold the associated mutex while waiting and signaling.',
           side: 'right',
           prerequisites: ['cs301-threads-races'],
-          estimatedMinutes: 65,
           resources: [
             {
               title: 'Lab 02: Thread-Safe Bounded Queue',
@@ -142,7 +137,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Identify the four Coffman conditions and prevent deadlocks via total lock ordering and try-lock backoff.',
           side: 'left',
           prerequisites: ['cs301-mutex-condvars'],
-          estimatedMinutes: 45,
           resources: [
             {
               title: 'OSTEP Ch. 32: Common Concurrency Problems',
@@ -162,7 +156,7 @@ export const cs301OperatingSystems: CourseTree = {
       id: 'cs301-ch3-memory',
       order: 3,
       title: '3. Virtual Memory',
-      weekRange: 'Weeks 7–9',
+      weekRange: 'Weeks 7â€“9',
       description:
         'Address translation, multi-level page tables, TLB caching, demand paging, and replacement algorithms.',
       lessons: [
@@ -173,7 +167,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Translate virtual page numbers to physical frames and see why the TLB makes paging fast in practice.',
           side: 'left',
           prerequisites: ['cs301-syscalls-trap'],
-          estimatedMinutes: 60,
           resources: [
             {
               title: 'OSTEP Ch. 19: Faster Translations (TLBs)',
@@ -194,7 +187,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Compare Optimal (Belady), FIFO, LRU, and Clock approximation algorithms under memory pressure.',
           side: 'right',
           prerequisites: ['cs301-paging-tlb'],
-          estimatedMinutes: 50,
           resources: [
             {
               title: 'Lab 03: Page Replacement Simulator',
@@ -210,7 +202,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Leverage page faults for fast fork() via copy-on-write and memory-mapped file I/O with mmap().',
           side: 'left',
           prerequisites: ['cs301-paging-tlb', 'cs301-process-api'],
-          estimatedMinutes: 45,
           resources: [
             {
               title: 'Linux mmap(2) Official Man Page',
@@ -225,7 +216,7 @@ export const cs301OperatingSystems: CourseTree = {
       id: 'cs301-ch4-storage',
       order: 4,
       title: '4. File Systems & Storage',
-      weekRange: 'Weeks 10–13',
+      weekRange: 'Weeks 10â€“13',
       description:
         'Inodes, directories, block allocation, crash consistency, journaling, and SSD/NVMe fundamentals.',
       lessons: [
@@ -235,7 +226,6 @@ export const cs301OperatingSystems: CourseTree = {
           summary:
             'Inspect how Unix file systems separate filenames from inode metadata, direct/indirect pointers, and hard links.',
           side: 'left',
-          estimatedMinutes: 50,
           resources: [
             {
               title: 'OSTEP Ch. 40: File System Implementation',
@@ -251,7 +241,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Prevent file system corruption across power failures using write-ahead logging (journaling) and fsck.',
           side: 'right',
           prerequisites: ['cs301-inodes-directories'],
-          estimatedMinutes: 55,
           resources: [
             {
               title: 'OSTEP Ch. 42: Crash Consistency (FSCK & Journaling)',
@@ -267,7 +256,6 @@ export const cs301OperatingSystems: CourseTree = {
             'Understand erase-before-program blocks, Flash Translation Layers (FTL), write amplification, and TRIM.',
           side: 'left',
           prerequisites: ['cs301-inodes-directories'],
-          estimatedMinutes: 45,
           resources: [
             {
               title: 'OSTEP Ch. 44: Flash-based SSDs',
