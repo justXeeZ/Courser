@@ -1,0 +1,62 @@
+@import "tailwindcss";
+@import "@fontsource/balsamiq-sans/400.css";
+@import "@fontsource/balsamiq-sans/700.css";
+
+@layer base {
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  }
+}
+
+.font-roadmap {
+  font-family: "Balsamiq Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* roadmap.sh exact SVG node hover and completion states */
+.roadmap-svg g[data-node-kind="chapter"] {
+  cursor: pointer;
+}
+
+.roadmap-svg g[data-node-kind="chapter"]:hover > rect.node-rect {
+  fill: #d6d700;
+}
+
+.roadmap-svg g[data-node-kind="lesson"] {
+  cursor: pointer;
+}
+
+.roadmap-svg g[data-node-kind="lesson"]:hover > rect.node-rect {
+  fill: #f3c950;
+}
+
+.roadmap-svg g.node-done > rect.node-rect {
+  fill: #cbcbcb !important;
+}
+
+.roadmap-svg g.node-done > text.node-label {
+  fill: #000000 !important;
+  text-decoration: line-through;
+}
+
+.roadmap-svg g.node-learning > rect.node-rect {
+  fill: #dad1fd !important;
+}
+
+.roadmap-svg g.node-learning > text.node-label {
+  fill: #000000 !important;
+  text-decoration: underline;
+}
+
+.roadmap-svg g.node-skipped > rect.node-rect {
+  fill: #496b69 !important;
+}
+
+.roadmap-svg g.node-skipped > text.node-label {
+  fill: #ffffff !important;
+  text-decoration: line-through;
+}
+
+.roadmap-svg g.node-highlighted > rect.node-rect {
+  stroke: #2b78e4 !important;
+  stroke-width: 3.4 !important;
+}
