@@ -37,7 +37,7 @@ export function CatalogPage() {
   const departmentGroups = Array.from(getCoursesByDepartment(filteredCourses).entries());
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-black text-white">
+    <main className="flex min-h-[calc(100vh-64px)] flex-col bg-black text-white">
       {/* Dark roadmap.sh Hero */}
       <section className="border-b border-slate-800/80 bg-gradient-to-b from-slate-900 to-black">
         <div className="mx-auto max-w-5xl px-4 pt-10 sm:px-6 sm:pt-14">
@@ -80,7 +80,7 @@ export function CatalogPage() {
       </section>
 
       {/* Department Sections & 3-Column Dark Card Grid */}
-      <section className="mx-auto max-w-5xl space-y-8 px-4 py-8 sm:px-6 sm:py-10">
+      <section className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 py-8 sm:px-6 sm:py-10">
         {departmentGroups.length === 0 ? (
           <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-8 text-center">
             <p className="mb-1 text-sm font-medium text-slate-200">
@@ -139,6 +139,18 @@ export function CatalogPage() {
           ))
         )}
       </section>
+
+      <footer className="border-t border-slate-800">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-slate-400 sm:px-6">
+          <span>Local-first course roadmaps · Stored in your browser</span>
+          <Link
+            to="/docs/data-formats"
+            className="font-medium text-slate-300 transition-colors hover:text-yellow-400"
+          >
+            Data formats &amp; LLM course-authoring guide →
+          </Link>
+        </div>
+      </footer>
 
       <ConfirmDialog
         open={Boolean(courseToDelete)}

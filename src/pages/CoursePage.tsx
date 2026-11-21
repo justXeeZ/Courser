@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { X, Download, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
-import { findLessonWithChapter } from '@/data/validateCourse';
+import { findCourseItem } from '@/lib/courseItems';
 import { layoutCourseTree } from '@/lib/layoutTree';
 import { useCourses } from '@/store/useCourseStore';
 import { useProgress } from '@/store/useProgressStore';
@@ -15,6 +15,8 @@ import {
 import { ChecklistView } from '@/components/ChecklistView';
 import { QuickStatusPill } from '@/components/QuickStatusPill';
 import { LessonDrawer } from '@/components/LessonDrawer';
+import { ChapterDrawer } from '@/components/ChapterDrawer';
+import { ExportCourseDialog } from '@/components/ExportCourseDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import type { Chapter } from '@/types/course';
 
@@ -32,6 +34,7 @@ export function CoursePage() {
     toggleDone,
     isBookmarked,
     toggleBookmark,
+    forgetCourse,
     getCourseStats,
     exportProgressJson,
     importProgressJson,
@@ -40,10 +43,11 @@ export function CoursePage() {
   const [activeTab, setActiveTab] = useState<CourseViewTab>('tree');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [contextMenu, setContextMenu] = useState<{
-    lessonId: string;
+    itemId: string;
     anchor: NodeAnchorRect;
   } | null>(null);
   const [backupModalOpen, setBackupModalOpen] = useState(false);
+  const [exportModalOpen, setExportModalOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [importText, setImportText] = useState('');
   const [importNotice, setImportNotice] = useState<{ ok: boolean; text: string } | null>(null);
@@ -54,15 +58,17 @@ export function CoursePage() {
 
   if (!course || !layout) {
     return (
-      <main className="min-h-[calc(100vh-64px)] bg-gray-50 px-4 py-16">
-        <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-6 text-center shadow-xs">
-          <h1 className="mb-2 text-xl font-bold text-gray-900">Course Not Found</h1>
-          <p className="mb-5 text-sm text-gray-500">
+      <main className="min-h-[calc(100vh-64px)] bg-gray-50 px-4 py-16 dark:bg-slate-950">
+        <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-6 text-center shadow-xs dark:border-slate-700 dark:bg-slate-900">
+          <h1 className="mb-2 text-xl font-bold text-gray-900 dark:text-slate-100">
+            Course Not Found
+          </h1>
+          <p className="mb-5 text-sm text-gray-500 dark:text-slate-400">
             We could not find a course tree matching <code className="font-mono">{slug}</code>.
           </p>
           <Link
             to="/"
-            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
           >
             Back to All Courses
           </Link>
@@ -74,24 +80,35 @@ export function CoursePage() {
   const statuses = getCourseStatuses(course.slug);
   const stats = getCourseStats(course);
   const requestedLessonId = searchParams.get('lesson');
-  const activeEntry = requestedLessonId
-    ? findLessonWithChapter(course, requestedLessonId)
-    : undefined;
+  const requestedChapterId = searchParams.get('chapter');
 
-  const openLesson = (lessonId: string) => {
+  const resolvedItem = requestedLessonId
+    ? findCourseItem(course, requestedLessonId)
+    : requestedChapterId
+      ? findCourseItem(course, requestedChapterId)
+      : undefined;
+
+  const activeLessonEntry = resolvedItem?.kind === 'lesson' ? resolvedItem : undefined;
+  const activeChapterEntry = resolvedItem?.kind === 'chapter' ? resolvedItem : undefined;
+
+  const openItem = (itemId: string) => {
     setContextMenu(null);
-    setSearchParams({ lesson: lessonId }, { replace: false });
+    const item = findCourseItem(course, itemId);
+    if (!item) return;
+    if (item.kind === 'chapter') {
+      setSearchParams({ chapter: item.id }, { replace: false });
+    } else {
+      setSearchParams({ lesson: item.id }, { replace: false });
+    }
   };
 
-  const closeLesson = () => {
+  const closeDrawer = () => {
     setSearchParams({}, { replace: true });
   };
 
   const handleSelectChapter = (chapter: Chapter) => {
-    const firstLesson = chapter.lessons[0];
-    if (firstLesson) {
-      openLesson(firstLesson.id);
-    }
+    setContextMenu(null);
+    setSearchParams({ chapter: chapter.id }, { replace: false });
   };
 
   const handleDownloadSvg = () => {
@@ -103,10 +120,10 @@ export function CoursePage() {
     styleTag.textContent = `
       text { font-family: "Balsamiq Sans", ui-sans-serif, system-ui, sans-serif; }
       g.node-done > rect.node-rect { fill: #cbcbcb; }
-      g.node-done > text.node-label { text-decoration: line-through; }
+      g.node-done > text.node-label { fill: #000000; text-decoration: line-through; }
       g.node-learning > rect.node-rect { fill: #dad1fd; }
-      g.node-learning > text.node-label { text-decoration: underline; }
-      g.node-skipped > rect.node-rect { fill: #496b69; }
+      g.node-learning > text.node-label { fill: #000000; text-decoration: underline; }
+      g.node-skipped > rect.node-rect { fill: #64748b; }
       g.node-skipped > text.node-label { fill: #ffffff; text-decoration: line-through; }
     `;
     clone.prepend(styleTag);
@@ -143,13 +160,14 @@ export function CoursePage() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-gray-50">
+    <main className="min-h-[calc(100vh-64px)] bg-gray-50 dark:bg-slate-950">
       <CourseHeader
         course={course}
         bookmarked={isBookmarked(course.slug)}
         activeTab={activeTab}
         onToggleBookmark={() => toggleBookmark(course.slug)}
         onDownloadSvg={handleDownloadSvg}
+        onOpenExport={() => setExportModalOpen(true)}
         onOpenBackup={() => {
           setImportNotice(null);
           setBackupModalOpen(true);
@@ -169,21 +187,23 @@ export function CoursePage() {
           <CourseTreeCanvas
             layout={layout}
             statuses={statuses}
-            activeLessonId={activeEntry?.lesson.id ?? null}
+            activeLessonId={activeLessonEntry?.lesson.id ?? null}
+            activeChapterId={activeChapterEntry?.chapter.id ?? null}
             statusFilter={statusFilter}
             svgRef={svgRef}
-            onSelectLesson={openLesson}
+            onSelectLesson={openItem}
             onSelectChapter={handleSelectChapter}
-            onQuickToggleDone={(lessonId) => toggleDone(course.slug, lessonId)}
-            onContextMenuLesson={(lessonId, anchor) => setContextMenu({ lessonId, anchor })}
+            onQuickToggleDone={(itemId) => toggleDone(course.slug, itemId)}
+            onContextMenuLesson={(itemId, anchor) => setContextMenu({ itemId, anchor })}
           />
         ) : (
           <ChecklistView
             course={course}
             statuses={statuses}
             statusFilter={statusFilter}
-            onSelectLesson={openLesson}
-            onToggleDone={(lessonId) => toggleDone(course.slug, lessonId)}
+            onSelectLesson={openItem}
+            onSelectChapter={handleSelectChapter}
+            onToggleDone={(itemId) => toggleDone(course.slug, itemId)}
           />
         )}
       </div>
@@ -192,47 +212,75 @@ export function CoursePage() {
       {contextMenu && (
         <QuickStatusPill
           anchor={contextMenu.anchor}
-          currentStatus={getLessonStatus(course.slug, contextMenu.lessonId)}
-          onSelectStatus={(next) => setLessonStatus(course.slug, contextMenu.lessonId, next)}
+          currentStatus={getLessonStatus(course.slug, contextMenu.itemId)}
+          onSelectStatus={(next) => setLessonStatus(course.slug, contextMenu.itemId, next)}
           onClose={() => setContextMenu(null)}
         />
       )}
 
       {/* 600px Slide-Over Lesson Drawer */}
-      {activeEntry && (
+      {activeLessonEntry && (
         <LessonDrawer
           course={course}
-          chapter={activeEntry.chapter}
-          lesson={activeEntry.lesson}
-          status={getLessonStatus(course.slug, activeEntry.lesson.id)}
+          chapter={activeLessonEntry.chapter}
+          lesson={activeLessonEntry.lesson}
+          status={getLessonStatus(course.slug, activeLessonEntry.lesson.id)}
           statuses={statuses}
-          onChangeStatus={(next) => setLessonStatus(course.slug, activeEntry.lesson.id, next)}
-          onNavigateLesson={openLesson}
-          onClose={closeLesson}
+          onChangeStatus={(next) => setLessonStatus(course.slug, activeLessonEntry.lesson.id, next)}
+          onSelectItem={openItem}
+          onClose={closeDrawer}
         />
       )}
 
+      {/* 600px Slide-Over Chapter Overview Drawer */}
+      {activeChapterEntry && (
+        <ChapterDrawer
+          course={course}
+          chapter={activeChapterEntry.chapter}
+          status={getLessonStatus(course.slug, activeChapterEntry.chapter.id)}
+          statuses={statuses}
+          onChangeStatus={(next) =>
+            setLessonStatus(course.slug, activeChapterEntry.chapter.id, next)
+          }
+          onSelectItem={openItem}
+          onClose={closeDrawer}
+        />
+      )}
+
+      {/* Export Course (.course.json) Dialog */}
+      <ExportCourseDialog
+        open={exportModalOpen}
+        course={course}
+        onClose={() => setExportModalOpen(false)}
+      />
+
       {/* Export / Import Progress Modal */}
       {backupModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/50 p-4">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4 dark:bg-black/60"
+          onClick={() => setBackupModalOpen(false)}
+        >
           <div
             role="dialog"
             aria-modal="true"
             aria-label="Backup and Restore Progress"
-            className="w-full max-w-md rounded-lg bg-white p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 text-gray-900 shadow-xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-bold text-gray-900">Backup &amp; Restore Progress</h2>
+              <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">
+                Backup &amp; Restore Progress
+              </h2>
               <button
                 type="button"
                 onClick={() => setBackupModalOpen(false)}
                 aria-label="Close backup dialog"
-                className="rounded-md bg-gray-100 p-1.5 text-gray-600 hover:bg-gray-200"
+                className="rounded-md bg-gray-100 p-1.5 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="mb-4 text-xs text-gray-600">
+            <p className="mb-4 text-xs text-gray-600 dark:text-slate-300">
               Your progress is saved locally in this browser. Export a JSON backup to transfer
               across devices or keep a semester copy.
             </p>
@@ -246,10 +294,10 @@ export function CoursePage() {
               Download Progress JSON
             </button>
 
-            <div className="border-t border-gray-200 pt-3">
+            <div className="border-t border-gray-200 pt-3 dark:border-slate-700">
               <label
                 htmlFor="import-progress-json"
-                className="mb-1.5 block text-xs font-medium text-gray-700"
+                className="mb-1.5 block text-xs font-medium text-gray-700 dark:text-slate-300"
               >
                 Restore from JSON
               </label>
@@ -259,14 +307,14 @@ export function CoursePage() {
                 value={importText}
                 onChange={(e) => setImportText(e.target.value)}
                 placeholder='Paste exported JSON here (e.g. {"version":1,...})'
-                className="mb-2 w-full rounded-md border border-gray-300 p-2 font-mono text-xs text-gray-800 focus:border-blue-500 focus:outline-none"
+                className="mb-2 w-full rounded-md border border-gray-300 bg-white p-2 font-mono text-xs text-gray-800 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
               />
               {importNotice && (
                 <div
                   className={`mb-2 flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs ${
                     importNotice.ok
-                      ? 'bg-green-50 text-green-800'
-                      : 'bg-red-50 text-red-700'
+                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      : 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300'
                   }`}
                 >
                   {importNotice.ok ? (
@@ -281,7 +329,7 @@ export function CoursePage() {
                 type="button"
                 onClick={handleImportSubmit}
                 disabled={!importText.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-slate-700 dark:hover:bg-slate-600"
               >
                 <Upload className="h-4 w-4" />
                 Restore Progress
@@ -297,6 +345,7 @@ export function CoursePage() {
         description="This removes the course and all its chapters and sub-lessons from your local catalog."
         confirmLabel="Delete Course"
         onConfirm={() => {
+          forgetCourse(course.slug);
           deleteCourse(course.slug);
           setConfirmDeleteOpen(false);
           navigate('/');

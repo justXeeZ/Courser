@@ -1,11 +1,12 @@
 import { useState, type MouseEvent, type RefObject } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import { isStandaloneChapter } from '@/lib/courseItems';
 import { ROADMAP_COLORS } from '@/lib/theme';
 import type { TreeLayout } from '@/lib/layoutTree';
 import type { Chapter, LessonStatus } from '@/types/course';
 import { computeChapterStats } from '@/store/useProgressStore';
 
-export type StatusFilter = 'all' | 'todo' | 'learning' | 'done';
+export type StatusFilter = 'all' | 'todo' | 'learning' | 'done' | 'skipped';
 
 export interface NodeAnchorRect {
   left: number;
@@ -18,6 +19,7 @@ interface CourseTreeCanvasProps {
   layout: TreeLayout;
   statuses: Record<string, LessonStatus>;
   activeLessonId?: string | null;
+  activeChapterId?: string | null;
   statusFilter?: StatusFilter;
   svgRef?: RefObject<SVGSVGElement | null>;
   onSelectLesson: (lessonId: string) => void;
@@ -33,10 +35,18 @@ function getStatusClass(status: LessonStatus): string {
   return '';
 }
 
+function getStandaloneBadge(status: LessonStatus): { symbol: string; fill: string } {
+  if (status === 'done') return { symbol: '✓', fill: '#16a34a' };
+  if (status === 'learning') return { symbol: '◐', fill: '#7c3aed' };
+  if (status === 'skipped') return { symbol: '—', fill: '#64748b' };
+  return { symbol: '○', fill: '#0f172b' };
+}
+
 export function CourseTreeCanvas({
   layout,
   statuses,
   activeLessonId,
+  activeChapterId,
   statusFilter = 'all',
   svgRef,
   onSelectLesson,
@@ -45,12 +55,16 @@ export function CourseTreeCanvas({
   onContextMenuLesson,
 }: CourseTreeCanvasProps) {
   const [zoom, setZoom] = useState(1);
-  const [hoveredLessonId, setHoveredLessonId] = useState<string | null>(null);
+  const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
 
-  const hoveredLesson = hoveredLessonId
-    ? layout.lessonNodes.find((n) => n.id === hoveredLessonId)?.lesson
-    : undefined;
-  const highlightedPrereqs = new Set(hoveredLesson?.prerequisites ?? []);
+  const hoveredPrereqs = (() => {
+    if (!hoveredItemId) return new Set<string>();
+    const lessonMatch = layout.lessonNodes.find((n) => n.id === hoveredItemId)?.lesson;
+    if (lessonMatch) return new Set(lessonMatch.prerequisites ?? []);
+    const chapterMatch = layout.chapterNodes.find((n) => n.id === hoveredItemId)?.chapter;
+    if (chapterMatch) return new Set(chapterMatch.prerequisites ?? []);
+    return new Set<string>();
+  })();
 
   const handleLessonClick = (e: MouseEvent<SVGGElement>, lessonId: string) => {
     if (e.shiftKey) {
@@ -61,10 +75,23 @@ export function CourseTreeCanvas({
     onSelectLesson(lessonId);
   };
 
-  const handleLessonContextMenu = (e: MouseEvent<SVGGElement>, lessonId: string) => {
+  const handleChapterClick = (
+    e: MouseEvent<SVGGElement>,
+    chapter: Chapter,
+    standalone: boolean
+  ) => {
+    if (standalone && e.shiftKey) {
+      e.preventDefault();
+      onQuickToggleDone(chapter.id);
+      return;
+    }
+    onSelectChapter?.(chapter);
+  };
+
+  const openNodeContextMenu = (e: MouseEvent<SVGGElement>, itemId: string) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
-    onContextMenuLesson(lessonId, {
+    onContextMenuLesson(itemId, {
       left: rect.left,
       top: rect.top,
       width: rect.width,
@@ -79,7 +106,7 @@ export function CourseTreeCanvas({
         <button
           type="button"
           onClick={() => setZoom((z) => Math.max(0.7, Number((z - 0.1).toFixed(2))))}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           title="Zoom out"
           aria-label="Zoom out"
         >
@@ -88,7 +115,7 @@ export function CourseTreeCanvas({
         <button
           type="button"
           onClick={() => setZoom(1)}
-          className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-700 hover:bg-gray-100"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           title="Reset zoom"
           aria-label="Reset zoom"
         >
@@ -98,7 +125,7 @@ export function CourseTreeCanvas({
         <button
           type="button"
           onClick={() => setZoom((z) => Math.min(1.4, Number((z + 0.1).toFixed(2))))}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
           title="Zoom in"
           aria-label="Zoom in"
         >
@@ -109,7 +136,10 @@ export function CourseTreeCanvas({
       <div className="w-full overflow-x-auto pb-8">
         <div
           className="mx-auto transition-[width] duration-150"
-          style={{ width: `${Math.round(zoom * 100)}%`, maxWidth: `${Math.round(layout.width * zoom)}px` }}
+          style={{
+            width: `${Math.round(zoom * 100)}%`,
+            maxWidth: `${Math.round(layout.width * zoom)}px`,
+          }}
         >
           <svg
             ref={svgRef}
@@ -135,20 +165,62 @@ export function CourseTreeCanvas({
             {/* Primary Spine Chapter Nodes (#fdff00) */}
             <g>
               {layout.chapterNodes.map((node) => {
+                const standalone = isStandaloneChapter(node.chapter);
                 const stats = computeChapterStats(node.chapter, statuses);
+                const chapterStatus: LessonStatus = standalone
+                  ? (statuses[node.id] ?? 'todo')
+                  : 'todo';
+                const statusClass = standalone ? getStatusClass(chapterStatus) : '';
+                const isSelected = activeChapterId === node.id;
+                const isPrereqHighlighted = hoveredPrereqs.has(node.id);
+                const isDimmed =
+                  standalone && statusFilter !== 'all' && chapterStatus !== statusFilter;
+
                 const allDone = stats.total > 0 && stats.percentDone === 100;
-                const badgeText = `${stats.done}/${stats.total}`;
-                const badgeWidth = Math.max(36, badgeText.length * 8 + 14);
+                const standaloneBadge = getStandaloneBadge(chapterStatus);
+                const badgeText = standalone
+                  ? standaloneBadge.symbol
+                  : `${stats.done}/${stats.required}`;
+                const badgeFill = standalone
+                  ? standaloneBadge.fill
+                  : allDone
+                    ? '#16a34a'
+                    : '#0f172b';
+                const badgeWidth = standalone
+                  ? 28
+                  : Math.max(36, badgeText.length * 8 + 14);
 
                 return (
                   <g
                     key={node.id}
                     data-node-id={node.id}
                     data-node-kind="chapter"
+                    data-standalone={standalone ? 'true' : undefined}
+                    data-status={standalone ? chapterStatus : undefined}
+                    className={[
+                      statusClass,
+                      isSelected || isPrereqHighlighted ? 'node-highlighted' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    style={{ opacity: isDimmed ? 0.3 : 1 }}
                     role="button"
                     tabIndex={0}
-                    aria-label={`Chapter ${node.chapter.title}, ${stats.done} of ${stats.total} lessons done`}
-                    onClick={() => onSelectChapter?.(node.chapter)}
+                    aria-label={
+                      standalone
+                        ? `Chapter ${node.chapter.title}, standalone, status ${chapterStatus}`
+                        : `Chapter ${node.chapter.title}, ${stats.done} of ${stats.required} required lessons done`
+                    }
+                    onClick={(e) => handleChapterClick(e, node.chapter, standalone)}
+                    onContextMenu={(e) => {
+                      if (standalone) {
+                        openNodeContextMenu(e, node.id);
+                      }
+                    }}
+                    onMouseEnter={() => setHoveredItemId(node.id)}
+                    onMouseLeave={() =>
+                      setHoveredItemId((prev) => (prev === node.id ? null : prev))
+                    }
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -179,13 +251,15 @@ export function CourseTreeCanvas({
                       {node.chapter.title}
                     </text>
 
-                    {/* Compact chapter completion badge */}
-                    <g transform={`translate(${node.x + node.width - badgeWidth + 8}, ${node.y - 10})`}>
+                    {/* Compact chapter completion or standalone status badge */}
+                    <g
+                      transform={`translate(${node.x + node.width - badgeWidth + 8}, ${node.y - 10})`}
+                    >
                       <rect
                         width={badgeWidth}
                         height={20}
                         rx={10}
-                        fill={allDone ? '#16a34a' : '#0f172b'}
+                        fill={badgeFill}
                         stroke="#ffffff"
                         strokeWidth={1.5}
                       />
@@ -212,7 +286,7 @@ export function CourseTreeCanvas({
                 const status: LessonStatus = statuses[node.id] ?? 'todo';
                 const statusClass = getStatusClass(status);
                 const isSelected = activeLessonId === node.id;
-                const isPrereqHighlighted = highlightedPrereqs.has(node.id);
+                const isPrereqHighlighted = hoveredPrereqs.has(node.id);
                 const isDimmed = statusFilter !== 'all' && status !== statusFilter;
 
                 return (
@@ -232,9 +306,11 @@ export function CourseTreeCanvas({
                     tabIndex={0}
                     aria-label={`${node.lesson.title}, status ${status}`}
                     onClick={(e) => handleLessonClick(e, node.id)}
-                    onContextMenu={(e) => handleLessonContextMenu(e, node.id)}
-                    onMouseEnter={() => setHoveredLessonId(node.id)}
-                    onMouseLeave={() => setHoveredLessonId((prev) => (prev === node.id ? null : prev))}
+                    onContextMenu={(e) => openNodeContextMenu(e, node.id)}
+                    onMouseEnter={() => setHoveredItemId(node.id)}
+                    onMouseLeave={() =>
+                      setHoveredItemId((prev) => (prev === node.id ? null : prev))
+                    }
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
@@ -268,7 +344,14 @@ export function CourseTreeCanvas({
                     {/* Done check badge (top-right) */}
                     {status === 'done' && (
                       <g transform={`translate(${node.x + node.width - 10}, ${node.y - 8})`}>
-                        <circle cx={8} cy={8} r={9} fill="#16a34a" stroke="#ffffff" strokeWidth={1.5} />
+                        <circle
+                          cx={8}
+                          cy={8}
+                          r={9}
+                          fill="#16a34a"
+                          stroke="#ffffff"
+                          strokeWidth={1.5}
+                        />
                         <path
                           d="M 4.5 8.2 L 7 10.6 L 11.6 5.6"
                           fill="none"
@@ -283,8 +366,38 @@ export function CourseTreeCanvas({
                     {/* Learning dot badge (top-right) */}
                     {status === 'learning' && (
                       <g transform={`translate(${node.x + node.width - 10}, ${node.y - 8})`}>
-                        <circle cx={8} cy={8} r={8} fill="#7c3aed" stroke="#ffffff" strokeWidth={1.5} />
+                        <circle
+                          cx={8}
+                          cy={8}
+                          r={8}
+                          fill="#7c3aed"
+                          stroke="#ffffff"
+                          strokeWidth={1.5}
+                        />
                         <circle cx={8} cy={8} r={3} fill="#ffffff" />
+                      </g>
+                    )}
+
+                    {/* Skipped slate badge (top-right) */}
+                    {status === 'skipped' && (
+                      <g transform={`translate(${node.x + node.width - 10}, ${node.y - 8})`}>
+                        <circle
+                          cx={8}
+                          cy={8}
+                          r={8}
+                          fill="#64748b"
+                          stroke="#ffffff"
+                          strokeWidth={1.5}
+                        />
+                        <line
+                          x1={4.5}
+                          y1={8}
+                          x2={11.5}
+                          y2={8}
+                          stroke="#ffffff"
+                          strokeWidth={2}
+                          strokeLinecap="round"
+                        />
                       </g>
                     )}
                   </g>

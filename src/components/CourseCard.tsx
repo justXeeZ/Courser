@@ -18,7 +18,9 @@ export function CourseCard({
   onToggleBookmark,
   onRequestDelete,
 }: CourseCardProps) {
-  const hasProgress = stats.done > 0 || stats.learning > 0;
+  const hasProgress = stats.done > 0 || stats.learning > 0 || stats.skipped > 0;
+  const chapterCount = course.chapters.length;
+  const itemCount = stats.total;
 
   return (
     <div className="group relative">
@@ -27,12 +29,14 @@ export function CourseCard({
         className="flex min-h-[78px] flex-col justify-between rounded-lg border border-slate-800 bg-slate-900 p-3.5 pr-20 text-slate-300 transition-colors hover:border-slate-600 hover:text-slate-100"
       >
         <div>
-          <div className="mb-1 flex items-center gap-2">
+          <div className="mb-1 flex flex-wrap items-center gap-1.5">
             <span className="rounded bg-slate-800 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-yellow-400">
               {course.code}
             </span>
             {course.semester && (
-              <span className="text-[11px] text-slate-500">{course.semester}</span>
+              <span className="rounded-full border border-slate-700/80 bg-slate-800/70 px-2 py-0.5 text-[11px] font-medium text-slate-300">
+                {course.semester}
+              </span>
             )}
           </div>
           <div className="text-sm font-medium text-slate-200 group-hover:text-white">
@@ -42,7 +46,8 @@ export function CourseCard({
 
         <div className="mt-2.5 flex items-center justify-between gap-2 text-[11px] text-slate-500">
           <span>
-            {course.chapters.length} chapters · {stats.total} lessons
+            {chapterCount} {chapterCount === 1 ? 'chapter' : 'chapters'} · {itemCount}{' '}
+            {itemCount === 1 ? 'item' : 'items'}
           </span>
           {hasProgress && (
             <span className="font-mono font-semibold text-green-400">

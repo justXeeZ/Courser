@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, X, BookOpen, GitFork } from 'lucide-react';
+import { Search, X, BookOpen, GitFork, Layers } from 'lucide-react';
 import { useCourses } from '@/store/useCourseStore';
 
 interface SearchModalProps {
@@ -10,7 +10,7 @@ interface SearchModalProps {
 
 interface SearchHit {
   key: string;
-  kind: 'course' | 'lesson';
+  kind: 'course' | 'chapter' | 'lesson';
   title: string;
   subtitle: string;
   to: string;
@@ -40,38 +40,63 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
   const results = useMemo<SearchHit[]>(() => {
     const q = query.trim().toLowerCase();
-    const hits: SearchHit[] = [];
+    const courseHits: SearchHit[] = [];
+    const chapterHits: SearchHit[] = [];
+    const lessonHits: SearchHit[] = [];
 
     for (const course of courses) {
       const courseMatches =
         !q ||
         course.title.toLowerCase().includes(q) ||
         course.code.toLowerCase().includes(q) ||
-        course.department.toLowerCase().includes(q);
+        course.department.toLowerCase().includes(q) ||
+        (course.semester?.toLowerCase().includes(q) ?? false);
+
+      const courseMeta = `${course.code} · ${course.department}${
+        course.semester ? ` · ${course.semester}` : ''
+      }`;
 
       if (courseMatches) {
-        hits.push({
+        courseHits.push({
           key: `course-${course.slug}`,
           kind: 'course',
           title: `${course.code}: ${course.title}`,
-          subtitle: `${course.department} · ${course.chapters.length} chapters`,
+          subtitle: `${course.department}${course.semester ? ` · ${course.semester}` : ''} · ${course.chapters.length} chapters`,
           to: `/course/${course.slug}`,
         });
       }
 
       if (q) {
         for (const chapter of course.chapters) {
+          const chapterMatches =
+            chapter.title.toLowerCase().includes(q) ||
+            chapter.description.toLowerCase().includes(q) ||
+            (chapter.notes?.toLowerCase().includes(q) ?? false) ||
+            course.department.toLowerCase().includes(q);
+
+          if (chapterMatches) {
+            chapterHits.push({
+              key: `chapter-${course.slug}-${chapter.id}`,
+              kind: 'chapter',
+              title: chapter.title,
+              subtitle: courseMeta,
+              to: `/course/${course.slug}?chapter=${chapter.id}`,
+            });
+          }
+
           for (const lesson of chapter.lessons) {
             if (
               lesson.title.toLowerCase().includes(q) ||
               lesson.summary.toLowerCase().includes(q) ||
-              chapter.title.toLowerCase().includes(q)
+              (lesson.notes?.toLowerCase().includes(q) ?? false) ||
+              chapter.title.toLowerCase().includes(q) ||
+              course.department.toLowerCase().includes(q)
             ) {
-              hits.push({
+              lessonHits.push({
                 key: `lesson-${course.slug}-${lesson.id}`,
                 kind: 'lesson',
                 title: lesson.title,
-                subtitle: `${course.code} › ${chapter.title}`,
+                subtitle: `${course.code} · ${course.department} › ${chapter.title}`,
                 to: `/course/${course.slug}?lesson=${lesson.id}`,
               });
             }
@@ -80,7 +105,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
       }
     }
 
-    return hits.slice(0, 14);
+    return [...courseHits, ...chapterHits, ...lessonHits].slice(0, 18);
   }, [query, courses]);
 
   if (!open) return null;
@@ -98,7 +123,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
       <div
         role="dialog"
         aria-modal="true"
-        aria-label="Search courses and lessons"
+        aria-label="Search courses, chapters, and lessons"
         onClick={(e) => e.stopPropagation()}
         className="w-full max-w-lg overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-white shadow-2xl"
       >
@@ -109,7 +134,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search courses, chapters, or sub-lessons (e.g., Dijkstra, TLB)..."
+            placeholder="Search courses, departments, chapters, or lessons..."
             className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
           />
           <button
@@ -125,7 +150,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
         <div className="max-h-80 overflow-y-auto p-2">
           {results.length === 0 ? (
             <p className="px-3 py-6 text-center text-xs text-slate-400">
-              No matching courses or lessons found.
+              No matching courses, chapters, or lessons found.
             </p>
           ) : (
             <ul className="space-y-1">
@@ -138,6 +163,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                   >
                     {hit.kind === 'course' ? (
                       <GitFork className="h-4 w-4 shrink-0 text-yellow-400" />
+                    ) : hit.kind === 'chapter' ? (
+                      <Layers className="h-4 w-4 shrink-0 text-amber-300" />
                     ) : (
                       <BookOpen className="h-4 w-4 shrink-0 text-blue-400" />
                     )}
