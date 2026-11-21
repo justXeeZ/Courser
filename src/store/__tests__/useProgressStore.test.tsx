@@ -60,26 +60,26 @@ describe('useProgressStore', () => {
     const { result } = renderHook(() => useProgress(), { wrapper });
 
     act(() => {
-      result.current.toggleBookmark('cs201-data-structures');
-      result.current.setLessonStatus('cs201-data-structures', 'cs201-big-o-analysis', 'done');
+      result.current.toggleBookmark('guide101-quick-start');
+      result.current.setLessonStatus('guide101-quick-start', 'guide101-browsing-bookmarks', 'done');
     });
 
-    expect(result.current.isBookmarked('cs201-data-structures')).toBe(true);
+    expect(result.current.isBookmarked('guide101-quick-start')).toBe(true);
     const exported = result.current.exportProgressJson();
 
     act(() => {
-      result.current.resetCourseProgress('cs201-data-structures');
-      result.current.toggleBookmark('cs201-data-structures');
+      result.current.resetCourseProgress('guide101-quick-start');
+      result.current.toggleBookmark('guide101-quick-start');
     });
-    expect(result.current.isBookmarked('cs201-data-structures')).toBe(false);
-    expect(result.current.getLessonStatus('cs201-data-structures', 'cs201-big-o-analysis')).toBe('todo');
+    expect(result.current.isBookmarked('guide101-quick-start')).toBe(false);
+    expect(result.current.getLessonStatus('guide101-quick-start', 'guide101-browsing-bookmarks')).toBe('todo');
 
     act(() => {
       const res = result.current.importProgressJson(exported);
       expect(res.ok).toBe(true);
     });
-    expect(result.current.isBookmarked('cs201-data-structures')).toBe(true);
-    expect(result.current.getLessonStatus('cs201-data-structures', 'cs201-big-o-analysis')).toBe('done');
+    expect(result.current.isBookmarked('guide101-quick-start')).toBe(true);
+    expect(result.current.getLessonStatus('guide101-quick-start', 'guide101-browsing-bookmarks')).toBe('done');
   });
 
   it('recovers safely from corrupted localStorage and invalid import payloads', () => {

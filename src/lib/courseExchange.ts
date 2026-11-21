@@ -1,0 +1,391 @@
+import { deriveFileId, rekeyCourseContentIdsWithMap } from '@/lib/courseIds';
+import { collectReferencedFileIds, getFile, putFile } from '@/lib/fileStore';
+import {
+  CourseTreeSchema,
+  type CourseTree,
+  type LessonResource,
+  type StoredFileRef,
+} from '@/types/course';
+
+export const COURSE_EXPORT_FORMAT = 'college-course-tree' as const;
+export const COURSE_EXPORT_VERSION = 1 as const;
+
+export interface CourseAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataBase64: string;
+}
+
+export interface CourseExportEnvelope {
+  format: typeof COURSE_EXPORT_FORMAT;
+  version: typeof COURSE_EXPORT_VERSION;
+  exportedAt: string;
+  course: CourseTree;
+  attachments?: CourseAttachment[];
+}
+
+const BASE64_CHUNK_SIZE = 0x8000;
+
+export function uint8ArrayToBase64(bytes: Uint8Array): string {
+  const chunks: string[] = [];
+  for (let i = 0; i < bytes.length; i += BASE64_CHUNK_SIZE) {
+    const slice = bytes.subarray(i, i + BASE64_CHUNK_SIZE);
+    let binary = '';
+    for (let j = 0; j < slice.length; j += 1) {
+      binary += String.fromCharCode(slice[j]);
+    }
+    chunks.push(binary);
+  }
+  return btoa(chunks.join(''));
+}
+
+export function base64ToUint8Array(base64: string): Uint8Array {
+  const cleaned = base64.replace(/\s+/g, '');
+  const binary = atob(cleaned);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
+  if (typeof blob.arrayBuffer === 'function') {
+    return new Uint8Array(await blob.arrayBuffer());
+  }
+  if (typeof FileReader !== 'undefined') {
+    return new Promise<Uint8Array>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(new Uint8Array(reader.result as ArrayBuffer));
+      reader.onerror = () => reject(reader.error ?? new Error('Failed to read Blob.'));
+      reader.readAsArrayBuffer(blob);
+    });
+  }
+  return new Uint8Array(await new Response(blob).arrayBuffer());
+}
+
+export async function buildCourseExport(
+  course: CourseTree,
+  options: { includeFiles: boolean }
+): Promise<string> {
+  let attachments: CourseAttachment[] | undefined;
+
+  if (options.includeFiles) {
+    const referencedIds = collectReferencedFileIds([course]);
+    const collected: CourseAttachment[] = [];
+
+    for (const fileId of referencedIds) {
+      const record = await getFile(fileId);
+      if (!record) continue;
+      const bytes = await blobToUint8Array(record.blob);
+      collected.push({
+        id: record.id,
+        name: record.name,
+        mimeType: record.mimeType,
+        sizeBytes: record.sizeBytes,
+        dataBase64: uint8ArrayToBase64(bytes),
+      });
+    }
+
+    if (collected.length > 0) {
+      attachments = collected;
+    }
+  }
+
+  const envelope: CourseExportEnvelope = {
+    format: COURSE_EXPORT_FORMAT,
+    version: COURSE_EXPORT_VERSION,
+    exportedAt: new Date().toISOString(),
+    course,
+    ...(attachments ? { attachments } : {}),
+  };
+
+  return JSON.stringify(envelope, null, 2);
+}
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function applyLenientPrepass(rawCourse: Record<string, unknown>): Record<string, unknown> {
+  const rawDepartment = rawCourse.department;
+  const department =
+    typeof rawDepartment === 'string' && rawDepartment.trim().length > 0
+      ? rawDepartment.trim()
+      : 'Preparatory';
+
+  let chapters: unknown = rawCourse.chapters;
+  if (Array.isArray(rawCourse.chapters)) {
+    chapters = rawCourse.chapters.map((rawChapter, cIdx) => {
+      if (!isPlainRecord(rawChapter)) return rawChapter;
+
+      const chapterId =
+        typeof rawChapter.id === 'string' && rawChapter.id.trim().length > 0
+          ? rawChapter.id
+          : `__tmp_ch_${cIdx + 1}`;
+
+      const order =
+        rawChapter.order === undefined || rawChapter.order === null
+          ? cIdx + 1
+          : rawChapter.order;
+
+      const chapterResources =
+        rawChapter.resources === undefined || rawChapter.resources === null
+          ? []
+          : rawChapter.resources;
+
+      let lessons: unknown = rawChapter.lessons;
+      if (Array.isArray(rawChapter.lessons)) {
+        lessons = rawChapter.lessons.map((rawLesson, lIdx) => {
+          if (!isPlainRecord(rawLesson)) return rawLesson;
+
+          const lessonId =
+            typeof rawLesson.id === 'string' && rawLesson.id.trim().length > 0
+              ? rawLesson.id
+              : `__tmp_ch_${cIdx + 1}_l_${lIdx + 1}`;
+
+          const lessonResources =
+            rawLesson.resources === undefined || rawLesson.resources === null
+              ? []
+              : rawLesson.resources;
+
+          return {
+            ...rawLesson,
+            id: lessonId,
+            resources: lessonResources,
+          };
+        });
+      }
+
+      return {
+        ...rawChapter,
+        id: chapterId,
+        order,
+        resources: chapterResources,
+        lessons,
+      };
+    });
+  }
+
+  return {
+    ...rawCourse,
+    department,
+    chapters,
+  };
+}
+
+function canRekeyCourseStructure(candidate: Record<string, unknown>): boolean {
+  if (typeof candidate.code !== 'string' || candidate.code.trim().length === 0) {
+    return false;
+  }
+  if (!Array.isArray(candidate.chapters) || candidate.chapters.length === 0) {
+    return false;
+  }
+  return candidate.chapters.every((chapter) => {
+    if (!isPlainRecord(chapter)) return false;
+    if (typeof chapter.id !== 'string' || typeof chapter.title !== 'string') return false;
+    if (!Array.isArray(chapter.lessons)) return false;
+    return chapter.lessons.every(
+      (lesson) =>
+        isPlainRecord(lesson) &&
+        typeof lesson.id === 'string' &&
+        typeof lesson.title === 'string'
+    );
+  });
+}
+
+function buildAttachmentMap(
+  rawAttachments: unknown
+): Map<string, CourseAttachment> {
+  const map = new Map<string, CourseAttachment>();
+  if (!Array.isArray(rawAttachments)) return map;
+
+  for (const item of rawAttachments) {
+    if (!isPlainRecord(item)) continue;
+    if (
+      typeof item.id === 'string' &&
+      item.id.length > 0 &&
+      typeof item.dataBase64 === 'string'
+    ) {
+      map.set(item.id, {
+        id: item.id,
+        name: typeof item.name === 'string' ? item.name : 'attachment',
+        mimeType: typeof item.mimeType === 'string' ? item.mimeType : 'application/octet-stream',
+        sizeBytes: typeof item.sizeBytes === 'number' ? item.sizeBytes : 0,
+        dataBase64: item.dataBase64,
+      });
+    }
+  }
+
+  return map;
+}
+
+export type CourseImportResult =
+  | { ok: true; course: CourseTree; warnings: string[] }
+  | { ok: false; error: string };
+
+export async function parseCourseImport(
+  text: string,
+  existingSlugs: Iterable<string>
+): Promise<CourseImportResult> {
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(text);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unable to parse JSON.';
+    return { ok: false, error: `Invalid JSON: ${message}` };
+  }
+
+  if (!isPlainRecord(parsedJson)) {
+    return { ok: false, error: 'Course JSON must be an object.' };
+  }
+
+  let rawCourseInput: Record<string, unknown>;
+  let rawAttachments: unknown;
+
+  if ('format' in parsedJson) {
+    if (parsedJson.format !== COURSE_EXPORT_FORMAT) {
+      return {
+        ok: false,
+        error: `Unsupported course export format: "${String(parsedJson.format)}".`,
+      };
+    }
+    if (parsedJson.version !== undefined && parsedJson.version !== COURSE_EXPORT_VERSION) {
+      return {
+        ok: false,
+        error: `Unsupported course export version: ${String(parsedJson.version)}.`,
+      };
+    }
+    if (!isPlainRecord(parsedJson.course)) {
+      return { ok: false, error: 'course: Envelope is missing a valid course object.' };
+    }
+    rawCourseInput = parsedJson.course;
+    rawAttachments = parsedJson.attachments;
+  } else {
+    rawCourseInput = parsedJson;
+  }
+
+  const prepassed = applyLenientPrepass(rawCourseInput);
+  const candidate = canRekeyCourseStructure(prepassed)
+    ? rekeyCourseContentIdsWithMap(prepassed as unknown as CourseTree).course
+    : prepassed;
+
+  const validated = CourseTreeSchema.safeParse(candidate);
+  if (!validated.success) {
+    const issue = validated.error.issues[0];
+    const path = issue?.path?.length ? issue.path.join('.') : 'course';
+    return {
+      ok: false,
+      error: `${path}: ${issue?.message ?? 'Invalid course schema'}`,
+    };
+  }
+
+  const warnings: string[] = [];
+  let course = validated.data;
+
+  // Resolve slug conflicts against existingSlugs
+  const existingSet = new Set(Array.from(existingSlugs, (s) => s.toLowerCase()));
+  if (existingSet.has(course.slug.toLowerCase())) {
+    let suffix = 2;
+    while (existingSet.has(`${course.slug}-${suffix}`.toLowerCase())) {
+      suffix += 1;
+    }
+    const nextSlug = `${course.slug}-${suffix}`;
+    warnings.push(
+      `Course slug "${course.slug}" already exists; renamed to "${nextSlug}".`
+    );
+    course = { ...course, slug: nextSlug };
+  }
+
+  // Store attachments and remap file IDs; drop missing file resources with warnings
+  const attachmentMap = buildAttachmentMap(rawAttachments);
+  const storedRefsByOldId = new Map<string, StoredFileRef>();
+
+  async function resolveResource(resource: LessonResource): Promise<LessonResource | null> {
+    if (!resource.file) return resource;
+
+    const oldFileRef = resource.file;
+    const cached = storedRefsByOldId.get(oldFileRef.id);
+    if (cached) {
+      return { ...resource, file: cached };
+    }
+
+    const attachment = attachmentMap.get(oldFileRef.id);
+    if (!attachment) {
+      warnings.push(
+        `Dropped file resource "${resource.title}" (${oldFileRef.name}): attachment data is missing.`
+      );
+      return null;
+    }
+
+    let bytes: Uint8Array;
+    try {
+      bytes = base64ToUint8Array(attachment.dataBase64);
+    } catch {
+      warnings.push(
+        `Dropped file resource "${resource.title}" (${oldFileRef.name}): attachment base64 is invalid.`
+      );
+      return null;
+    }
+
+    const name = attachment.name.trim() || oldFileRef.name;
+    const mimeType =
+      attachment.mimeType.trim() || oldFileRef.mimeType || 'application/octet-stream';
+    const newFileId = deriveFileId(course.code);
+    const blob = new Blob([new Uint8Array(bytes)], { type: mimeType });
+
+    await putFile(newFileId, blob, name, mimeType);
+
+    const newFileRef: StoredFileRef = {
+      id: newFileId,
+      name,
+      mimeType,
+      sizeBytes: bytes.byteLength,
+    };
+    storedRefsByOldId.set(oldFileRef.id, newFileRef);
+
+    return { ...resource, file: newFileRef };
+  }
+
+  async function resolveResources(resources: LessonResource[]): Promise<LessonResource[]> {
+    const resolved: LessonResource[] = [];
+    for (const resource of resources) {
+      const next = await resolveResource(resource);
+      if (next) resolved.push(next);
+    }
+    return resolved;
+  }
+
+  const nextChapters: CourseTree['chapters'] = [];
+  for (const chapter of course.chapters) {
+    const nextChapterResources = chapter.resources
+      ? await resolveResources(chapter.resources)
+      : undefined;
+
+    const nextLessons: typeof chapter.lessons = [];
+    for (const lesson of chapter.lessons) {
+      const nextLessonResources = await resolveResources(lesson.resources);
+      nextLessons.push({
+        ...lesson,
+        resources: nextLessonResources,
+      });
+    }
+
+    nextChapters.push({
+      ...chapter,
+      ...(nextChapterResources !== undefined ? { resources: nextChapterResources } : {}),
+      lessons: nextLessons,
+    });
+  }
+
+  return {
+    ok: true,
+    course: {
+      ...course,
+      chapters: nextChapters,
+    },
+    warnings,
+  };
+}

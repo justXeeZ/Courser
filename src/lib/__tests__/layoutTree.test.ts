@@ -54,7 +54,11 @@ function assertLayoutValid(course: CourseTree) {
 }
 
 describe('layoutCourseTree pure geometry engine', () => {
-  it('lays out every seeded course with zero overlapping nodes', () => {
+  it('lays out every seeded course (GUIDE101 and DEMO201) with zero overlapping nodes', () => {
+    expect(COURSES.map((c) => c.slug)).toEqual([
+      'guide101-quick-start',
+      'demo201-feature-showcase',
+    ]);
     for (const course of COURSES) {
       assertLayoutValid(course);
     }

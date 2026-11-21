@@ -4,9 +4,9 @@ import { COURSES } from '@/data/courses';
 import { LessonDrawer } from '@/components/LessonDrawer';
 
 describe('LessonDrawer', () => {
-  const course = COURSES[0];
+  const course = COURSES[0]; // GUIDE101
   const chapter = course.chapters[0];
-  const lesson = chapter.lessons[1]; // Dynamic Arrays (has prerequisite big-o-analysis)
+  const lesson = chapter.lessons[1]; // Searching with Ctrl+K (has prerequisite guide101-browsing-bookmarks)
 
   it('renders lesson details, prerequisites, and color-coded resources', () => {
     render(
@@ -24,9 +24,11 @@ describe('LessonDrawer', () => {
 
     expect(screen.getByRole('dialog', { name: lesson.title })).toBeInTheDocument();
     expect(screen.getByText(lesson.summary)).toBeInTheDocument();
-    expect(screen.getByText('Lab')).toBeInTheDocument();
-    expect(screen.getByText('Slides')).toBeInTheDocument();
-    expect(screen.getAllByRole('button', { name: /Asymptotic Analysis/i }).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Reading')).toBeInTheDocument();
+    expect(screen.getByText('Official')).toBeInTheDocument();
+    expect(
+      screen.getAllByRole('button', { name: /Browsing & Bookmarks/i }).length
+    ).toBeGreaterThanOrEqual(1);
   });
 
   it('supports L, D, S, and Escape keyboard shortcuts', () => {
@@ -74,7 +76,7 @@ describe('LessonDrawer', () => {
       />
     );
 
-    fireEvent.click(screen.getAllByRole('button', { name: /Asymptotic Analysis/i })[0]);
-    expect(onNavigateLesson).toHaveBeenCalledWith('cs201-big-o-analysis');
+    fireEvent.click(screen.getAllByRole('button', { name: /Browsing & Bookmarks/i })[0]);
+    expect(onNavigateLesson).toHaveBeenCalledWith('guide101-browsing-bookmarks');
   });
 });

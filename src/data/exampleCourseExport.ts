@@ -1,0 +1,168 @@
+import type { CourseTree } from '@/types/course';
+
+export interface CourseExportAttachment {
+  id: string;
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataBase64: string;
+}
+
+export interface CourseExportEnvelope {
+  format: 'college-course-tree';
+  version: 1;
+  exportedAt: string;
+  course: CourseTree;
+  attachments?: CourseExportAttachment[];
+}
+
+export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
+  format: 'college-course-tree',
+  version: 1,
+  exportedAt: '2026-11-21T00:00:00.000Z',
+  course: {
+    slug: 'stat101-probability-statistics',
+    code: 'STAT101',
+    title: 'Probability & Statistics',
+    department: 'Preparatory',
+    semester: 'Year 1 - First Semester',
+    credits: 3,
+    description:
+      'Foundational descriptive statistics, probability rules, common distributions, and an applied data lab capstone.',
+    chapters: [
+      {
+        id: 'stat101-ch1-descriptive-statistics',
+        order: 1,
+        title: '1. Descriptive Statistics',
+        weekRange: 'Weeks 1–3',
+        description:
+          'Summarizing distributions numerically and visually before formal probability modeling.',
+        notes:
+          'Compare mean and standard deviation against median and IQR whenever a dataset is skewed or has outliers.',
+        resources: [
+          {
+            title: 'Chapter 1 Overview Slides',
+            kind: 'slides',
+            url: 'https://example.edu/stat101/ch1-overview-slides.pdf',
+          },
+        ],
+        lessons: [
+          {
+            id: 'stat101-summary-measures-histograms',
+            title: 'Summary Measures & Histograms',
+            summary:
+              'Compute mean, median, and quartiles, and interpret histogram bin shapes.',
+            side: 'left',
+            resources: [
+              {
+                title: 'Lecture 01 Slides: Center & Spread',
+                kind: 'slides',
+                url: 'https://example.edu/stat101/lecture-01-slides.pdf',
+              },
+              {
+                title: 'Visualizing Distributions Video',
+                kind: 'video',
+                url: 'https://example.edu/stat101/distributions-video',
+              },
+            ],
+          },
+          {
+            id: 'stat101-variance-standard-deviation',
+            title: 'Variance & Standard Deviation',
+            summary:
+              'Quantify spread around the mean and compare standardized z-scores across scales.',
+            side: 'right',
+            prerequisites: ['stat101-summary-measures-histograms'],
+            resources: [
+              {
+                title: 'OpenIntro Chapter 2 Reading',
+                kind: 'reading',
+                url: 'https://example.edu/stat101/openintro-ch2',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'stat101-ch2-probability-distributions',
+        order: 2,
+        title: '2. Probability & Distributions',
+        weekRange: 'Weeks 4–7',
+        description:
+          'Conditional probability, Bayes rule, and discrete and continuous probability models.',
+        prerequisites: ['stat101-ch1-descriptive-statistics'],
+        lessons: [
+          {
+            id: 'stat101-conditional-probability-bayes',
+            title: 'Conditional Probability & Bayes',
+            summary:
+              'Evaluate conditional events, independence, and posterior updates using Bayes theorem.',
+            notes:
+              'Sketch a probability tree first when solving multi-stage diagnostic testing problems.',
+            side: 'left',
+            prerequisites: ['stat101-ch1-descriptive-statistics'],
+            resources: [
+              {
+                title: 'Probability & Bayes Textbook Section',
+                kind: 'textbook',
+                url: 'https://example.edu/stat101/bayes-textbook',
+              },
+              {
+                title: 'Problem Set 2: Conditional Events',
+                kind: 'assignment',
+                url: 'https://example.edu/stat101/pset-2',
+              },
+            ],
+          },
+          {
+            id: 'stat101-normal-binomial-models',
+            title: 'Normal & Binomial Models',
+            summary:
+              'Model repeated Bernoulli trials and approximate tail probabilities with normal curves.',
+            side: 'right',
+            prerequisites: [
+              'stat101-conditional-probability-bayes',
+              'stat101-variance-standard-deviation',
+            ],
+            resources: [
+              {
+                title: 'Normal & Binomial Walkthrough Video',
+                kind: 'video',
+                url: 'https://example.edu/stat101/normal-binomial-video',
+              },
+              {
+                title: 'Midterm Practice Exam',
+                kind: 'exam',
+                url: 'https://example.edu/stat101/midterm-practice',
+              },
+            ],
+          },
+        ],
+      },
+      {
+        id: 'stat101-ch3-applied-data-lab-capstone',
+        order: 3,
+        title: '3. Applied Data Lab Capstone',
+        weekRange: 'Weeks 8–10',
+        description:
+          'Standalone project chapter applying descriptive statistics and distribution checks to a real dataset.',
+        notes:
+          'Standalone chapter (lessons: []): learners can track this milestone directly from the tree or checklist.',
+        prerequisites: ['stat101-normal-binomial-models'],
+        resources: [
+          {
+            title: 'Capstone Data Analysis Lab',
+            kind: 'lab',
+            url: 'https://example.edu/stat101/capstone-lab',
+          },
+          {
+            title: 'Official Capstone Rubric',
+            kind: 'official',
+            url: 'https://example.edu/stat101/capstone-rubric',
+          },
+        ],
+        lessons: [],
+      },
+    ],
+  },
+};

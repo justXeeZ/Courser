@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { COURSES, getCourseBySlug } from '@/data/courses';
+import {
+  COURSES,
+  PREMADE_COURSE_SLUGS,
+  getCourseBySlug,
+  getCoursesByDepartment,
+  getCoursesByYear,
+} from '@/data/courses';
 import {
   findCourseItem,
   findLessonWithChapter,
@@ -9,24 +15,113 @@ import {
   isStandaloneChapter,
   parseCourseTree,
 } from '@/data/validateCourse';
-import { SEMESTER_OPTIONS, type CourseTree } from '@/types/course';
+import { rekeyCourseContentIds } from '@/lib/courseIds';
+import { ResourceKindSchema, SEMESTER_OPTIONS, type CourseTree } from '@/types/course';
 
 describe('Course schema & seed validation', () => {
   it('validates all seeded college courses with unique IDs and valid prerequisites', () => {
-    expect(COURSES.length).toBeGreaterThanOrEqual(2);
+    expect(COURSES).toHaveLength(2);
+    expect(PREMADE_COURSE_SLUGS.has('guide101-quick-start')).toBe(true);
+    expect(PREMADE_COURSE_SLUGS.has('demo201-feature-showcase')).toBe(true);
+
     for (const course of COURSES) {
       const parsed = parseCourseTree(course);
       expect(parsed.chapters.length).toBeGreaterThan(0);
       expect(getAllLessonIds(parsed).length).toBeGreaterThan(0);
+      expect(rekeyCourseContentIds(parsed)).toEqual(parsed);
     }
   });
 
-  it('finds courses by slug and lessons with their parent chapter', () => {
-    const cs201 = getCourseBySlug('cs201-data-structures');
-    expect(cs201).toBeDefined();
-    const hit = findLessonWithChapter(cs201!, 'cs201-binary-search');
-    expect(hit?.chapter.id).toBe('cs201-ch1-linear');
-    expect(hit?.lesson.title).toBe('Binary Search');
+  it('validates GUIDE101 structure, departments, and standalone chapters', () => {
+    const guide101 = getCourseBySlug('guide101-quick-start');
+    expect(guide101).toBeDefined();
+    expect(guide101!.code).toBe('GUIDE101');
+    expect(guide101!.department).toBe('Preparatory');
+    expect(guide101!.semester).toBe('Year 1 - First Semester');
+    expect(guide101!.chapters).toHaveLength(6);
+
+    const hit = findLessonWithChapter(guide101!, 'guide101-searching-with-ctrl-k');
+    expect(hit?.chapter.id).toBe('guide101-ch1-navigating-the-catalog');
+    expect(hit?.lesson.title).toBe('Searching with Ctrl+K');
+
+    // Chapters 5 & 6 are standalone chapters
+    const ch5 = guide101!.chapters[4];
+    const ch6 = guide101!.chapters[5];
+    expect(isStandaloneChapter(ch5)).toBe(true);
+    expect(isStandaloneChapter(ch6)).toBe(true);
+    expect(ch5.notes).toBeTruthy();
+    expect(ch5.resources).toHaveLength(2);
+    expect(ch5.prerequisites?.length).toBeGreaterThanOrEqual(1);
+    expect(ch6.notes).toBeTruthy();
+    expect(ch6.resources?.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('validates DEMO201 feature coverage: 9 resource kinds, sides, 6-lesson chapter, long title, cross-chapter & lesson-to-chapter prereqs, and 2 standalone chapters', () => {
+    const demo201 = getCourseBySlug('demo201-feature-showcase');
+    expect(demo201).toBeDefined();
+    expect(demo201!.code).toBe('DEMO201');
+    expect(demo201!.department).toBe('Computer Science');
+    expect(demo201!.semester).toBe('Year 2 - First Semester');
+
+    // All 9 resource kinds with https:// URLs
+    const observedKinds = new Set<string>();
+    for (const ch of demo201!.chapters) {
+      for (const res of ch.resources ?? []) {
+        observedKinds.add(res.kind);
+        expect(res.url).toMatch(/^https:\/\//);
+      }
+      for (const lesson of ch.lessons) {
+        for (const res of lesson.resources) {
+          observedKinds.add(res.kind);
+          expect(res.url).toMatch(/^https:\/\//);
+        }
+      }
+    }
+    for (const kind of ResourceKindSchema.options) {
+      expect(observedKinds.has(kind)).toBe(true);
+    }
+
+    // Sides: left, right, and auto (undefined)
+    const allLessons = demo201!.chapters.flatMap((c) => c.lessons);
+    expect(allLessons.some((l) => l.side === 'left')).toBe(true);
+    expect(allLessons.some((l) => l.side === 'right')).toBe(true);
+    expect(allLessons.some((l) => l.side === undefined)).toBe(true);
+
+    // Chapter with 6 lessons
+    expect(demo201!.chapters.some((c) => c.lessons.length === 6)).toBe(true);
+
+    // ~40-character lesson title
+    expect(allLessons.some((l) => l.title.length >= 38 && l.title.length <= 44)).toBe(true);
+
+    // Two standalone chapters with materials & prerequisites
+    const standalone = demo201!.chapters.filter(isStandaloneChapter);
+    expect(standalone).toHaveLength(2);
+    for (const ch of standalone) {
+      expect((ch.resources ?? []).length).toBeGreaterThan(0);
+      expect((ch.prerequisites ?? []).length).toBeGreaterThan(0);
+      expect(ch.notes).toBeTruthy();
+    }
+
+    // Cross-chapter lesson -> chapter prerequisite
+    const chapterIds = new Set(demo201!.chapters.map((c) => c.id));
+    const hasLessonToChapterPrereq = demo201!.chapters.some((ch) =>
+      ch.lessons.some((l) =>
+        (l.prerequisites ?? []).some((p) => chapterIds.has(p) && p !== ch.id)
+      )
+    );
+    expect(hasLessonToChapterPrereq).toBe(true);
+  });
+
+  it('groups courses cleanly by department and by academic year', () => {
+    const byDept = getCoursesByDepartment(COURSES);
+    expect(Array.from(byDept.keys())).toEqual(['Preparatory', 'Computer Science']);
+    expect(byDept.get('Preparatory')?.[0].code).toBe('GUIDE101');
+    expect(byDept.get('Computer Science')?.[0].code).toBe('DEMO201');
+
+    const byYear = getCoursesByYear(COURSES);
+    expect(Array.from(byYear.keys())).toEqual(['Year 1', 'Year 2']);
+    expect(byYear.get('Year 1')?.[0].code).toBe('GUIDE101');
+    expect(byYear.get('Year 2')?.[0].code).toBe('DEMO201');
   });
 
   it('rejects chapter or lesson IDs not derived from their course prefix', () => {
@@ -167,7 +262,7 @@ describe('Course schema & seed validation', () => {
         kind: 'reading',
         url: 'https://example.edu/a.pdf',
         file: {
-          id: 'cs201-file-1234abcd',
+          id: 'guide101-file-1234abcd',
           name: 'a.pdf',
           mimeType: 'application/pdf',
           sizeBytes: 100,
