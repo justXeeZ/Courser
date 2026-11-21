@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { COURSES } from '@/data/courses';
-import { layoutCourseTree } from '@/lib/layoutTree';
+import { estimateTextWidth, layoutCourseTree, wrapNodeLabel } from '@/lib/layoutTree';
 import type { CourseTree } from '@/types/course';
 
 interface Rect {
@@ -116,5 +116,80 @@ describe('layoutCourseTree pure geometry engine', () => {
     const first = layoutCourseTree(COURSES[0]);
     const second = layoutCourseTree(COURSES[0]);
     expect(second).toEqual(first);
+  });
+
+  it('wraps 40+ char lesson and chapter titles cleanly inside node bounds with zero overlap', () => {
+    const demo201 = COURSES.find((c) => c.slug === 'demo201-feature-showcase');
+    expect(demo201).toBeDefined();
+
+    const demoLayout = layoutCourseTree(demo201!);
+    const longLessonNode = demoLayout.lessonNodes.find(
+      (n) => n.lesson.title === 'Implementing Lock-Free Concurrent Queues'
+    );
+    expect(longLessonNode).toBeDefined();
+    expect(longLessonNode!.lines.length).toBeGreaterThan(1);
+    expect(longLessonNode!.height).toBeGreaterThan(46);
+
+    for (const line of longLessonNode!.lines) {
+      expect(estimateTextWidth(line, 16.5)).toBeLessThanOrEqual(longLessonNode!.width - 40);
+    }
+
+    const longTitleCourse: CourseTree = {
+      slug: 'long-titles-course',
+      code: 'CS888',
+      title: 'Long Titles Stress Test',
+      department: 'Computer Science',
+      description: 'Verifies multi-line wrapping and zero neighbor overlap.',
+      chapters: [
+        {
+          id: 'cs888-ch1',
+          order: 1,
+          title: '1. Foundations of Distributed Consensus Protocols and Fault Tolerance',
+          description: 'Long chapter title',
+          lessons: [
+            {
+              id: 'cs888-l1',
+              title: 'Implementing Lock-Free Concurrent Queues with Atomic Primitives',
+              summary: 'Summary',
+              side: 'right',
+              resources: [],
+            },
+            {
+              id: 'cs888-l2',
+              title: 'Linearizability Proofs and Memory Ordering Guarantees in Practice',
+              summary: 'Summary',
+              side: 'right',
+              resources: [],
+            },
+            {
+              id: 'cs888-l3',
+              title: 'WaitFreeSingleProducerSingleConsumerRingBufferImplementationToken',
+              summary: 'Summary',
+              side: 'left',
+              resources: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    assertLayoutValid(longTitleCourse);
+    const longLayout = layoutCourseTree(longTitleCourse);
+    for (const ch of longLayout.chapterNodes) {
+      expect(ch.lines.length).toBeGreaterThan(1);
+      expect(ch.height).toBeGreaterThan(46);
+      for (const line of ch.lines) {
+        expect(estimateTextWidth(line, 17)).toBeLessThanOrEqual(ch.width - 48);
+      }
+    }
+    for (const lesson of longLayout.lessonNodes) {
+      expect(lesson.lines.length).toBeGreaterThan(1);
+      expect(lesson.height).toBeGreaterThan(46);
+      for (const line of lesson.lines) {
+        expect(estimateTextWidth(line, 16.5)).toBeLessThanOrEqual(lesson.width - 40);
+      }
+    }
+
+    expect(wrapNodeLabel('Short Title', 260, 16.5)).toEqual(['Short Title']);
   });
 });

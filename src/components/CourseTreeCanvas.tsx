@@ -2,7 +2,7 @@ import { useState, type MouseEvent, type RefObject } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { isStandaloneChapter } from '@/lib/courseItems';
 import { ROADMAP_COLORS } from '@/lib/theme';
-import type { TreeLayout } from '@/lib/layoutTree';
+import { NODE_LINE_HEIGHT, type TreeLayout } from '@/lib/layoutTree';
 import type { Chapter, LessonStatus } from '@/types/course';
 import { computeChapterStats } from '@/store/useProgressStore';
 
@@ -242,13 +242,26 @@ export function CourseTreeCanvas({
                     <text
                       className="node-label"
                       x={node.x + node.width / 2}
-                      y={node.y + node.height / 2 + 6}
+                      y={
+                        node.y +
+                        node.height / 2 +
+                        6 -
+                        ((node.lines.length - 1) * NODE_LINE_HEIGHT) / 2
+                      }
                       textAnchor="middle"
                       fill={ROADMAP_COLORS.nodeText}
                       fontSize={17}
                       fontWeight={700}
                     >
-                      {node.chapter.title}
+                      {node.lines.map((line, idx) => (
+                        <tspan
+                          key={idx}
+                          x={node.x + node.width / 2}
+                          dy={idx === 0 ? 0 : NODE_LINE_HEIGHT}
+                        >
+                          {line}
+                        </tspan>
+                      ))}
                     </text>
 
                     {/* Compact chapter completion or standalone status badge */}
@@ -332,13 +345,26 @@ export function CourseTreeCanvas({
                     <text
                       className="node-label"
                       x={node.x + node.width / 2}
-                      y={node.y + node.height / 2 + 6}
+                      y={
+                        node.y +
+                        node.height / 2 +
+                        6 -
+                        ((node.lines.length - 1) * NODE_LINE_HEIGHT) / 2
+                      }
                       textAnchor="middle"
                       fill={ROADMAP_COLORS.nodeText}
                       fontSize={16.5}
                       fontWeight={400}
                     >
-                      {node.lesson.title}
+                      {node.lines.map((line, idx) => (
+                        <tspan
+                          key={idx}
+                          x={node.x + node.width / 2}
+                          dy={idx === 0 ? 0 : NODE_LINE_HEIGHT}
+                        >
+                          {line}
+                        </tspan>
+                      ))}
                     </text>
 
                     {/* Done check badge (top-right) */}
