@@ -77,10 +77,10 @@ export function PrerequisitePicker({
   if (groups.length === 0) {
     return (
       <div>
-        <div className="mb-1 text-xs font-medium text-gray-700 dark:text-slate-300">
+        <div className="mb-1 text-xs font-medium text-slate-700 dark:text-slate-300">
           Prerequisites
         </div>
-        <p className="text-xs text-gray-500 dark:text-slate-400">
+        <p className="text-xs text-slate-500 dark:text-slate-400">
           No other chapters or lessons available to link as prerequisites yet.
         </p>
       </div>
@@ -89,13 +89,13 @@ export function PrerequisitePicker({
 
   return (
     <div data-prereq-for={currentId}>
-      <div className="mb-1.5 text-xs font-medium text-gray-700 dark:text-slate-300">
+      <div className="mb-1.5 text-xs font-medium text-slate-700 dark:text-slate-300">
         Prerequisites (click to toggle)
       </div>
-      <div className="space-y-2 rounded-md border border-gray-200 bg-white/70 p-2.5 dark:border-slate-700 dark:bg-slate-950/60">
+      <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-700/80 dark:bg-[#0d131f]">
         {groups.map((group) => (
           <div key={group.chapterId}>
-            <div className="mb-1 text-[11px] font-semibold tracking-wide text-gray-500 uppercase dark:text-slate-400">
+            <div className="mb-1 text-[11px] font-semibold tracking-wide text-slate-500 uppercase dark:text-slate-400">
               {group.groupTitle}
             </div>
             <div className="flex flex-wrap gap-1.5">
@@ -110,7 +110,7 @@ export function PrerequisitePicker({
                     className={`inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs transition-colors ${
                       active
                         ? 'border-blue-600 bg-blue-600 text-white dark:border-blue-500 dark:bg-blue-600 dark:text-white'
-                        : 'border-gray-300 bg-white text-gray-700 hover:border-blue-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-500'
+                        : 'border-slate-300 bg-white text-slate-700 hover:border-blue-400 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:border-blue-500'
                     }`}
                   >
                     {opt.kind === 'chapter' && (
@@ -118,7 +118,7 @@ export function PrerequisitePicker({
                         className={`rounded px-1 py-0 text-[10px] font-semibold uppercase ${
                           active
                             ? 'bg-blue-700 text-blue-100'
-                            : 'bg-yellow-200 text-gray-900 dark:bg-yellow-400/20 dark:text-yellow-300'
+                            : 'bg-amber-100 text-amber-900 dark:bg-amber-400/20 dark:text-amber-300'
                         }`}
                       >
                         Chapter

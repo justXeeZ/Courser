@@ -73,7 +73,7 @@ export function ImportCourseDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 dark:bg-black/70"
       onClick={onClose}
     >
       <div
@@ -81,18 +81,18 @@ export function ImportCourseDialog({
         aria-modal="true"
         aria-label="Import Course"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg rounded-lg border border-gray-200 bg-white p-5 text-gray-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        className="w-full max-w-lg rounded-lg border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
-            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-100 text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-300">
+            <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
               <Upload className="h-4 w-4" />
             </span>
             <div>
-              <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">
+              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
                 Import Course JSON
               </h2>
-              <p className="text-xs text-gray-500 dark:text-slate-400">
+              <p className="text-xs text-slate-500 dark:text-slate-400">
                 Upload a <code className="font-mono">.course.json</code> export or paste course JSON.
               </p>
             </div>
@@ -102,19 +102,19 @@ export function ImportCourseDialog({
             type="button"
             onClick={onClose}
             aria-label="Close import dialog"
-            className="rounded-md bg-gray-100 p-1 text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
+            className="rounded-md bg-slate-100 p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:bg-[#1b2436] dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-100"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="space-y-3">
-          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2.5 dark:border-slate-700 dark:bg-slate-950">
-            <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-slate-300">
-              <FileUp className="h-4 w-4 shrink-0 text-gray-500 dark:text-slate-400" />
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 dark:border-slate-600 dark:bg-[#0d131f]">
+            <div className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-300">
+              <FileUp className="h-4 w-4 shrink-0 text-slate-500 dark:text-slate-400" />
               <span>{fileName ? `Loaded: ${fileName}` : 'Choose a .course.json or .json file'}</span>
             </div>
-            <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+            <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700">
               <span>Browse File</span>
               <input
                 type="file"
@@ -132,7 +132,7 @@ export function ImportCourseDialog({
           <div>
             <label
               htmlFor="import-course-json"
-              className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+              className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
             >
               Course JSON
             </label>
@@ -145,7 +145,7 @@ export function ImportCourseDialog({
                 setError(null);
               }}
               placeholder='Paste .course.json envelope or bare course object here...'
-              className="w-full rounded-md border border-gray-300 bg-white p-2.5 font-mono text-xs text-gray-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+              className="w-full rounded-md border border-slate-300 bg-white p-2.5 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
 
@@ -164,7 +164,7 @@ export function ImportCourseDialog({
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+            className="rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Cancel
           </button>

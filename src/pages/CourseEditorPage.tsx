@@ -6,7 +6,6 @@ import {
   ArrowLeft,
   FileEdit,
   GitFork,
-  Plus,
   Save,
   Trash2,
   Upload,
@@ -28,7 +27,6 @@ import { EditorStickyBar } from '@/components/editor/EditorStickyBar';
 import { ChapterEditorCard } from '@/components/editor/ChapterEditorCard';
 import { ImportCourseDialog } from '@/components/editor/ImportCourseDialog';
 import {
-  SEMESTER_OPTIONS,
   type Chapter,
   type CourseTree,
   type SubLesson,
@@ -42,6 +40,7 @@ function createBlankCourse(): CourseTree {
     code,
     title,
     department: 'Preparatory',
+    year: undefined,
     semester: undefined,
     credits: 3,
     description: 'Course overview and learning outcomes.',
@@ -78,6 +77,9 @@ export function CourseEditorPage() {
   const [draft, setDraft] = useState<CourseTree>(() =>
     existingCourse ? structuredClone(existingCourse) : createBlankCourse()
   );
+  const [yearInput, setYearInput] = useState<string>(() =>
+    existingCourse?.year !== undefined ? String(existingCourse.year) : ''
+  );
   const [slugTouched, setSlugTouched] = useState<boolean>(isEditing);
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
   const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>(() => {
@@ -93,6 +95,7 @@ export function CourseEditorPage() {
 
   const editorRegionRef = useRef<HTMLDivElement | null>(null);
   const prevRouteSlugRef = useRef<string | undefined>(slug);
+  const pendingScrollChapterIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (prevRouteSlugRef.current === slug) return;
@@ -101,6 +104,7 @@ export function CourseEditorPage() {
     const targetCourse = slug ? getCourseBySlug(slug) : undefined;
     const nextDraft = targetCourse ? structuredClone(targetCourse) : createBlankCourse();
     setDraft(nextDraft);
+    setYearInput(nextDraft.year !== undefined ? String(nextDraft.year) : '');
     setSlugTouched(Boolean(slug));
     const firstLessonId = nextDraft.chapters[0]?.lessons[0]?.id;
     setExpandedLessons(firstLessonId ? { [firstLessonId]: true } : {});
@@ -111,6 +115,18 @@ export function CourseEditorPage() {
     setConfirmDeleteOpen(false);
     setImportOpen(false);
   }, [slug, getCourseBySlug]);
+
+  useEffect(() => {
+    const targetId = pendingScrollChapterIdRef.current;
+    if (!targetId) return;
+    pendingScrollChapterIdRef.current = null;
+    const targetEl = Array.from(document.querySelectorAll('[data-edit-chapter]')).find(
+      (node) => node.getAttribute('data-edit-chapter') === targetId
+    );
+    if (targetEl && typeof targetEl.scrollIntoView === 'function') {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  }, [draft.chapters]);
 
   const updateFocusContextFromTarget = (target: EventTarget | null) => {
     if (!(target instanceof Element)) return;
@@ -160,17 +176,17 @@ export function CourseEditorPage() {
 
   if (isEditing && !existingCourse) {
     return (
-      <main className="min-h-[calc(100vh-64px)] bg-gray-50 px-4 py-16 dark:bg-slate-950">
-        <div className="mx-auto max-w-md rounded-lg border border-gray-200 bg-white p-6 text-center dark:border-slate-700 dark:bg-slate-900">
-          <h1 className="mb-2 text-xl font-bold text-gray-900 dark:text-slate-100">
+      <main className="min-h-[calc(100vh-64px)] bg-slate-50 px-4 py-16 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
+        <div className="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center shadow-xs dark:border-slate-700/80 dark:bg-[#121926]">
+          <h1 className="mb-2 text-xl font-bold text-slate-900 dark:text-slate-100">
             Course Not Found
           </h1>
-          <p className="mb-5 text-sm text-gray-500 dark:text-slate-400">
+          <p className="mb-5 text-sm text-slate-600 dark:text-slate-400">
             Could not find course <code className="font-mono">{slug}</code> to edit.
           </p>
           <Link
             to="/"
-            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
+            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-[#1b2436] dark:hover:bg-slate-700"
           >
             Back to All Courses
           </Link>
@@ -181,6 +197,17 @@ export function CourseEditorPage() {
 
   const coursePrefix = deriveCoursePrefix(draft.code);
   const existingSlugs = courses.map((c) => c.slug);
+
+  const YEAR_VALIDATION_ERROR = 'Year must be an integer from 1 to 10.';
+  const yearError = (() => {
+    const trimmed = yearInput.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) {
+      return YEAR_VALIDATION_ERROR;
+    }
+    return null;
+  })();
 
   const updateMeta = (patch: Partial<CourseTree>) => {
     setDraft((prev) => {
@@ -200,32 +227,34 @@ export function CourseEditorPage() {
   };
 
   const addChapter = () => {
-    setDraft((prev) => {
-      const nextOrder = prev.chapters.length + 1;
-      const existingIds = new Set(
-        prev.chapters.flatMap((c) => [c.id, ...c.lessons.map((l) => l.id)])
-      );
-      const newChapterTitle = `${nextOrder}. New Chapter`;
-      const newChapterId = deriveChapterId(prev.code, nextOrder, newChapterTitle, existingIds);
-      const newLessonId = deriveLessonId(prev.code, `Topic ${nextOrder}.1`, existingIds);
-      const newChapter: Chapter = {
-        id: newChapterId,
-        order: nextOrder,
-        title: newChapterTitle,
-        weekRange: '',
-        description: 'Chapter overview.',
-        lessons: [
-          {
-            id: newLessonId,
-            title: `Topic ${nextOrder}.1`,
-            summary: 'Sub-lesson overview.',
-            resources: [],
-          },
-        ],
-      };
-      setExpandedLessons((exp) => ({ ...exp, [newLessonId]: true }));
-      return { ...prev, chapters: [...prev.chapters, newChapter] };
-    });
+    const nextOrder = draft.chapters.length + 1;
+    const existingIds = new Set(
+      draft.chapters.flatMap((c) => [c.id, ...c.lessons.map((l) => l.id)])
+    );
+    const newChapterTitle = `${nextOrder}. New Chapter`;
+    const newChapterId = deriveChapterId(draft.code, nextOrder, newChapterTitle, existingIds);
+    const newLessonId = deriveLessonId(draft.code, `Topic ${nextOrder}.1`, existingIds);
+    const newChapter: Chapter = {
+      id: newChapterId,
+      order: nextOrder,
+      title: newChapterTitle,
+      weekRange: '',
+      description: 'Chapter overview.',
+      lessons: [
+        {
+          id: newLessonId,
+          title: `Topic ${nextOrder}.1`,
+          summary: 'Sub-lesson overview.',
+          resources: [],
+        },
+      ],
+    };
+
+    pendingScrollChapterIdRef.current = newChapterId;
+    setDraft((prev) => ({ ...prev, chapters: [...prev.chapters, newChapter] }));
+    setExpandedLessons((exp) => ({ ...exp, [newLessonId]: true }));
+    setFocusedChapterId(newChapterId);
+    setFocusedLessonId(newLessonId);
   };
 
   const moveChapter = (chapterIdx: number, direction: -1 | 1) => {
@@ -365,6 +394,11 @@ export function CourseEditorPage() {
   const handleSave = () => {
     setErrorMsg(null);
 
+    if (yearError) {
+      setErrorMsg(yearError);
+      return;
+    }
+
     if (isEditing && slug) {
       const result = updateCourse(slug, draft);
       if (!result.ok) {
@@ -395,6 +429,7 @@ export function CourseEditorPage() {
 
   const handleCourseImported = (imported: CourseTree, warnings: string[]) => {
     setDraft(imported);
+    setYearInput(imported.year !== undefined ? String(imported.year) : '');
     setSlugTouched(true);
     setErrorMsg(null);
     setFocusedChapterId(null);
@@ -406,15 +441,18 @@ export function CourseEditorPage() {
 
   const hasExpandedLessons = Object.values(expandedLessons).some(Boolean);
 
+  const inputClass =
+    'w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500';
+
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-gray-50 pb-16 text-gray-900 dark:bg-slate-950 dark:text-slate-100">
+    <main className="min-h-[calc(100vh-64px)] bg-slate-50 pb-16 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
       {/* Header Bar */}
-      <section className="border-b border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
+      <section className="border-b border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]">
         <div className="mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-7">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <Link
               to={isEditing ? `/course/${slug}` : '/'}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-500 transition-colors hover:text-black dark:text-slate-400 dark:hover:text-white"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
               {isEditing ? `Back to ${existingCourse?.code}` : 'All Courses'}
@@ -425,7 +463,7 @@ export function CourseEditorPage() {
                 <button
                   type="button"
                   onClick={() => setImportOpen(true)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3 text-xs font-medium text-gray-700 transition-colors hover:bg-gray-100 sm:text-sm dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:hover:bg-slate-800"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 sm:text-sm dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
                 >
                   <Upload className="h-3.5 w-3.5" />
                   Import Course
@@ -436,7 +474,7 @@ export function CourseEditorPage() {
                 <button
                   type="button"
                   onClick={() => setConfirmDeleteOpen(true)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 sm:text-sm dark:border-red-900/60 dark:bg-slate-950 dark:text-red-400 dark:hover:bg-red-950/40"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 sm:text-sm dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete Course
@@ -456,17 +494,17 @@ export function CourseEditorPage() {
 
           <div className="mb-5">
             <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-slate-800">
+              <span className="rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-[#1b2436] dark:text-amber-400">
                 {isEditing ? 'EDIT COURSE' : 'NEW COURSE'}
               </span>
-              <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-gray-700 dark:bg-slate-800 dark:text-slate-300">
+              <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
                 ID Prefix: {coursePrefix}-*
               </span>
-              <span className="rounded bg-gray-100 px-2 py-0.5 font-mono text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+              <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-600 dark:bg-[#1b2436] dark:text-slate-300">
                 /course/{draft.slug || '...'}
               </span>
             </div>
-            <h1 className="text-2xl font-bold tracking-tight text-gray-900 sm:text-4xl dark:text-slate-100">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-4xl dark:text-slate-100">
               {draft.title || 'Untitled Course'}
             </h1>
           </div>
@@ -479,8 +517,8 @@ export function CourseEditorPage() {
               onClick={() => setActiveTab('editor')}
               className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors ${
                 activeTab === 'editor'
-                  ? 'border-black text-black dark:border-yellow-400 dark:text-white'
-                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'border-slate-900 text-slate-900 dark:border-yellow-400 dark:text-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
               <FileEdit className="h-4 w-4" />
@@ -493,8 +531,8 @@ export function CourseEditorPage() {
               onClick={() => setActiveTab('preview')}
               className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors ${
                 activeTab === 'preview'
-                  ? 'border-black text-black dark:border-yellow-400 dark:text-white'
-                  : 'border-transparent text-gray-500 hover:text-gray-800 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'border-slate-900 text-slate-900 dark:border-yellow-400 dark:text-white'
+                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
               }`}
             >
               <GitFork className="h-4 w-4" />
@@ -519,6 +557,7 @@ export function CourseEditorPage() {
             focusedLessonEntry ? { title: focusedLessonEntry.title } : null
           }
           hasExpandedLessons={hasExpandedLessons}
+          onAddChapter={addChapter}
           onCollapseAll={() => {
             setExpandedLessons({});
             setFocusedLessonId(null);
@@ -536,7 +575,7 @@ export function CourseEditorPage() {
         {importBanner && (
           <div
             role="status"
-            className="mb-5 rounded-md border border-yellow-300 bg-yellow-50 px-4 py-3 text-sm text-yellow-900 dark:border-yellow-700/70 dark:bg-yellow-950/40 dark:text-yellow-200"
+            className="mb-5 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-400/10 dark:text-amber-200"
           >
             <div className="flex items-start justify-between gap-2">
               <div className="flex items-start gap-2">
@@ -556,7 +595,7 @@ export function CourseEditorPage() {
                 type="button"
                 onClick={() => setImportBanner(null)}
                 aria-label="Dismiss import notice"
-                className="rounded p-1 hover:bg-yellow-200/60 dark:hover:bg-yellow-900/50"
+                className="rounded p-1 hover:bg-amber-200/60 dark:hover:bg-amber-400/20"
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -575,11 +614,11 @@ export function CourseEditorPage() {
         )}
 
         {activeTab === 'preview' ? (
-          <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-xs dark:border-slate-700 dark:bg-slate-900">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-2 text-xs text-gray-500 dark:border-slate-800 dark:text-slate-400">
+          <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]">
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-2 text-xs text-slate-500 dark:border-slate-700/80 dark:text-slate-400">
               <span>
                 Live SVG layout preview — all chapter and lesson IDs auto-derived with prefix{' '}
-                <code className="rounded bg-gray-100 px-1 font-mono text-gray-800 dark:bg-slate-800 dark:text-slate-200">
+                <code className="rounded bg-slate-100 px-1 font-mono text-slate-800 dark:bg-[#1b2436] dark:text-slate-200">
                   {coursePrefix}-
                 </code>
               </span>
@@ -592,6 +631,7 @@ export function CourseEditorPage() {
             <CourseTreeCanvas
               layout={previewLayout}
               statuses={{}}
+              framed={false}
               onSelectLesson={() => {}}
               onQuickToggleDone={() => {}}
               onContextMenuLesson={() => {}}
@@ -602,9 +642,9 @@ export function CourseEditorPage() {
             {/* 1. Course Metadata Card */}
             <section
               data-edit-metadata="true"
-              className="rounded-lg border border-gray-200 bg-white p-5 shadow-xs dark:border-slate-700 dark:bg-slate-900"
+              className="rounded-lg border border-slate-200 bg-white p-5 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
             >
-              <h2 className="mb-4 text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-slate-300">
+              <h2 className="mb-4 text-sm font-bold tracking-wide text-slate-700 uppercase dark:text-slate-300">
                 Course Metadata
               </h2>
 
@@ -612,7 +652,7 @@ export function CourseEditorPage() {
                 <div>
                   <label
                     htmlFor="course-code"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
                   >
                     Course Code *
                   </label>
@@ -622,14 +662,14 @@ export function CourseEditorPage() {
                     value={draft.code}
                     onChange={(e) => updateMeta({ code: e.target.value })}
                     placeholder="e.g. MATH201"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 font-mono text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className={`${inputClass} font-mono`}
                   />
                 </div>
 
                 <div className="sm:col-span-2">
                   <label
                     htmlFor="course-title"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
                   >
                     Course Title *
                   </label>
@@ -639,14 +679,14 @@ export function CourseEditorPage() {
                     value={draft.title}
                     onChange={(e) => updateMeta({ title: e.target.value })}
                     placeholder="e.g. Linear Algebra"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className={inputClass}
                   />
                 </div>
 
                 <div>
                   <label
                     htmlFor="course-dept"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
                   >
                     Department *
                   </label>
@@ -656,40 +696,106 @@ export function CourseEditorPage() {
                     value={draft.department}
                     onChange={(e) => updateMeta({ department: e.target.value })}
                     placeholder="e.g. Preparatory"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className={inputClass}
                   />
                 </div>
 
                 <div>
                   <label
-                    htmlFor="course-semester"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+                    htmlFor="course-year"
+                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
                   >
-                    Semester
+                    Year
                   </label>
-                  <select
-                    id="course-semester"
-                    value={draft.semester ?? ''}
-                    onChange={(e) =>
-                      updateMeta({
-                        semester: (e.target.value || undefined) as CourseTree['semester'],
-                      })
-                    }
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                  <input
+                    id="course-year"
+                    type="number"
+                    min={1}
+                    max={10}
+                    value={yearInput}
+                    aria-invalid={Boolean(yearError)}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      setYearInput(raw);
+                      const trimmed = raw.trim();
+                      if (!trimmed) {
+                        updateMeta({ year: undefined });
+                        if (errorMsg === YEAR_VALIDATION_ERROR) {
+                          setErrorMsg(null);
+                        }
+                        return;
+                      }
+                      const parsed = Number(trimmed);
+                      if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 10) {
+                        updateMeta({ year: parsed });
+                        if (errorMsg === YEAR_VALIDATION_ERROR) {
+                          setErrorMsg(null);
+                        }
+                      } else {
+                        updateMeta({ year: undefined });
+                      }
+                    }}
+                    placeholder="e.g. 2"
+                    className={`${inputClass} ${
+                      yearError ? 'border-red-500 focus:border-red-500 dark:border-red-500' : ''
+                    }`}
+                  />
+                  {yearError && (
+                    <p role="alert" className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+                      {yearError}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <div className="mb-1 flex items-center justify-between">
+                    <span className="text-xs font-medium text-slate-700 dark:text-slate-300">
+                      Semester
+                    </span>
+                    {draft.semester !== undefined && (
+                      <button
+                        type="button"
+                        onClick={() => updateMeta({ semester: undefined })}
+                        className="text-[11px] font-medium text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200"
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <div
+                    role="radiogroup"
+                    aria-label="Semester"
+                    className="flex h-[34px] items-center gap-3 rounded-md border border-slate-300 bg-white px-3 dark:border-slate-600 dark:bg-[#0d131f]"
                   >
-                    <option value="">— Not scheduled —</option>
-                    {SEMESTER_OPTIONS.map((sem) => (
-                      <option key={sem} value={sem}>
-                        {sem}
-                      </option>
-                    ))}
-                  </select>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-700 dark:text-slate-200">
+                      <input
+                        type="radio"
+                        name="course-semester"
+                        value="1"
+                        checked={draft.semester === 1}
+                        onChange={() => updateMeta({ semester: 1 })}
+                        className="accent-slate-900 dark:accent-yellow-400"
+                      />
+                      1st
+                    </label>
+                    <label className="inline-flex cursor-pointer items-center gap-1.5 text-xs text-slate-700 dark:text-slate-200">
+                      <input
+                        type="radio"
+                        name="course-semester"
+                        value="2"
+                        checked={draft.semester === 2}
+                        onChange={() => updateMeta({ semester: 2 })}
+                        className="accent-slate-900 dark:accent-yellow-400"
+                      />
+                      2nd
+                    </label>
+                  </div>
                 </div>
 
                 <div>
                   <label
                     htmlFor="course-credits"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
                   >
                     Credits
                   </label>
@@ -706,14 +812,14 @@ export function CourseEditorPage() {
                       });
                     }}
                     placeholder="3"
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className={inputClass}
                   />
                 </div>
 
                 <div className="sm:col-span-3">
                   <label
                     htmlFor="course-slug"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
                   >
                     URL Slug * (auto-derived from code + title)
                   </label>
@@ -727,14 +833,14 @@ export function CourseEditorPage() {
                         slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
                       });
                     }}
-                    className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-1.5 font-mono text-xs text-gray-800 focus:border-blue-500 focus:bg-white focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200 dark:focus:bg-slate-950"
+                    className={`${inputClass} font-mono text-xs`}
                   />
                 </div>
 
                 <div className="sm:col-span-3">
                   <label
                     htmlFor="course-desc"
-                    className="mb-1 block text-xs font-medium text-gray-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
                   >
                     Course Description *
                   </label>
@@ -743,7 +849,7 @@ export function CourseEditorPage() {
                     rows={2}
                     value={draft.description}
                     onChange={(e) => updateMeta({ description: e.target.value })}
-                    className="w-full rounded-md border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-900 focus:border-blue-500 focus:outline-none dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className={inputClass}
                   />
                 </div>
               </div>
@@ -752,17 +858,9 @@ export function CourseEditorPage() {
             {/* 2. Chapters & Sub-Lessons Builder */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold tracking-wide text-gray-700 uppercase dark:text-slate-300">
+                <h2 className="text-sm font-bold tracking-wide text-slate-700 uppercase dark:text-slate-300">
                   Chapters &amp; Sub-Lessons ({draft.chapters.length} chapters)
                 </h2>
-                <button
-                  type="button"
-                  onClick={addChapter}
-                  className="inline-flex items-center gap-1.5 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700"
-                >
-                  <Plus className="h-3.5 w-3.5" />
-                  Add Chapter
-                </button>
               </div>
 
               {draft.chapters.map((chapter, cIdx) => {

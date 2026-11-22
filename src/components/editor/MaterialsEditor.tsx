@@ -1,15 +1,22 @@
-import { useRef, useState, type DragEvent } from 'react';
+import { useEffect, useRef, useState, type DragEvent } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
+  ClipboardList,
+  Download,
   FileUp,
   Link2,
+  Pin,
   Plus,
   Sparkles,
   Trash2,
   Upload,
+  Wrench,
 } from 'lucide-react';
-import { deriveFileId } from '@/lib/courseIds';
+import { AssessmentBuilderModal } from '@/components/assessment/AssessmentBuilderModal';
+import { ResourceBadge } from '@/components/ResourceBadge';
+import { buildAssessmentExport, parseAssessmentImport } from '@/lib/assessmentExchange';
+import { deriveFileId, slugify } from '@/lib/courseIds';
 import { putFile } from '@/lib/fileStore';
 import {
   EXPECTED_EXTENSIONS_BY_KIND,
@@ -19,7 +26,6 @@ import {
   validateMaterialFile,
 } from '@/lib/materialValidation';
 import { RESOURCE_BADGE_STYLES } from '@/lib/theme';
-import { ResourceBadge } from '@/components/ResourceBadge';
 import type { LessonResource, ResourceKind } from '@/types/course';
 
 const RESOURCE_KINDS = Object.keys(RESOURCE_BADGE_STYLES) as ResourceKind[];
@@ -38,7 +44,14 @@ interface RowFeedback {
   autoSuggested?: boolean;
 }
 
-type ResourceMode = 'link' | 'upload';
+type ResourceMode = 'link' | 'upload' | 'interactive';
+
+async function readTextFromFile(file: File): Promise<string> {
+  if (typeof file.text === 'function') {
+    return file.text();
+  }
+  return new Response(file).text();
+}
 
 function getWarningForExistingFile(
   fileName: string,
@@ -68,6 +81,8 @@ export function MaterialsEditor({
   titleLabel = 'Course Materials',
 }: MaterialsEditorProps) {
   const rowIdCounterRef = useRef(0);
+  const downloadTimeoutRef = useRef<number | null>(null);
+
   const [rowKeys, setRowKeys] = useState<string[]>(() =>
     resources.map((_, idx) => `row-init-${idx}`)
   );
@@ -75,6 +90,19 @@ export function MaterialsEditor({
   const [touchedKinds, setTouchedKinds] = useState<Record<string, boolean>>({});
   const [feedbackByRow, setFeedbackByRow] = useState<Record<string, RowFeedback>>({});
   const [draggingKey, setDraggingKey] = useState<string | null>(null);
+  const [builderRowIndex, setBuilderRowIndex] = useState<number | null>(null);
+  const [importOpenByRow, setImportOpenByRow] = useState<Record<string, boolean>>({});
+  const [importTextByRow, setImportTextByRow] = useState<Record<string, string>>({});
+  const [importErrorByRow, setImportErrorByRow] = useState<Record<string, string | null>>({});
+
+  useEffect(() => {
+    return () => {
+      if (downloadTimeoutRef.current !== null) {
+        window.clearTimeout(downloadTimeoutRef.current);
+        downloadTimeoutRef.current = null;
+      }
+    };
+  }, []);
 
   // Keep rowKeys synchronized if parent replaces resources externally (e.g., import)
   const resolvedRowKeys =
@@ -84,7 +112,9 @@ export function MaterialsEditor({
 
   const getMode = (key: string, res: LessonResource): ResourceMode => {
     if (modes[key]) return modes[key];
-    return res.file ? 'upload' : 'link';
+    if (res.assessment) return 'interactive';
+    if (res.file) return 'upload';
+    return 'link';
   };
 
   const handleAddMaterial = () => {
@@ -96,7 +126,7 @@ export function MaterialsEditor({
       ...resources,
       {
         title: '',
-        kind: 'slides',
+        kind: 'document',
         url: '',
       },
     ]);
@@ -105,6 +135,11 @@ export function MaterialsEditor({
   const handleRemoveMaterial = (index: number) => {
     const key = resolvedRowKeys[index];
     setRowKeys(resolvedRowKeys.filter((_, idx) => idx !== index));
+    if (builderRowIndex === index) {
+      setBuilderRowIndex(null);
+    } else if (builderRowIndex !== null && builderRowIndex > index) {
+      setBuilderRowIndex(builderRowIndex - 1);
+    }
     if (key) {
       setModes((prev) => {
         const next = { ...prev };
@@ -117,6 +152,21 @@ export function MaterialsEditor({
         return next;
       });
       setFeedbackByRow((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setImportOpenByRow((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setImportTextByRow((prev) => {
+        const next = { ...prev };
+        delete next[key];
+        return next;
+      });
+      setImportErrorByRow((prev) => {
         const next = { ...prev };
         delete next[key];
         return next;
@@ -136,19 +186,34 @@ export function MaterialsEditor({
       delete next[key];
       return next;
     });
+    setImportOpenByRow((prev) => ({ ...prev, [key]: false }));
+    setImportErrorByRow((prev) => ({ ...prev, [key]: null }));
 
     const current = resources[index];
     if (!current) return;
 
     if (nextMode === 'link') {
       updateRow(index, {
-        file: undefined,
         url: current.url ?? '',
+        file: undefined,
+        assessment: undefined,
       });
-    } else {
+    } else if (nextMode === 'upload') {
       updateRow(index, {
         url: undefined,
         file: current.file,
+        assessment: undefined,
+      });
+    } else {
+      const nextKind: ResourceKind =
+        current.kind === 'exam' || current.kind === 'assignment'
+          ? current.kind
+          : current.assessment?.mode ?? 'exam';
+      updateRow(index, {
+        kind: nextKind,
+        url: undefined,
+        file: undefined,
+        assessment: current.assessment,
       });
     }
   };
@@ -221,6 +286,7 @@ export function MaterialsEditor({
               title: nextTitle,
               kind: nextKind,
               url: undefined,
+              assessment: undefined,
               file: {
                 id: fileId,
                 name: file.name,
@@ -267,17 +333,134 @@ export function MaterialsEditor({
     }
   };
 
+  const handleImportFileChange = async (key: string, file: File | undefined) => {
+    if (!file) return;
+    setImportErrorByRow((prev) => ({ ...prev, [key]: null }));
+    try {
+      const content = await readTextFromFile(file);
+      setImportTextByRow((prev) => ({ ...prev, [key]: content }));
+    } catch {
+      setImportErrorByRow((prev) => ({
+        ...prev,
+        [key]: 'Could not read the selected assessment JSON file.',
+      }));
+    }
+  };
+
+  const handleApplyAssessmentImport = async (index: number, key: string) => {
+    const current = resources[index];
+    if (!current) return;
+
+    const rawText = importTextByRow[key] ?? '';
+    if (!rawText.trim()) {
+      setImportErrorByRow((prev) => ({
+        ...prev,
+        [key]: 'Paste or upload assessment JSON first.',
+      }));
+      return;
+    }
+
+    const result = await parseAssessmentImport(rawText, courseCode);
+    if (!result.ok) {
+      setImportErrorByRow((prev) => ({ ...prev, [key]: result.error }));
+      return;
+    }
+
+    const nextKind: ResourceKind = result.kind ?? result.assessment.mode;
+    const defaultTitle =
+      result.assessment.mode === 'exam' ? 'Interactive Exam' : 'Interactive Assignment';
+    const nextTitle =
+      current.title.trim() || result.title?.trim() || defaultTitle;
+
+    setModes((prev) => ({ ...prev, [key]: 'interactive' }));
+    setTouchedKinds((prev) => ({ ...prev, [key]: true }));
+    onChange(
+      resources.map((r, idx) =>
+        idx === index
+          ? {
+              ...r,
+              title: nextTitle,
+              kind: nextKind,
+              url: undefined,
+              file: undefined,
+              assessment: result.assessment,
+            }
+          : r
+      )
+    );
+
+    setImportOpenByRow((prev) => ({ ...prev, [key]: false }));
+    setImportTextByRow((prev) => ({ ...prev, [key]: '' }));
+    setImportErrorByRow((prev) => ({ ...prev, [key]: null }));
+    setFeedbackByRow((prev) => ({
+      ...prev,
+      [key]: result.warnings.length > 0 ? { warning: result.warnings.join(' ') } : {},
+    }));
+  };
+
+  const handleExportAssessment = async (index: number, key: string) => {
+    const current = resources[index];
+    if (!current?.assessment) return;
+
+    const warnings: string[] = [];
+    try {
+      const envelope = await buildAssessmentExport({
+        title: current.title.trim() || undefined,
+        kind:
+          current.kind === 'exam' || current.kind === 'assignment'
+            ? current.kind
+            : current.assessment.mode,
+        assessment: current.assessment,
+        onWarning: (warning) => warnings.push(warning),
+      });
+      const json = JSON.stringify(envelope, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const baseName =
+        slugify(current.title.trim() || current.assessment.mode) || 'assessment';
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `${baseName}.assessment.json`;
+      anchor.click();
+
+      if (downloadTimeoutRef.current !== null) {
+        window.clearTimeout(downloadTimeoutRef.current);
+      }
+      downloadTimeoutRef.current = window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+        downloadTimeoutRef.current = null;
+      }, 1000);
+
+      if (warnings.length > 0) {
+        setFeedbackByRow((prev) => ({
+          ...prev,
+          [key]: { warning: warnings.join(' ') },
+        }));
+      }
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Failed to export assessment JSON.';
+      setFeedbackByRow((prev) => ({
+        ...prev,
+        [key]: { error: msg },
+      }));
+    }
+  };
+
+  const activeBuilderRes =
+    builderRowIndex !== null ? resources[builderRowIndex] : undefined;
+
   return (
-    <div className="border-t border-gray-200 pt-2.5 dark:border-slate-700">
-      <div className="mb-2 flex items-center justify-between">
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-700 dark:text-slate-300">
+    <div className="border-t border-slate-200 pt-2.5 dark:border-slate-700/80">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
           <Link2 className="h-3.5 w-3.5" />
           {titleLabel} ({resources.length})
         </span>
         <button
           type="button"
           onClick={handleAddMaterial}
-          className="inline-flex items-center gap-1 rounded border border-gray-300 bg-white px-2 py-0.5 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <Plus className="h-3 w-3" />
           Add Material
@@ -291,15 +474,22 @@ export function MaterialsEditor({
             const mode = getMode(rowKey, res);
             const feedback = feedbackByRow[rowKey] ?? {};
             const expectedHint = getExpectedExtensionsHint(res.kind);
+            const importOpen = Boolean(importOpenByRow[rowKey]);
+            const importText = importTextByRow[rowKey] ?? '';
+            const importError = importErrorByRow[rowKey] ?? null;
 
             return (
               <div
                 key={rowKey}
-                className="space-y-2 rounded-md border border-gray-200 bg-white p-2.5 dark:border-slate-700 dark:bg-slate-900"
+                className={`space-y-2 rounded-md border p-2.5 transition-colors ${
+                  res.recommended
+                    ? 'border-amber-300 bg-amber-50/40 dark:border-amber-500/40 dark:bg-amber-400/5'
+                    : 'border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]'
+                }`}
               >
-                <div className="grid grid-cols-1 items-center gap-2 sm:grid-cols-12">
+                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   {/* Kind selector + badge */}
-                  <div className="flex items-center gap-1.5 sm:col-span-3">
+                  <div className="flex items-center gap-1.5 sm:w-44 sm:shrink-0">
                     <ResourceBadge kind={res.kind} />
                     <select
                       value={res.kind}
@@ -307,7 +497,7 @@ export function MaterialsEditor({
                         handleKindChange(rIdx, rowKey, e.target.value as ResourceKind)
                       }
                       aria-label="Resource kind"
-                      className="w-full rounded border border-gray-300 bg-white px-1.5 py-1 text-xs text-gray-800 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                      className="w-full rounded border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100"
                     >
                       {RESOURCE_KINDS.map((k) => (
                         <option key={k} value={k}>
@@ -324,15 +514,15 @@ export function MaterialsEditor({
                     onChange={(e) => updateRow(rIdx, { title: e.target.value })}
                     placeholder="Material title"
                     aria-label="Material title"
-                    className="rounded border border-gray-300 bg-white px-2 py-1 text-xs text-gray-900 sm:col-span-5 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
+                    className="min-w-[140px] flex-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
                   />
 
-                  {/* Link / Upload toggle + Delete */}
-                  <div className="flex items-center justify-between gap-2 sm:col-span-4 sm:justify-end">
+                  {/* Source mode switcher + Pin + Delete */}
+                  <div className="flex flex-wrap items-center justify-between gap-1.5 sm:justify-end">
                     <div
                       role="group"
                       aria-label="Material source mode"
-                      className="inline-flex rounded border border-gray-300 bg-gray-50 p-0.5 dark:border-slate-700 dark:bg-slate-950"
+                      className="inline-flex flex-wrap rounded border border-slate-300 bg-slate-100 p-0.5 dark:border-slate-600 dark:bg-[#0d131f]"
                     >
                       <button
                         type="button"
@@ -341,7 +531,7 @@ export function MaterialsEditor({
                         className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                           mode === 'link'
                             ? 'bg-slate-900 text-white dark:bg-slate-700'
-                            : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                         }`}
                       >
                         <Link2 className="h-3 w-3" />
@@ -354,22 +544,64 @@ export function MaterialsEditor({
                         className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                           mode === 'upload'
                             ? 'bg-slate-900 text-white dark:bg-slate-700'
-                            : 'text-gray-600 hover:text-gray-900 dark:text-slate-400 dark:hover:text-slate-200'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                         }`}
                       >
                         <Upload className="h-3 w-3" />
                         Upload
                       </button>
+                      <button
+                        type="button"
+                        onClick={() => handleSwitchMode(rIdx, rowKey, 'interactive')}
+                        aria-pressed={mode === 'interactive'}
+                        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                          mode === 'interactive'
+                            ? 'bg-slate-900 text-white dark:bg-slate-700'
+                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                        }`}
+                      >
+                        <ClipboardList className="h-3 w-3" />
+                        Interactive
+                      </button>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveMaterial(rIdx)}
-                      aria-label="Remove material"
-                      className="rounded p-1 text-red-500 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/50"
-                    >
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          updateRow(rIdx, {
+                            recommended: res.recommended ? undefined : true,
+                          })
+                        }
+                        aria-pressed={Boolean(res.recommended)}
+                        aria-label={
+                          res.recommended
+                            ? 'Unpin recommended material'
+                            : 'Pin as recommended'
+                        }
+                        title={
+                          res.recommended
+                            ? 'Pinned as recommended'
+                            : 'Pin as recommended'
+                        }
+                        className={`inline-flex items-center gap-1 rounded border px-1.5 py-1 text-[11px] font-medium transition-colors ${
+                          res.recommended
+                            ? 'border-amber-400 bg-amber-100 text-amber-900 dark:border-amber-500/60 dark:bg-amber-400/20 dark:text-amber-300'
+                            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <Pin className="h-3 w-3" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMaterial(rIdx)}
+                        aria-label="Remove material"
+                        className="rounded p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -377,17 +609,23 @@ export function MaterialsEditor({
                   <input
                     type="url"
                     value={res.url ?? ''}
-                    onChange={(e) => updateRow(rIdx, { url: e.target.value, file: undefined })}
+                    onChange={(e) =>
+                      updateRow(rIdx, {
+                        url: e.target.value,
+                        file: undefined,
+                        assessment: undefined,
+                      })
+                    }
                     placeholder="https://..."
                     aria-label="Material URL"
-                    className="w-full rounded border border-gray-300 bg-white px-2.5 py-1 font-mono text-xs text-gray-700 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-200"
+                    className="w-full rounded border border-slate-300 bg-white px-2.5 py-1 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
                   />
-                ) : (
+                ) : mode === 'upload' ? (
                   <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-gray-500 dark:text-slate-400">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
                       <span>
                         Expected for{' '}
-                        <strong className="font-medium text-gray-700 dark:text-slate-300">
+                        <strong className="font-medium text-slate-700 dark:text-slate-300">
                           {res.kind}
                         </strong>
                         : <code className="font-mono">{expectedHint}</code>
@@ -402,13 +640,13 @@ export function MaterialsEditor({
                     </div>
 
                     {res.file ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-gray-200 bg-gray-50 px-2.5 py-1.5 text-xs dark:border-slate-700 dark:bg-slate-950">
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs dark:border-slate-600 dark:bg-[#0d131f]">
                         <div className="flex min-w-0 items-center gap-2">
                           <FileUp className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
-                          <span className="truncate font-medium text-gray-900 dark:text-slate-100">
+                          <span className="truncate font-medium text-slate-900 dark:text-slate-100">
                             {res.file.name}
                           </span>
-                          <span className="shrink-0 rounded bg-gray-200 px-1.5 py-0.5 font-mono text-[11px] text-gray-700 dark:bg-slate-800 dark:text-slate-300">
+                          <span className="shrink-0 rounded bg-slate-200 px-1.5 py-0.5 font-mono text-[11px] text-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
                             {formatBytes(res.file.sizeBytes)}
                           </span>
                         </div>
@@ -423,7 +661,7 @@ export function MaterialsEditor({
                               return next;
                             });
                           }}
-                          className="rounded border border-gray-300 bg-white px-2 py-0.5 text-[11px] font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-slate-800"
+                          className="rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
                         >
                           Remove file
                         </button>
@@ -443,14 +681,14 @@ export function MaterialsEditor({
                         className={`flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed px-3 py-3 text-center transition-colors ${
                           draggingKey === rowKey
                             ? 'border-blue-500 bg-blue-50/70 dark:border-blue-400 dark:bg-blue-950/30'
-                            : 'border-gray-300 bg-gray-50/60 dark:border-slate-700 dark:bg-slate-950/60'
+                            : 'border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-[#0d131f]'
                         }`}
                       >
-                        <Upload className="h-4 w-4 text-gray-500 dark:text-slate-400" />
-                        <p className="text-xs text-gray-600 dark:text-slate-300">
+                        <Upload className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                        <p className="text-xs text-slate-600 dark:text-slate-300">
                           Drag &amp; drop a file here, or choose from your computer
                         </p>
-                        <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-gray-300 bg-white px-2.5 py-1 text-xs font-medium text-gray-800 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800">
+                        <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700">
                           <span>Choose File</span>
                           <input
                             type="file"
@@ -481,7 +719,7 @@ export function MaterialsEditor({
                     {feedback.warning && (
                       <div
                         role="status"
-                        className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-800 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
+                        className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-400/10 dark:text-amber-200"
                       >
                         <span className="flex items-start gap-1.5">
                           <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
@@ -497,11 +735,192 @@ export function MaterialsEditor({
                               updateRow(rIdx, { kind: nextKind });
                               setFeedbackByRow((prev) => ({ ...prev, [rowKey]: {} }));
                             }}
-                            className="shrink-0 rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/40 dark:text-amber-200 dark:hover:bg-amber-900/70"
+                            className="shrink-0 rounded border border-amber-300 bg-white px-2 py-0.5 text-[11px] font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-[#1b2436] dark:text-amber-200 dark:hover:bg-slate-700"
                           >
                             Use {feedback.suggestedKind}
                           </button>
                         )}
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {res.assessment ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs dark:border-slate-600 dark:bg-[#0d131f]">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="inline-flex items-center gap-1 rounded bg-slate-900 px-2 py-0.5 font-medium text-white dark:bg-[#1b2436] dark:text-amber-300">
+                            {res.assessment.mode === 'exam' ? 'Exam' : 'Assignment'} ·{' '}
+                            {res.assessment.questions.length}{' '}
+                            {res.assessment.questions.length === 1 ? 'question' : 'questions'}
+                          </span>
+                          {res.assessment.timeLimitMinutes && (
+                            <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-600 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300">
+                              {res.assessment.timeLimitMinutes} min
+                            </span>
+                          )}
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setBuilderRowIndex(rIdx)}
+                            className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <Wrench className="h-3 w-3" />
+                            Build / Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImportOpenByRow((prev) => ({
+                                ...prev,
+                                [rowKey]: !prev[rowKey],
+                              }));
+                              setImportErrorByRow((prev) => ({
+                                ...prev,
+                                [rowKey]: null,
+                              }));
+                            }}
+                            className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <Upload className="h-3 w-3" />
+                            Import JSON
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleExportAssessment(rIdx, rowKey)}
+                            className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <Download className="h-3 w-3" />
+                            Export JSON
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-dashed border-slate-300 bg-slate-50 px-3 py-2.5 text-xs dark:border-slate-600 dark:bg-[#0d131f]">
+                        <span className="text-slate-600 dark:text-slate-300">
+                          No interactive exam or assignment configured yet.
+                        </span>
+                        <div className="flex flex-wrap items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => setBuilderRowIndex(rIdx)}
+                            className="inline-flex items-center gap-1 rounded bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
+                          >
+                            <Wrench className="h-3 w-3" />
+                            Build / Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setImportOpenByRow((prev) => ({
+                                ...prev,
+                                [rowKey]: !prev[rowKey],
+                              }));
+                              setImportErrorByRow((prev) => ({
+                                ...prev,
+                                [rowKey]: null,
+                              }));
+                            }}
+                            className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                          >
+                            <Upload className="h-3 w-3" />
+                            Import JSON
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {importOpen && (
+                      <div className="space-y-2 rounded-md border border-slate-200 bg-slate-50 p-2.5 dark:border-slate-600 dark:bg-[#1b2436]">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-slate-700 dark:text-slate-200">
+                            Import <code className="font-mono">.assessment.json</code> or bare Assessment JSON
+                          </span>
+                          <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200 dark:hover:bg-slate-800">
+                            <Upload className="h-3 w-3" />
+                            Choose JSON file
+                            <input
+                              type="file"
+                              accept=".json,.assessment.json,application/json"
+                              aria-label="Import assessment JSON file"
+                              className="sr-only"
+                              onChange={(e) => {
+                                void handleImportFileChange(rowKey, e.target.files?.[0]);
+                                e.target.value = '';
+                              }}
+                            />
+                          </label>
+                        </div>
+
+                        <textarea
+                          rows={4}
+                          aria-label="Paste assessment JSON"
+                          value={importText}
+                          onChange={(e) => {
+                            setImportTextByRow((prev) => ({
+                              ...prev,
+                              [rowKey]: e.target.value,
+                            }));
+                            setImportErrorByRow((prev) => ({
+                              ...prev,
+                              [rowKey]: null,
+                            }));
+                          }}
+                          placeholder='{"format": "college-assessment", "version": 1, ...}'
+                          className="w-full rounded border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                        />
+
+                        {importError && (
+                          <p
+                            role="alert"
+                            className="rounded border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+                          >
+                            {importError}
+                          </p>
+                        )}
+
+                        <div className="flex flex-wrap justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setImportOpenByRow((prev) => ({
+                                ...prev,
+                                [rowKey]: false,
+                              }))
+                            }
+                            className="rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200 dark:hover:bg-slate-800"
+                          >
+                            Close Import
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void handleApplyAssessmentImport(rIdx, rowKey)}
+                            className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
+                          >
+                            Apply Import
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {feedback.error && (
+                      <div
+                        role="alert"
+                        className="flex items-start gap-1.5 rounded border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+                      >
+                        <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{feedback.error}</span>
+                      </div>
+                    )}
+
+                    {feedback.warning && (
+                      <div
+                        role="status"
+                        className="flex items-start gap-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-400/10 dark:text-amber-200"
+                      >
+                        <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                        <span>{feedback.warning}</span>
                       </div>
                     )}
                   </div>
@@ -511,6 +930,59 @@ export function MaterialsEditor({
           })}
         </div>
       )}
+
+      <AssessmentBuilderModal
+        isOpen={builderRowIndex !== null && Boolean(activeBuilderRes)}
+        initialTitle={activeBuilderRes?.title}
+        initialKind={
+          activeBuilderRes?.kind === 'assignment' || activeBuilderRes?.kind === 'exam'
+            ? activeBuilderRes.kind
+            : activeBuilderRes?.assessment?.mode
+        }
+        initialAssessment={activeBuilderRes?.assessment}
+        courseCode={courseCode}
+        onSave={(result) => {
+          if (builderRowIndex === null) return;
+          const rowKey = resolvedRowKeys[builderRowIndex];
+          const current = resources[builderRowIndex];
+          if (!current) {
+            setBuilderRowIndex(null);
+            return;
+          }
+
+          const nextKind: ResourceKind =
+            result.suggestedKind ?? result.assessment.mode;
+          const defaultTitle =
+            result.assessment.mode === 'exam'
+              ? 'Interactive Exam'
+              : 'Interactive Assignment';
+          const nextTitle =
+            result.suggestedTitle?.trim() || current.title.trim() || defaultTitle;
+
+          if (rowKey) {
+            setModes((prev) => ({ ...prev, [rowKey]: 'interactive' }));
+            setTouchedKinds((prev) => ({ ...prev, [rowKey]: true }));
+            setFeedbackByRow((prev) => ({ ...prev, [rowKey]: {} }));
+          }
+
+          onChange(
+            resources.map((r, idx) =>
+              idx === builderRowIndex
+                ? {
+                    ...r,
+                    title: nextTitle,
+                    kind: nextKind,
+                    url: undefined,
+                    file: undefined,
+                    assessment: result.assessment,
+                  }
+                : r
+            )
+          );
+          setBuilderRowIndex(null);
+        }}
+        onClose={() => setBuilderRowIndex(null)}
+      />
     </div>
   );
 }
