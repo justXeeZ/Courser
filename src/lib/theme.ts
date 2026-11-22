@@ -15,15 +15,42 @@ export const ROADMAP_COLORS = {
 } as const;
 
 export const RESOURCE_BADGE_STYLES = {
-  lab: { label: 'Lab', className: 'bg-green-400 text-black' },
-  course: { label: 'Course', className: 'bg-green-400 text-black' },
-  slides: { label: 'Slides', className: 'bg-yellow-300 text-black' },
-  reading: { label: 'Reading', className: 'bg-yellow-300 text-black' },
-  video: { label: 'Video', className: 'bg-purple-300 text-black' },
-  official: { label: 'Official', className: 'bg-blue-600 text-white' },
-  textbook: { label: 'Textbook', className: 'bg-blue-600 text-white' },
-  exam: { label: 'Exam', className: 'bg-black text-white' },
-  assignment: { label: 'Assignment', className: 'bg-black text-white' },
+  slides: {
+    label: 'Slides',
+    className: 'bg-amber-300 text-slate-950 dark:bg-amber-400/25 dark:text-amber-200',
+  },
+  video: {
+    label: 'Video',
+    className: 'bg-purple-300 text-slate-950 dark:bg-purple-400/25 dark:text-purple-200',
+  },
+  lab: {
+    label: 'Lab',
+    className: 'bg-emerald-400 text-slate-950 dark:bg-emerald-400/25 dark:text-emerald-200',
+  },
+  document: {
+    label: 'Document',
+    className: 'bg-sky-200 text-slate-950 dark:bg-sky-400/20 dark:text-sky-200',
+  },
+  textbook: {
+    label: 'Textbook',
+    className: 'bg-teal-600 text-white dark:bg-teal-500 dark:text-slate-950',
+  },
+  course: {
+    label: 'Course',
+    className: 'bg-red-600 text-white dark:bg-red-500 dark:text-white',
+  },
+  official: {
+    label: 'Official',
+    className: 'bg-blue-600 text-white dark:bg-blue-500 dark:text-white',
+  },
+  exam: {
+    label: 'Exam',
+    className: 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-950',
+  },
+  assignment: {
+    label: 'Assignment',
+    className: 'bg-indigo-600 text-white dark:bg-indigo-500 dark:text-white',
+  },
 } as const;
 
 export type ResourceKindKey = keyof typeof RESOURCE_BADGE_STYLES;

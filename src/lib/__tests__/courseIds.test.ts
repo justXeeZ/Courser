@@ -59,7 +59,7 @@ describe('courseIds derivation helpers', () => {
           resources: [
             {
               title: 'Chapter Notes',
-              kind: 'reading',
+              kind: 'document',
               file: {
                 id: 'legacy-file-1234abcd',
                 name: 'notes.pdf',

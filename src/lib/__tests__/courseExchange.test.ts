@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { buildCourseExport, parseCourseImport } from '@/lib/courseExchange';
+import { buildCourseExport, parseCourseImport, uint8ArrayToBase64 } from '@/lib/courseExchange';
 import { deleteFile, getFile, listFileIds, putFile } from '@/lib/fileStore';
 import type { CourseTree } from '@/types/course';
 
@@ -28,7 +28,8 @@ function makeCourseWithFiles(): CourseTree {
     code: 'CS101',
     title: 'Systems Foundations',
     department: 'Computer Science',
-    semester: 'Year 1 - First Semester',
+    year: 1,
+    semester: 1,
     description: 'Introductory systems course',
     chapters: [
       {
@@ -450,7 +451,7 @@ describe('courseExchange', () => {
               },
               {
                 title: 'Safe Reference Link',
-                kind: 'reading',
+                kind: 'document',
                 url: 'https://example.com/sec101',
               },
             ],
@@ -462,7 +463,7 @@ describe('courseExchange', () => {
                 resources: [
                   {
                     title: 'HTML Payload',
-                    kind: 'reading',
+                    kind: 'document',
                     file: {
                       id: 'sec101-file-22222222',
                       name: 'xss.html',
@@ -526,5 +527,188 @@ describe('courseExchange', () => {
 
     // Confirm NONE of the invalid attachments were stored in IndexedDB
     expect(await listFileIds()).toEqual([]);
+  });
+
+  it('round-trips assessment question header imageFile attachments and handles missing/invalid images gracefully', async () => {
+    const imgBytes = new Uint8Array([137, 80, 78, 71, 13, 10, 26, 10]);
+    await putFile(
+      'math101-file-aa112233',
+      new Blob([imgBytes], { type: 'image/png' }),
+      'graph.png',
+      'image/png'
+    );
+
+    const courseWithAssessment: CourseTree = {
+      slug: 'math101-calc',
+      code: 'MATH101',
+      title: 'Calculus I',
+      department: 'Mathematics',
+      year: 1,
+      semester: 1,
+      description: 'Differential calculus',
+      chapters: [
+        {
+          id: 'math101-ch1-limits',
+          order: 1,
+          title: 'Limits',
+          description: 'Limits',
+          lessons: [
+            {
+              id: 'math101-graph-limits',
+              title: 'Graphical Limits',
+              summary: 'Reading graphs',
+              resources: [
+                {
+                  title: 'Chapter 1 Quiz',
+                  kind: 'exam',
+                  assessment: {
+                    mode: 'exam',
+                    questions: [
+                      {
+                        id: 'q1',
+                        type: 'mcq',
+                        header: {
+                          text: 'Estimate $\\lim_{x \\to 2} f(x)$',
+                          imageFile: {
+                            id: 'math101-file-aa112233',
+                            name: 'graph.png',
+                            mimeType: 'image/png',
+                            sizeBytes: imgBytes.byteLength,
+                          },
+                        },
+                        options: ['1', '2'],
+                        correctIndices: [1],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const exportedJson = await buildCourseExport(courseWithAssessment, { includeFiles: true });
+    await clearAllStoredFiles();
+
+    const imported = await parseCourseImport(exportedJson, []);
+    expect(imported.ok).toBe(true);
+    if (!imported.ok) return;
+
+    const importedImgRef =
+      imported.course.chapters[0].lessons[0].resources[0].assessment?.questions[0].header
+        .imageFile;
+    expect(importedImgRef).toBeDefined();
+    expect(importedImgRef!.id).toMatch(/^math101-file-[0-9a-f]{8}$/);
+    expect(importedImgRef!.id).not.toBe('math101-file-aa112233');
+    const restored = await getFile(importedImgRef!.id);
+    expect(restored).toBeDefined();
+    expect(await readBlobBytes(restored!.blob)).toEqual(imgBytes);
+
+    // Missing attachment on text+image strips imageFile with warning; missing on image-only drops question & empty assessment
+    const withoutAttachments = await buildCourseExport(courseWithAssessment, {
+      includeFiles: false,
+    });
+    const stripped = await parseCourseImport(withoutAttachments, []);
+    expect(stripped.ok).toBe(true);
+    if (!stripped.ok) return;
+    expect(stripped.warnings).toHaveLength(1);
+    const q1 = stripped.course.chapters[0].lessons[0].resources[0].assessment?.questions[0];
+    expect(q1?.header.text).toContain('Estimate');
+    expect(q1?.header.imageFile).toBeUndefined();
+
+    // Image-only question with dangerous SVG attachment drops question and empty assessment
+    const imageOnlyEnvelope = {
+      format: 'college-course-tree',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      course: {
+        ...courseWithAssessment,
+        chapters: [
+          {
+            ...courseWithAssessment.chapters[0],
+            lessons: [
+              {
+                ...courseWithAssessment.chapters[0].lessons[0],
+                resources: [
+                  {
+                    title: 'Image Only Quiz',
+                    kind: 'exam',
+                    assessment: {
+                      mode: 'exam',
+                      questions: [
+                        {
+                          id: 'q-img',
+                          type: 'true-false',
+                          header: {
+                            imageFile: {
+                              id: 'math101-file-bad00001',
+                              name: 'bad.svg',
+                              mimeType: 'image/svg+xml',
+                              sizeBytes: 10,
+                            },
+                          },
+                          correctIndices: [0],
+                        },
+                      ],
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+        ],
+      },
+      attachments: [
+        {
+          id: 'math101-file-bad00001',
+          name: 'bad.svg',
+          mimeType: 'image/svg+xml',
+          sizeBytes: 10,
+          dataBase64: uint8ArrayToBase64(new TextEncoder().encode('<svg/>')),
+        },
+      ],
+    };
+
+    const droppedResult = await parseCourseImport(JSON.stringify(imageOnlyEnvelope), []);
+    expect(droppedResult.ok).toBe(true);
+    if (!droppedResult.ok) return;
+    expect(droppedResult.warnings.length).toBeGreaterThanOrEqual(2);
+    expect(droppedResult.course.chapters[0].lessons[0].resources).toHaveLength(0);
+  });
+
+  it('strictly rejects legacy kind: "reading" and legacy string semester values (R3)', async () => {
+    const legacySemesterCourse = {
+      ...makeCourseWithFiles(),
+      semester: 'Year 1 - First Semester',
+    };
+    const semResult = await parseCourseImport(JSON.stringify(legacySemesterCourse), []);
+    expect(semResult.ok).toBe(false);
+    if (!semResult.ok) {
+      expect(semResult.error).toContain('semester');
+    }
+
+    const legacyReadingCourse = {
+      ...makeCourseWithFiles(),
+      chapters: [
+        {
+          ...makeCourseWithFiles().chapters[0],
+          resources: [
+            {
+              title: 'Legacy Reading',
+              kind: 'reading',
+              url: 'https://example.com/read',
+            },
+          ],
+          lessons: [],
+        },
+      ],
+    };
+    const readingResult = await parseCourseImport(JSON.stringify(legacyReadingCourse), []);
+    expect(readingResult.ok).toBe(false);
+    if (!readingResult.ok) {
+      expect(readingResult.error).toContain('kind');
+    }
   });
 });

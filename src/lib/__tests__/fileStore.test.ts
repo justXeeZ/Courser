@@ -97,7 +97,7 @@ describe('fileStore', () => {
           resources: [
             {
               title: 'Chapter Handout',
-              kind: 'reading',
+              kind: 'document',
               file: {
                 id: 'cs101-file-ch000001',
                 name: 'handout.pdf',
@@ -249,6 +249,155 @@ describe('fileStore', () => {
       expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock-1');
       expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock-2');
       expect(revokeObjectURLMock).toHaveBeenCalledWith('blob:mock-3');
+    } finally {
+      Object.defineProperty(URL, 'createObjectURL', {
+        configurable: true,
+        writable: true,
+        value: originalCreateObjectURL,
+      });
+      Object.defineProperty(URL, 'revokeObjectURL', {
+        configurable: true,
+        writable: true,
+        value: originalRevokeObjectURL,
+      });
+    }
+  });
+
+  it('collects assessment question header imageFile IDs and protects them from garbage collection', async () => {
+    const course: CourseTree = {
+      slug: 'phys201-optics',
+      code: 'PHYS201',
+      title: 'Optics',
+      department: 'Physics',
+      description: 'Wave optics',
+      chapters: [
+        {
+          id: 'phys201-ch1-waves',
+          order: 1,
+          title: 'Waves',
+          description: 'Wave basics',
+          resources: [
+            {
+              title: 'Chapter Quiz',
+              kind: 'exam',
+              assessment: {
+                mode: 'exam',
+                questions: [
+                  {
+                    id: 'q1',
+                    type: 'mcq',
+                    header: {
+                      text: 'Identify the fringe pattern.',
+                      imageFile: {
+                        id: 'phys201-file-aaaa1111',
+                        name: 'fringe.png',
+                        mimeType: 'image/png',
+                        sizeBytes: 128,
+                      },
+                    },
+                    options: ['Single slit', 'Double slit'],
+                    correctIndices: [1],
+                  },
+                ],
+              },
+            },
+          ],
+          lessons: [
+            {
+              id: 'phys201-diffraction',
+              title: 'Diffraction',
+              summary: 'Diffraction patterns',
+              resources: [
+                {
+                  title: 'Practice Assignment',
+                  kind: 'assignment',
+                  assessment: {
+                    mode: 'assignment',
+                    questions: [
+                      {
+                        id: 'q2',
+                        type: 'true-false',
+                        header: {
+                          imageFile: {
+                            id: 'phys201-file-bbbb2222',
+                            name: 'setup.jpg',
+                            mimeType: 'image/jpeg',
+                            sizeBytes: 256,
+                          },
+                        },
+                        correctIndices: [0],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    await putFile('phys201-file-aaaa1111', new Blob(['img1']), 'fringe.png', 'image/png');
+    await putFile('phys201-file-bbbb2222', new Blob(['img2']), 'setup.jpg', 'image/jpeg');
+    await putFile('phys201-file-dead9999', new Blob(['orphan']), 'orphan.png', 'image/png');
+
+    const referenced = collectReferencedFileIds([course]);
+    expect(referenced).toEqual(new Set(['phys201-file-aaaa1111', 'phys201-file-bbbb2222']));
+
+    const deleted = await garbageCollectFiles(referenced);
+    expect(deleted).toBe(1);
+    expect((await listFileIds()).sort()).toEqual([
+      'phys201-file-aaaa1111',
+      'phys201-file-bbbb2222',
+    ]);
+  });
+
+  it('opens aligned inline media (.mov, .m4a, .wav) and code (.tsx, .sql) in a tab while downloading .svg/.pptx', async () => {
+    const createdBlobs: Blob[] = [];
+    const originalCreateObjectURL = URL.createObjectURL;
+    const originalRevokeObjectURL = URL.revokeObjectURL;
+
+    Object.defineProperty(URL, 'createObjectURL', {
+      configurable: true,
+      writable: true,
+      value: vi.fn((obj: Blob | MediaSource) => {
+        if (obj instanceof Blob) createdBlobs.push(obj);
+        return `blob:aligned-${createdBlobs.length}`;
+      }),
+    });
+    Object.defineProperty(URL, 'revokeObjectURL', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
+
+    const windowOpenSpy = vi.spyOn(window, 'open').mockImplementation(() => null);
+    const clickSpy = vi
+      .spyOn(HTMLAnchorElement.prototype, 'click')
+      .mockImplementation(() => {});
+
+    try {
+      await putFile('cs101-file-mov00001', new Blob(['mov']), 'clip.mov', '');
+      await putFile('cs101-file-m4a00002', new Blob(['m4a']), 'audio.m4a', 'application/octet-stream');
+      await putFile('cs101-file-wav00003', new Blob(['wav']), 'sound.wav', 'audio/wav');
+      await putFile('cs101-file-tsx00004', new Blob(['const x = 1;']), 'App.tsx', 'application/octet-stream');
+      await putFile('cs101-file-sql00005', new Blob(['SELECT 1;']), 'query.sql', 'application/sql');
+      await putFile('cs101-file-svg00006', new Blob(['<svg/>']), 'bad.svg', 'image/svg+xml');
+
+      expect(await openStoredFile('cs101-file-mov00001')).toBe(true);
+      expect(await openStoredFile('cs101-file-m4a00002')).toBe(true);
+      expect(await openStoredFile('cs101-file-wav00003')).toBe(true);
+      expect(await openStoredFile('cs101-file-tsx00004')).toBe(true);
+      expect(await openStoredFile('cs101-file-sql00005')).toBe(true);
+      expect(windowOpenSpy).toHaveBeenCalledTimes(5);
+      expect(createdBlobs[0].type).toBe('video/quicktime');
+      expect(createdBlobs[1].type).toBe('audio/mp4');
+      expect(createdBlobs[3].type).toBe('text/plain');
+      expect(createdBlobs[4].type).toBe('text/plain');
+
+      expect(await openStoredFile('cs101-file-svg00006')).toBe(true);
+      expect(windowOpenSpy).toHaveBeenCalledTimes(5);
+      expect(clickSpy).toHaveBeenCalledTimes(1);
     } finally {
       Object.defineProperty(URL, 'createObjectURL', {
         configurable: true,

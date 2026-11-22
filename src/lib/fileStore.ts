@@ -1,5 +1,5 @@
 import type { MaterialFileRepository, StoredFileRecord } from '@/lib/storage/types';
-import type { CourseTree } from '@/types/course';
+import type { CourseTree, LessonResource } from '@/types/course';
 
 export const FILE_DB_NAME = 'college_course_trees';
 export const FILE_DB_VERSION = 1;
@@ -9,9 +9,36 @@ const INLINE_TAB_MIME_TYPES = new Set([
   'application/pdf',
   'video/mp4',
   'video/webm',
+  'video/quicktime',
+  'video/x-m4v',
+  'video/ogg',
   'audio/mpeg',
   'audio/mp3',
+  'audio/wav',
+  'audio/x-wav',
+  'audio/wave',
+  'audio/mp4',
+  'audio/x-m4a',
+  'audio/webm',
+  'audio/ogg',
 ]);
+
+const INLINE_EXTENSION_MIME_FALLBACKS: Record<string, string> = {
+  '.pdf': 'application/pdf',
+  '.mp4': 'video/mp4',
+  '.webm': 'video/webm',
+  '.mov': 'video/quicktime',
+  '.m4v': 'video/x-m4v',
+  '.mp3': 'audio/mpeg',
+  '.wav': 'audio/wav',
+  '.m4a': 'audio/mp4',
+  '.ogg': 'audio/ogg',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.gif': 'image/gif',
+};
 
 const TEXT_CODE_MIME_TYPES = new Set(['application/json']);
 
@@ -22,12 +49,26 @@ const TEXT_CODE_EXTENSIONS = new Set([
   '.py',
   '.js',
   '.ts',
+  '.tsx',
+  '.jsx',
   '.java',
   '.c',
   '.cpp',
   '.h',
+  '.hpp',
+  '.cs',
+  '.go',
+  '.rs',
+  '.sql',
   '.ipynb',
   '.json',
+]);
+
+const BLOCKED_INLINE_EXTENSIONS = new Set(['.svg', '.svgz', '.html', '.htm', '.xhtml']);
+const BLOCKED_INLINE_MIME_TYPES = new Set([
+  'image/svg+xml',
+  'text/html',
+  'application/xhtml+xml',
 ]);
 
 const URL_REVOKE_DELAY_MS = 60_000;
@@ -237,25 +278,33 @@ export async function garbageCollectFiles(referenced: Set<string>): Promise<numb
   }
 }
 
+function collectResourceFileIds(
+  resources: readonly LessonResource[] | undefined,
+  referenced: Set<string>
+): void {
+  if (!resources) return;
+  for (const resource of resources) {
+    if (resource.file?.id) {
+      referenced.add(resource.file.id);
+    }
+    if (resource.assessment) {
+      for (const question of resource.assessment.questions) {
+        if (question.header.imageFile?.id) {
+          referenced.add(question.header.imageFile.id);
+        }
+      }
+    }
+  }
+}
+
 export function collectReferencedFileIds(courses: Iterable<CourseTree>): Set<string> {
   const referenced = new Set<string>();
 
   for (const course of courses) {
     for (const chapter of course.chapters) {
-      if (chapter.resources) {
-        for (const resource of chapter.resources) {
-          if (resource.file?.id) {
-            referenced.add(resource.file.id);
-          }
-        }
-      }
-
+      collectResourceFileIds(chapter.resources, referenced);
       for (const lesson of chapter.lessons) {
-        for (const resource of lesson.resources) {
-          if (resource.file?.id) {
-            referenced.add(resource.file.id);
-          }
-        }
+        collectResourceFileIds(lesson.resources, referenced);
       }
     }
   }
@@ -270,6 +319,9 @@ function getLowerExtension(fileName: string): string {
 }
 
 function isTextOrCodeFile(mimeType: string, extension: string): boolean {
+  if (BLOCKED_INLINE_MIME_TYPES.has(mimeType) || BLOCKED_INLINE_EXTENSIONS.has(extension)) {
+    return false;
+  }
   return (
     mimeType.startsWith('text/') ||
     TEXT_CODE_MIME_TYPES.has(mimeType) ||
@@ -277,9 +329,17 @@ function isTextOrCodeFile(mimeType: string, extension: string): boolean {
   );
 }
 
-function isInlineTabMedia(mimeType: string): boolean {
-  if (mimeType === 'image/svg+xml') return false;
-  return mimeType.startsWith('image/') || INLINE_TAB_MIME_TYPES.has(mimeType);
+function isInlineTabMedia(mimeType: string, extension: string): boolean {
+  if (BLOCKED_INLINE_MIME_TYPES.has(mimeType) || BLOCKED_INLINE_EXTENSIONS.has(extension)) {
+    return false;
+  }
+  if (mimeType.startsWith('image/') || INLINE_TAB_MIME_TYPES.has(mimeType)) {
+    return true;
+  }
+  if (!mimeType || mimeType === 'application/octet-stream') {
+    return extension in INLINE_EXTENSION_MIME_FALLBACKS;
+  }
+  return false;
 }
 
 export async function openStoredFile(id: string): Promise<boolean> {
@@ -295,7 +355,11 @@ export async function openStoredFile(id: string): Promise<boolean> {
   if (isTextOrCodeFile(mimeType, extension)) {
     blobToOpen = new Blob([record.blob], { type: 'text/plain' });
     openMode = 'tab';
-  } else if (isInlineTabMedia(mimeType)) {
+  } else if (isInlineTabMedia(mimeType, extension)) {
+    const fallbackMime = INLINE_EXTENSION_MIME_FALLBACKS[extension];
+    if ((!record.blob.type || record.blob.type === 'application/octet-stream') && fallbackMime) {
+      blobToOpen = new Blob([record.blob], { type: fallbackMime });
+    }
     openMode = 'tab';
   }
 

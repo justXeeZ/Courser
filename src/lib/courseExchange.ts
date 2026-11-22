@@ -4,9 +4,10 @@ import {
   validateRawCourseReferences,
 } from '@/lib/courseIds';
 import { collectReferencedFileIds, getFile, putFile } from '@/lib/fileStore';
-import { validateMaterialFile } from '@/lib/materialValidation';
+import { extractExtension, validateMaterialFile } from '@/lib/materialValidation';
 import {
   CourseTreeSchema,
+  type AssessmentQuestion,
   type CourseTree,
   type LessonResource,
   type StoredFileRef,
@@ -14,6 +15,16 @@ import {
 
 export const COURSE_EXPORT_FORMAT = 'college-course-tree' as const;
 export const COURSE_EXPORT_VERSION = 1 as const;
+
+const IMAGE_EXTENSIONS = new Set([
+  '.png',
+  '.jpg',
+  '.jpeg',
+  '.webp',
+  '.gif',
+  '.bmp',
+  '.avif',
+]);
 
 export interface CourseAttachment {
   id: string;
@@ -316,20 +327,27 @@ export async function parseCourseImport(
   const attachmentMap = buildAttachmentMap(rawAttachments);
   const storedRefsByOldId = new Map<string, StoredFileRef>();
 
-  async function resolveResource(resource: LessonResource): Promise<LessonResource | null> {
-    if (!resource.file) return resource;
-
-    const oldFileRef = resource.file;
+  async function resolveStoredFileRef(
+    oldFileRef: StoredFileRef,
+    contextLabel: string,
+    options?: { requireImage?: boolean }
+  ): Promise<StoredFileRef | null> {
     const cached = storedRefsByOldId.get(oldFileRef.id);
     if (cached) {
-      return { ...resource, file: cached };
+      if (options?.requireImage) {
+        const cachedExt = extractExtension(cached.name);
+        const cachedMime = cached.mimeType.split(';')[0].trim().toLowerCase();
+        if (!cachedMime.startsWith('image/') && !IMAGE_EXTENSIONS.has(cachedExt)) {
+          warnings.push(`${contextLabel}: attachment is not a supported image.`);
+          return null;
+        }
+      }
+      return cached;
     }
 
     const attachment = attachmentMap.get(oldFileRef.id);
     if (!attachment) {
-      warnings.push(
-        `Dropped file resource "${resource.title}" (${oldFileRef.name}): attachment data is missing.`
-      );
+      warnings.push(`${contextLabel}: attachment data is missing.`);
       return null;
     }
 
@@ -337,9 +355,7 @@ export async function parseCourseImport(
     try {
       bytes = base64ToUint8Array(attachment.dataBase64);
     } catch {
-      warnings.push(
-        `Dropped file resource "${resource.title}" (${oldFileRef.name}): attachment base64 is invalid.`
-      );
+      warnings.push(`${contextLabel}: attachment base64 is invalid.`);
       return null;
     }
 
@@ -353,10 +369,17 @@ export async function parseCourseImport(
       type: mimeType,
     });
     if (!validation.ok) {
-      warnings.push(
-        `Dropped file resource "${resource.title}" (${name}): ${validation.error}`
-      );
+      warnings.push(`${contextLabel}: ${validation.error}`);
       return null;
+    }
+
+    if (options?.requireImage) {
+      const normalizedMime = mimeType.split(';')[0].trim().toLowerCase();
+      const ext = extractExtension(name);
+      if (!normalizedMime.startsWith('image/') && !IMAGE_EXTENSIONS.has(ext)) {
+        warnings.push(`${contextLabel}: attachment is not a supported image.`);
+        return null;
+      }
     }
 
     const newFileId = deriveFileId(course.code);
@@ -372,7 +395,79 @@ export async function parseCourseImport(
     };
     storedRefsByOldId.set(oldFileRef.id, newFileRef);
 
-    return { ...resource, file: newFileRef };
+    return newFileRef;
+  }
+
+  async function resolveResource(resource: LessonResource): Promise<LessonResource | null> {
+    if (resource.file) {
+      const nextFile = await resolveStoredFileRef(
+        resource.file,
+        `Dropped file resource "${resource.title}" (${resource.file.name})`
+      );
+      if (!nextFile) return null;
+      return { ...resource, file: nextFile };
+    }
+
+    if (resource.assessment) {
+      const nextQuestions: AssessmentQuestion[] = [];
+      for (let qIdx = 0; qIdx < resource.assessment.questions.length; qIdx += 1) {
+        const question = resource.assessment.questions[qIdx];
+        if (!question.header.imageFile) {
+          nextQuestions.push(question);
+          continue;
+        }
+
+        const nextImageFile = await resolveStoredFileRef(
+          question.header.imageFile,
+          `Question ${qIdx + 1} image "${question.header.imageFile.name}" in "${resource.title}"`,
+          { requireImage: true }
+        );
+
+        if (nextImageFile) {
+          nextQuestions.push({
+            ...question,
+            header: {
+              ...question.header,
+              imageFile: nextImageFile,
+            },
+          });
+          continue;
+        }
+
+        const hasFallbackHeader =
+          Boolean(question.header.text && question.header.text.trim().length > 0) ||
+          Boolean(question.header.imageUrl);
+
+        if (hasFallbackHeader) {
+          const { imageFile: _droppedImageFile, ...restHeader } = question.header;
+          nextQuestions.push({
+            ...question,
+            header: restHeader,
+          });
+        } else {
+          warnings.push(
+            `Dropped image-only question ${qIdx + 1} in "${resource.title}": no text or fallback image URL remains.`
+          );
+        }
+      }
+
+      if (nextQuestions.length === 0) {
+        warnings.push(
+          `Dropped assessment "${resource.title}": no valid questions remain.`
+        );
+        return null;
+      }
+
+      return {
+        ...resource,
+        assessment: {
+          ...resource.assessment,
+          questions: nextQuestions,
+        },
+      };
+    }
+
+    return resource;
   }
 
   async function resolveResources(resources: LessonResource[]): Promise<LessonResource[]> {

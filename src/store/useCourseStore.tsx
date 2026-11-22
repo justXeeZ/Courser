@@ -23,11 +23,6 @@ import type { PremadeRoadmapRepository, UserRoadmapRepository } from '@/lib/stor
 import { CourseTreeSchema, type CourseTree } from '@/types/course';
 
 export const COURSES_STORAGE_KEY = USER_ROADMAPS_STORAGE_KEY;
-export const LEGACY_COURSES_STORAGE_KEY = 'college_course_trees_catalog_v1';
-export const LEGACY_SEED_SLUGS: ReadonlySet<string> = new Set([
-  'cs201-data-structures',
-  'cs301-operating-systems',
-]);
 
 const defaultPremadeRoadmapRepository: PremadeRoadmapRepository =
   createLocalPremadeRoadmapRepository(DEFAULT_COURSES);
@@ -44,44 +39,6 @@ function createUserRepoForStorage(storage: CatalogReadStorage): UserRoadmapRepos
     setItem: storage.setItem ? storage.setItem.bind(storage) : () => {},
     removeItem: storage.removeItem ? storage.removeItem.bind(storage) : () => {},
   });
-}
-
-function migrateLegacyV1Catalog(
-  rawV1: string,
-  premadeRepo: PremadeRoadmapRepository
-): CourseTree[] | null {
-  try {
-    const parsedJson: unknown = JSON.parse(rawV1);
-    const rawCourses: unknown[] | null = Array.isArray(parsedJson)
-      ? parsedJson
-      : parsedJson &&
-          typeof parsedJson === 'object' &&
-          Array.isArray((parsedJson as { courses?: unknown }).courses)
-        ? (parsedJson as { courses: unknown[] }).courses
-        : null;
-
-    if (!rawCourses) {
-      return null;
-    }
-
-    const premadeCourses = premadeRepo.getAll();
-    const seenSlugs = new Set<string>(premadeCourses.map((course) => course.slug));
-    const userCourses: CourseTree[] = [];
-
-    for (const entry of rawCourses) {
-      const parsedEntry = CourseTreeSchema.safeParse(entry);
-      if (!parsedEntry.success) continue;
-      const course = parsedEntry.data;
-      if (LEGACY_SEED_SLUGS.has(course.slug)) continue;
-      if (seenSlugs.has(course.slug)) continue;
-      seenSlugs.add(course.slug);
-      userCourses.push(course);
-    }
-
-    return [...premadeCourses, ...userCourses];
-  } catch {
-    return null;
-  }
 }
 
 export function loadCoursesCatalog(
@@ -103,23 +60,7 @@ export function loadCoursesCatalog(
     storage === undefined ? localUserRoadmapRepository : createUserRepoForStorage(effectiveStorage);
 
   try {
-    const rawV2 = effectiveStorage.getItem(COURSES_STORAGE_KEY);
-    if (rawV2 !== null) {
-      const v2Courses = userRepo.loadCourses();
-      return v2Courses ?? premadeRepo.getAll();
-    }
-
-    const rawV1 = effectiveStorage.getItem(LEGACY_COURSES_STORAGE_KEY);
-    if (rawV1 !== null) {
-      const migrated = migrateLegacyV1Catalog(rawV1, premadeRepo);
-      if (migrated) {
-        userRepo.saveCourses(migrated);
-        return migrated;
-      }
-      return premadeRepo.getAll();
-    }
-
-    return premadeRepo.getAll();
+    return userRepo.loadCourses() ?? premadeRepo.getAll();
   } catch {
     return premadeRepo.getAll();
   }

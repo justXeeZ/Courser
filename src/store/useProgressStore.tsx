@@ -1,8 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  AssessmentScoreRecordSchema,
   PROGRESS_STORAGE_KEY,
   ProgressStateSchema,
   createEmptyProgressState,
+  type AssessmentScoreRecord,
   type ProgressState,
 } from '@/lib/storage/types';
 import {
@@ -12,11 +14,19 @@ import {
 import type { Chapter, CourseTree, LessonStatus } from '@/types/course';
 
 export {
+  AssessmentScoreRecordSchema,
   PROGRESS_STORAGE_KEY,
   ProgressStateSchema,
   createEmptyProgressState,
+  type AssessmentScoreRecord,
   type ProgressState,
 };
+
+const SCORE_KEY_SEPARATOR = '::';
+
+export function getAssessmentScoreKey(itemId: string, resourceTitle: string): string {
+  return `${itemId}${SCORE_KEY_SEPARATOR}${resourceTitle}`;
+}
 
 export interface ProgressStats {
   total: number;
@@ -135,6 +145,18 @@ interface ProgressContextValue {
   toggleDone: (courseSlug: string, lessonId: string) => void;
   isBookmarked: (courseSlug: string) => boolean;
   toggleBookmark: (courseSlug: string) => void;
+  getAssessmentScore: (
+    courseSlug: string,
+    itemId: string,
+    resourceTitle: string
+  ) => AssessmentScoreRecord | undefined;
+  recordAssessmentScore: (
+    courseSlug: string,
+    itemId: string,
+    resourceTitle: string,
+    scorePercent: number,
+    passed: boolean
+  ) => void;
   resetCourseProgress: (courseSlug: string) => void;
   remapCourseProgress: (oldSlug: string, newSlug: string, idMap: Map<string, string>) => void;
   forgetCourse: (slug: string) => void;
@@ -220,13 +242,73 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
+  const getAssessmentScore = useCallback(
+    (
+      courseSlug: string,
+      itemId: string,
+      resourceTitle: string
+    ): AssessmentScoreRecord | undefined =>
+      state.assessmentScores?.[courseSlug]?.[getAssessmentScoreKey(itemId, resourceTitle)],
+    [state.assessmentScores]
+  );
+
+  const recordAssessmentScore = useCallback(
+    (
+      courseSlug: string,
+      itemId: string,
+      resourceTitle: string,
+      scorePercent: number,
+      passed: boolean
+    ) => {
+      const normalizedScore = Number.isFinite(scorePercent)
+        ? Math.max(0, Math.min(100, Math.round(scorePercent)))
+        : 0;
+      const scoreKey = getAssessmentScoreKey(itemId, resourceTitle);
+      const updatedAt = new Date().toISOString();
+
+      setState((prev) => {
+        const courseScores = { ...(prev.assessmentScores?.[courseSlug] ?? {}) };
+        const existing = courseScores[scoreKey];
+        courseScores[scoreKey] = {
+          bestScorePercent: existing
+            ? Math.max(existing.bestScorePercent, normalizedScore)
+            : normalizedScore,
+          latestScorePercent: normalizedScore,
+          attempts: (existing?.attempts ?? 0) + 1,
+          passed: Boolean(existing?.passed || passed),
+          updatedAt,
+        };
+
+        return {
+          ...prev,
+          assessmentScores: {
+            ...(prev.assessmentScores ?? {}),
+            [courseSlug]: courseScores,
+          },
+        };
+      });
+    },
+    []
+  );
+
   const resetCourseProgress = useCallback((courseSlug: string) => {
     setState((prev) => {
       const nextStatuses = { ...prev.statuses };
       delete nextStatuses[courseSlug];
+
+      let nextAssessmentScores = prev.assessmentScores;
+      if (prev.assessmentScores && courseSlug in prev.assessmentScores) {
+        const updatedScores = { ...prev.assessmentScores };
+        delete updatedScores[courseSlug];
+        nextAssessmentScores =
+          Object.keys(updatedScores).length > 0 ? updatedScores : undefined;
+      }
+
+      const { assessmentScores: _omitScores, ...rest } = prev;
       return {
-        ...prev,
+        ...rest,
         statuses: nextStatuses,
+        ...(nextAssessmentScores ? { assessmentScores: nextAssessmentScores } : {}),
       };
     });
   }, []);
@@ -263,10 +345,41 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
                 new Set(prev.bookmarks.map((slug) => (slug === oldSlug ? newSlug : slug)))
               );
 
+        let nextAssessmentScores = prev.assessmentScores;
+        if (prev.assessmentScores) {
+          const updatedScores = { ...prev.assessmentScores };
+          const oldCourseScores = prev.assessmentScores[oldSlug];
+          if (oldSlug !== newSlug) {
+            delete updatedScores[oldSlug];
+          }
+          if (oldCourseScores) {
+            const remappedScores: Record<string, AssessmentScoreRecord> = {};
+            for (const [oldKey, record] of Object.entries(oldCourseScores)) {
+              const sepIdx = oldKey.indexOf(SCORE_KEY_SEPARATOR);
+              if (sepIdx <= 0) continue;
+              const oldItemId = oldKey.slice(0, sepIdx);
+              const resourceTitle = oldKey.slice(sepIdx + SCORE_KEY_SEPARATOR.length);
+              const newItemId = idMap.get(oldItemId);
+              if (newItemId) {
+                remappedScores[getAssessmentScoreKey(newItemId, resourceTitle)] = record;
+              }
+            }
+            if (Object.keys(remappedScores).length > 0) {
+              updatedScores[newSlug] = remappedScores;
+            } else {
+              delete updatedScores[newSlug];
+            }
+          }
+          nextAssessmentScores =
+            Object.keys(updatedScores).length > 0 ? updatedScores : undefined;
+        }
+
+        const { assessmentScores: _omitScores, ...rest } = prev;
         return {
-          ...prev,
+          ...rest,
           statuses: nextStatuses,
           bookmarks: nextBookmarks,
+          ...(nextAssessmentScores ? { assessmentScores: nextAssessmentScores } : {}),
         };
       });
     },
@@ -277,10 +390,21 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     setState((prev) => {
       const nextStatuses = { ...prev.statuses };
       delete nextStatuses[slug];
+
+      let nextAssessmentScores = prev.assessmentScores;
+      if (prev.assessmentScores && slug in prev.assessmentScores) {
+        const updatedScores = { ...prev.assessmentScores };
+        delete updatedScores[slug];
+        nextAssessmentScores =
+          Object.keys(updatedScores).length > 0 ? updatedScores : undefined;
+      }
+
+      const { assessmentScores: _omitScores, ...rest } = prev;
       return {
-        ...prev,
+        ...rest,
         statuses: nextStatuses,
         bookmarks: prev.bookmarks.filter((item) => item !== slug),
+        ...(nextAssessmentScores ? { assessmentScores: nextAssessmentScores } : {}),
       };
     });
   }, []);
@@ -316,6 +440,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       toggleDone,
       isBookmarked,
       toggleBookmark,
+      getAssessmentScore,
+      recordAssessmentScore,
       resetCourseProgress,
       remapCourseProgress,
       forgetCourse,
@@ -332,6 +458,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       toggleDone,
       isBookmarked,
       toggleBookmark,
+      getAssessmentScore,
+      recordAssessmentScore,
       resetCourseProgress,
       remapCourseProgress,
       forgetCourse,

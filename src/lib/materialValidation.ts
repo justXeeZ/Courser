@@ -46,7 +46,7 @@ export const EXPECTED_EXTENSIONS_BY_KIND: Record<ResourceKind, readonly string[]
   slides: ['.pdf', '.ppt', '.pptx', '.key', '.odp'],
   video: ['.mp4', '.webm', '.mov', '.mkv', '.m4v'],
   lab: ['.pdf', '.zip', '.ipynb', '.py', '.js', '.ts', '.java', '.c', '.cpp', '.mp4', '.webm'],
-  reading: ['.pdf', '.doc', '.docx', '.txt', '.md', '.epub'],
+  document: ['.pdf', '.doc', '.docx', '.txt', '.md', '.epub'],
   textbook: ['.pdf', '.epub', '.djvu', '.doc', '.docx'],
   course: ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.zip', '.txt', '.md'],
   official: ['.pdf', '.doc', '.docx', '.txt', '.md'],
@@ -107,7 +107,7 @@ export function suggestResourceKind(fileName: string): ResourceKind {
   if (VIDEO_SUGGEST_EXTENSIONS.has(ext)) return 'video';
   if (LAB_SUGGEST_EXTENSIONS.has(ext)) return 'lab';
   if (TEXTBOOK_SUGGEST_EXTENSIONS.has(ext)) return 'textbook';
-  return 'reading';
+  return 'document';
 }
 
 export type MaterialValidationResult =

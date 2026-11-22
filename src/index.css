@@ -1,16 +1,49 @@
 @import "tailwindcss";
-@custom-variant dark (&:where(.dark, .dark *));
 @import "@fontsource/balsamiq-sans/400.css";
 @import "@fontsource/balsamiq-sans/700.css";
+@import "katex/dist/katex.min.css";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --surface-canvas: #f8fafc;
+  --surface-1: #ffffff;
+  --surface-2: #f1f5f9;
+  --surface-inset: #ffffff;
+  --border-subtle: #e2e8f0;
+  --border-strong: #cbd5e1;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+}
+
+.dark {
+  --surface-canvas: #0b0f17;
+  --surface-1: #121926;
+  --surface-2: #1b2436;
+  --surface-inset: #0d131f;
+  --border-subtle: #263248;
+  --border-strong: #3b4a62;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+}
 
 @layer base {
   body {
     font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--surface-canvas);
+    color: var(--text-primary);
   }
 }
 
 .font-roadmap {
   font-family: "Balsamiq Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+.roadmap-canvas-frame {
+  border: 1px solid var(--border-subtle);
+  background-color: var(--surface-1);
+  border-radius: 0.75rem;
 }
 
 /* roadmap.sh exact SVG node hover and completion states */
@@ -57,7 +90,35 @@
   text-decoration: line-through;
 }
 
-.roadmap-svg g.node-highlighted > rect.node-rect {
+.roadmap-svg g.node-highlighted > rect.node-rect,
+.dark .roadmap-svg g.node-highlighted > rect.node-rect {
   stroke: #2b78e4 !important;
   stroke-width: 3.4 !important;
+}
+
+/* KaTeX legibility in Light & Dark modes */
+.dark .katex {
+  color: #f8fafc;
+}
+
+.dark .katex .frac-line,
+.dark .katex .overline-line,
+.dark .katex .underline-line,
+.dark .katex .hline {
+  border-color: currentColor;
+}
+
+.katex-display {
+  overflow-x: auto;
+  overflow-y: hidden;
+  max-width: 100%;
+  padding-block: 0.25rem;
+}
+
+.katex-error {
+  color: #dc2626;
+}
+
+.dark .katex-error {
+  color: #f87171;
 }

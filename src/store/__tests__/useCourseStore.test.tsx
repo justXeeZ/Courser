@@ -5,7 +5,6 @@ import { COURSES } from '@/data/courses';
 import {
   COURSES_STORAGE_KEY,
   CourseProvider,
-  LEGACY_COURSES_STORAGE_KEY,
   loadCoursesCatalog,
   useCourses,
 } from '@/store/useCourseStore';
@@ -20,7 +19,8 @@ const sampleNewCourse: CourseTree = {
   code: 'MATH201',
   title: 'Linear Algebra',
   department: 'Mathematics',
-  semester: 'Year 2 - Second Semester',
+  year: 2,
+  semester: 2,
   credits: 3,
   description: 'Vector spaces, linear transformations, eigenvalues, and SVD.',
   chapters: [
@@ -142,65 +142,27 @@ describe('useCourseStore CRUD, migration, and repository boundaries', () => {
     expect(result.current.isPremadeCourse('math201-linear-algebra')).toBe(false);
   });
 
-  it('migrates v1 catalog to v2, dropping CS201/CS301, skipping corrupt entries, and keeping user courses', () => {
-    const legacySeedCs201 = {
-      ...structuredClone(COURSES[0]),
-      slug: 'cs201-data-structures',
-      code: 'CS201',
-    };
-    const legacySeedCs301 = {
-      ...structuredClone(COURSES[1]),
-      slug: 'cs301-operating-systems',
-      code: 'CS301',
-    };
-    const userCourse = {
-      slug: 'phys101-mechanics',
-      code: 'PHYS101',
-      title: 'Classical Mechanics',
-      department: 'Physics',
-      semester: 'Fall 2024', // legacy free-text semester -> dropped cleanly
-      description: 'Newtonian mechanics and conservation laws.',
-      chapters: [
-        {
-          id: 'phys101-ch1-kinematics',
-          order: 1,
-          title: '1. Kinematics',
-          description: 'Motion in one and two dimensions.',
-          lessons: [
-            {
-              id: 'phys101-vectors',
-              title: 'Vectors',
-              summary: 'Vector addition and components.',
-              resources: [],
-            },
-          ],
-        },
-      ],
-    };
-    const corruptEntry = { slug: 'broken', chapters: [] };
-
+  it('ignores legacy v1 catalog storage key and loads premade defaults unless v2 key is present', () => {
     window.localStorage.setItem(
-      LEGACY_COURSES_STORAGE_KEY,
+      'college_course_trees_catalog_v1',
       JSON.stringify({
         version: 1,
-        courses: [legacySeedCs201, legacySeedCs301, userCourse, corruptEntry],
+        courses: [
+          {
+            ...structuredClone(COURSES[0]),
+            slug: 'legacy-v1-course',
+            code: 'LEG101',
+          },
+        ],
       })
     );
 
-    const migrated = loadCoursesCatalog(window.localStorage);
-    expect(migrated.map((c) => c.slug)).toEqual([
+    const loaded = loadCoursesCatalog(window.localStorage);
+    expect(loaded.map((c) => c.slug)).toEqual([
       'guide101-quick-start',
       'demo201-feature-showcase',
-      'phys101-mechanics',
     ]);
-    expect(migrated[2].semester).toBeUndefined();
-
-    // v2 should now be persisted in localStorage
-    const savedV2 = window.localStorage.getItem(COURSES_STORAGE_KEY);
-    expect(savedV2).toBeTruthy();
-    expect(savedV2).toContain('phys101-mechanics');
-    expect(savedV2).not.toContain('cs201-data-structures');
-    expect(savedV2).not.toContain('cs301-operating-systems');
+    expect(window.localStorage.getItem(COURSES_STORAGE_KEY)).toBeNull();
   });
 
   it('rejects duplicate course slugs and recovers from corrupted localStorage', () => {

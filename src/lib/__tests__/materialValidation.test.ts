@@ -32,7 +32,7 @@ describe('materialValidation', () => {
     };
     expect(validateMaterialFile(blendFile)).toEqual({
       ok: true,
-      suggestedKind: 'reading',
+      suggestedKind: 'document',
     });
   });
 
@@ -95,9 +95,9 @@ describe('materialValidation', () => {
     expect(suggestResourceKind('analysis.ipynb')).toBe('lab');
     expect(suggestResourceKind('solution.py')).toBe('lab');
     expect(suggestResourceKind('manual.epub')).toBe('textbook');
-    expect(suggestResourceKind('chapter1.pdf')).toBe('reading');
-    expect(suggestResourceKind('notes.md')).toBe('reading');
-    expect(suggestResourceKind('unknown.xyz')).toBe('reading');
+    expect(suggestResourceKind('chapter1.pdf')).toBe('document');
+    expect(suggestResourceKind('notes.md')).toBe('document');
+    expect(suggestResourceKind('unknown.xyz')).toBe('document');
   });
 
   it('provides expected extensions and hints for every ResourceKind', () => {

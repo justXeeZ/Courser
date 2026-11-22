@@ -7,6 +7,7 @@ import {
   ProgressProvider,
   computeChapterStats,
   computeCourseStats,
+  getAssessmentScoreKey,
   loadProgressState,
   parseImportedProgressJson,
   useProgress,
@@ -239,5 +240,92 @@ describe('useProgressStore', () => {
     expect(result.current.isBookmarked('course-a')).toBe(false);
     expect(result.current.getCourseStatuses('course-a')).toEqual({});
     expect(result.current.getLessonStatus('course-b', 'courseb-l1')).toBe('learning');
+  });
+
+  it('records, clamps, remaps, resets, forgets, and exports/imports assessmentScores', () => {
+    expect(getAssessmentScoreKey('cs101-l1', 'Quiz 1')).toBe('cs101-l1::Quiz 1');
+
+    const { result } = renderHook(() => useProgress(), { wrapper });
+
+    act(() => {
+      result.current.recordAssessmentScore('course-a', 'old-l1', 'Midterm :: Part 1', 82.4, true);
+    });
+
+    const first = result.current.getAssessmentScore('course-a', 'old-l1', 'Midterm :: Part 1');
+    expect(first).toBeDefined();
+    expect(first?.bestScorePercent).toBe(82);
+    expect(first?.latestScorePercent).toBe(82);
+    expect(first?.attempts).toBe(1);
+    expect(first?.passed).toBe(true);
+
+    // Lower retake updates latestScorePercent and attempts while preserving max bestScorePercent & sticky passed
+    act(() => {
+      result.current.recordAssessmentScore('course-a', 'old-l1', 'Midterm :: Part 1', 64, false);
+      result.current.recordAssessmentScore('course-a', 'deleted-l2', 'Quiz 2', 120, true);
+    });
+
+    const second = result.current.getAssessmentScore('course-a', 'old-l1', 'Midterm :: Part 1');
+    expect(second?.bestScorePercent).toBe(82);
+    expect(second?.latestScorePercent).toBe(64);
+    expect(second?.attempts).toBe(2);
+    expect(second?.passed).toBe(true);
+    expect(result.current.getAssessmentScore('course-a', 'deleted-l2', 'Quiz 2')?.bestScorePercent).toBe(100);
+
+    // Remap across slug and item ID changes (pruning deleted item IDs)
+    act(() => {
+      result.current.remapCourseProgress(
+        'course-a',
+        'course-a-v2',
+        new Map([['old-l1', 'new-l1']])
+      );
+    });
+    expect(result.current.getAssessmentScore('course-a', 'old-l1', 'Midterm :: Part 1')).toBeUndefined();
+    expect(
+      result.current.getAssessmentScore('course-a-v2', 'new-l1', 'Midterm :: Part 1')?.bestScorePercent
+    ).toBe(82);
+    expect(result.current.getAssessmentScore('course-a-v2', 'deleted-l2', 'Quiz 2')).toBeUndefined();
+
+    // Export/import round-trip
+    const exported = result.current.exportProgressJson();
+    const parsedExport = parseImportedProgressJson(exported);
+    expect(parsedExport.ok).toBe(true);
+
+    // Legacy v1 progress backup without assessmentScores still parses
+    const legacyBackup = parseImportedProgressJson(
+      JSON.stringify({ version: 1, statuses: {}, bookmarks: [] })
+    );
+    expect(legacyBackup.ok).toBe(true);
+
+    // Invalid score record rejected
+    const invalidScoreBackup = parseImportedProgressJson(
+      JSON.stringify({
+        version: 1,
+        statuses: {},
+        bookmarks: [],
+        assessmentScores: {
+          c: {
+            'l::q': {
+              bestScorePercent: 105,
+              latestScorePercent: 50,
+              attempts: 0,
+              passed: false,
+              updatedAt: '2026-11-22T00:00:00Z',
+            },
+          },
+        },
+      })
+    );
+    expect(invalidScoreBackup.ok).toBe(false);
+
+    // resetCourseProgress & forgetCourse clear assessmentScores for that course
+    act(() => {
+      result.current.recordAssessmentScore('course-b', 'cb-l1', 'Quiz', 90, true);
+      result.current.resetCourseProgress('course-a-v2');
+      result.current.forgetCourse('course-b');
+    });
+    expect(
+      result.current.getAssessmentScore('course-a-v2', 'new-l1', 'Midterm :: Part 1')
+    ).toBeUndefined();
+    expect(result.current.getAssessmentScore('course-b', 'cb-l1', 'Quiz')).toBeUndefined();
   });
 });
