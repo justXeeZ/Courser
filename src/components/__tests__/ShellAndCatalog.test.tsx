@@ -5,6 +5,11 @@ import App from '@/App';
 import { Navbar } from '@/components/Navbar';
 import { SearchModal } from '@/components/SearchModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { ExportCourseDialog } from '@/components/ExportCourseDialog';
+import { DrawerShell } from '@/components/DrawerShell';
+import { ProgressStrip } from '@/components/ProgressStrip';
+import { BRAND } from '@/config/brand';
+import { COURSES } from '@/data/courses';
 import { CatalogPage } from '@/pages/CatalogPage';
 import { CourseProvider } from '@/store/useCourseStore';
 import { ProgressProvider, loadProgressState, saveProgressState } from '@/store/useProgressStore';
@@ -99,6 +104,30 @@ describe('Navbar theme toggle and mobile layout', () => {
     const bookmarkedLabel = screen.getByText('Bookmarked');
     expect(bookmarkedLabel).toHaveClass('hidden', 'sm:inline');
   });
+
+  it('keeps Navbar persistently dark in both Light and Dark modes and renders BRAND mark & shortName', () => {
+    mockMatchMedia(false);
+    render(
+      <MemoryRouter>
+        <ThemeProvider>
+          <Navbar bookmarkCount={1} onOpenSearch={vi.fn()} />
+        </ThemeProvider>
+      </MemoryRouter>
+    );
+
+    const header = screen.getByRole('banner');
+    expect(header).toHaveClass('bg-slate-900', 'text-white', 'border-slate-800/80');
+    expect(within(header).getByText(BRAND.mark)).toBeInTheDocument();
+    expect(within(header).getByText(BRAND.shortName)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: /Theme: System/i }));
+    expect(document.documentElement.classList.contains('dark')).toBe(false);
+    expect(header).toHaveClass('bg-slate-900', 'text-white');
+
+    fireEvent.click(screen.getByRole('button', { name: /Theme: Light/i }));
+    expect(document.documentElement.classList.contains('dark')).toBe(true);
+    expect(header).toHaveClass('bg-slate-900', 'text-white');
+  });
 });
 
 describe('CatalogPage & CourseCard', () => {
@@ -125,19 +154,54 @@ describe('CatalogPage & CourseCard', () => {
 
     expect(screen.getByText('GUIDE101')).toBeInTheDocument();
     expect(screen.getByText('Quick Start: Using Course Trees')).toBeInTheDocument();
-    expect(screen.getByText('Year 1 - First Semester')).toBeInTheDocument();
+    expect(screen.getByText('Year 1 · 1st Semester')).toBeInTheDocument();
 
     expect(screen.getByText('DEMO201')).toBeInTheDocument();
     expect(screen.getByText('Feature Showcase: Sample Course')).toBeInTheDocument();
-    expect(screen.getByText('Year 2 - First Semester')).toBeInTheDocument();
+    expect(screen.getByText('Year 2 · 1st Semester')).toBeInTheDocument();
 
     const footerLink = screen.getByRole('link', {
-      name: /Data formats & LLM course-authoring guide →/i,
+      name: /Data formats →/i,
     });
     expect(footerLink).toHaveAttribute('href', '/docs/data-formats');
 
     const mainEl = screen.getByRole('main');
-    expect(mainEl).toHaveClass('bg-black', 'text-white');
+    expect(mainEl).toHaveClass('bg-slate-50', 'text-slate-900', 'dark:bg-[#0b0f17]', 'dark:text-slate-100');
+
+    const heroHeading = screen.getByRole('heading', { level: 1, name: BRAND.name });
+    expect(heroHeading).toHaveClass('text-slate-900');
+    expect(screen.getByText(BRAND.heroDescription)).toBeInTheDocument();
+    expect(screen.getByText(BRAND.footerNote)).toBeInTheDocument();
+  });
+
+  it('renders readable Light & Dark contrast classes on CourseCard with progress', () => {
+    saveProgressState({
+      version: 1,
+      statuses: {
+        'guide101-quick-start': {
+          'guide101-browsing-bookmarks': 'done',
+        },
+      },
+      bookmarks: [],
+    });
+
+    render(
+      <MemoryRouter>
+        <CourseProvider>
+          <ProgressProvider>
+            <CatalogPage />
+          </ProgressProvider>
+        </CourseProvider>
+      </MemoryRouter>
+    );
+
+    const codeBadge = screen.getByText('GUIDE101');
+    expect(codeBadge).toHaveClass('text-amber-800', 'dark:text-amber-400');
+
+    const guideCardLink = codeBadge.closest('a') as HTMLElement;
+    expect(guideCardLink).toHaveClass('bg-white', 'dark:bg-[#121926]');
+    const pctText = within(guideCardLink).getByText(/%$/);
+    expect(pctText).toHaveClass('text-emerald-700', 'dark:text-emerald-400');
   });
 
   it('clears saved progress and bookmarks (and Navbar badge) when deleting a course from CatalogPage', () => {
@@ -249,10 +313,57 @@ describe('ConfirmDialog dark mode and keyboard handling', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: 'Delete Course?' });
-    expect(dialog).toHaveClass('dark:bg-slate-900', 'dark:border-slate-700', 'dark:text-slate-100');
+    expect(dialog).toHaveClass('dark:bg-[#121926]', 'dark:border-slate-700/80', 'dark:text-slate-100');
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SearchModal, ExportCourseDialog, DrawerShell, and ProgressStrip Light/Dark surfaces', () => {
+  beforeEach(() => {
+    localStorage.clear();
+  });
+
+  it('renders Light/Dark 4-tier neutral classes on SearchModal, ExportCourseDialog, DrawerShell, and ProgressStrip', () => {
+    const { rerender } = render(
+      <MemoryRouter>
+        <CourseProvider>
+          <SearchModal open={true} onClose={vi.fn()} />
+        </CourseProvider>
+      </MemoryRouter>
+    );
+
+    const searchDialog = screen.getByRole('dialog', {
+      name: /Search courses, chapters, and lessons/i,
+    });
+    expect(searchDialog).toHaveClass('bg-white', 'text-slate-900', 'dark:bg-[#121926]', 'dark:text-slate-100');
+    expect(screen.getAllByText(/Year 1 · 1st Semester/).length).toBeGreaterThanOrEqual(1);
+
+    rerender(
+      <ExportCourseDialog open={true} course={COURSES[0]} onClose={vi.fn()} />
+    );
+    const exportDialog = screen.getByRole('dialog', { name: 'Export Course' });
+    expect(exportDialog).toHaveClass('bg-white', 'dark:bg-[#121926]', 'dark:border-slate-700/80');
+
+    rerender(
+      <DrawerShell title="Sample Drawer" onClose={vi.fn()}>
+        <p>Body</p>
+      </DrawerShell>
+    );
+    const drawerDialog = screen.getByRole('dialog', { name: 'Sample Drawer' });
+    expect(drawerDialog).toHaveClass('h-dvh', 'bg-white', 'dark:bg-[#121926]', 'dark:border-slate-700/80');
+
+    const { container } = render(
+      <ProgressStrip
+        stats={{ todo: 2, done: 1, learning: 1, skipped: 0, required: 4, total: 4, percentDone: 25 }}
+        statusFilter="all"
+        onChangeFilter={vi.fn()}
+      />
+    );
+    const stripEl = container.firstElementChild as HTMLElement;
+    expect(stripEl).toHaveClass('bg-white', 'border-slate-200', 'dark:bg-[#121926]', 'dark:border-slate-700/80');
+    expect(stripEl.className).not.toContain('yellow-950/30');
   });
 });
 

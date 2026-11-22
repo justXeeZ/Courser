@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, BookOpen, GitFork, Layers } from 'lucide-react';
 import { useCourses } from '@/store/useCourseStore';
+import { formatCourseTerm } from '@/types/course';
 
 interface SearchModalProps {
   open: boolean;
@@ -45,15 +46,16 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     const lessonHits: SearchHit[] = [];
 
     for (const course of courses) {
+      const termLabel = formatCourseTerm(course);
       const courseMatches =
         !q ||
         course.title.toLowerCase().includes(q) ||
         course.code.toLowerCase().includes(q) ||
         course.department.toLowerCase().includes(q) ||
-        (course.semester?.toLowerCase().includes(q) ?? false);
+        (termLabel?.toLowerCase().includes(q) ?? false);
 
       const courseMeta = `${course.code} · ${course.department}${
-        course.semester ? ` · ${course.semester}` : ''
+        termLabel ? ` · ${termLabel}` : ''
       }`;
 
       if (courseMatches) {
@@ -61,7 +63,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
           key: `course-${course.slug}`,
           kind: 'course',
           title: `${course.code}: ${course.title}`,
-          subtitle: `${course.department}${course.semester ? ` · ${course.semester}` : ''} · ${course.chapters.length} chapters`,
+          subtitle: `${course.department}${termLabel ? ` · ${termLabel}` : ''} · ${course.chapters.length} chapters`,
           to: `/course/${course.slug}`,
         });
       }
@@ -117,7 +119,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 px-4 pt-20"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-20 dark:bg-black/70"
       onClick={onClose}
     >
       <div
@@ -125,23 +127,23 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
         aria-modal="true"
         aria-label="Search courses, chapters, and lessons"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg overflow-hidden rounded-xl border border-slate-700 bg-slate-900 text-white shadow-2xl"
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
       >
-        <div className="flex items-center gap-2 border-b border-slate-800 px-3.5 py-3">
-          <Search className="h-4 w-4 text-slate-400" />
+        <div className="flex items-center gap-2 border-b border-slate-200 px-3.5 py-3 dark:border-slate-700/80">
+          <Search className="h-4 w-4 text-slate-400 dark:text-slate-400" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search courses, departments, chapters, or lessons..."
-            className="flex-1 bg-transparent text-sm text-white placeholder-slate-500 focus:outline-none"
+            className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder-slate-500"
           />
           <button
             type="button"
             onClick={onClose}
             aria-label="Close search"
-            className="rounded p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+            className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#1b2436] dark:hover:text-white"
           >
             <X className="h-4 w-4" />
           </button>
@@ -149,7 +151,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
 
         <div className="max-h-80 overflow-y-auto p-2">
           {results.length === 0 ? (
-            <p className="px-3 py-6 text-center text-xs text-slate-400">
+            <p className="px-3 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
               No matching courses, chapters, or lessons found.
             </p>
           ) : (
@@ -159,22 +161,24 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                   <button
                     type="button"
                     onClick={() => handleSelect(hit.to)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-800"
+                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-[#1b2436]"
                   >
                     {hit.kind === 'course' ? (
-                      <GitFork className="h-4 w-4 shrink-0 text-yellow-400" />
+                      <GitFork className="h-4 w-4 shrink-0 text-amber-600 dark:text-yellow-400" />
                     ) : hit.kind === 'chapter' ? (
-                      <Layers className="h-4 w-4 shrink-0 text-amber-300" />
+                      <Layers className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
                     ) : (
-                      <BookOpen className="h-4 w-4 shrink-0 text-blue-400" />
+                      <BookOpen className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
                     )}
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-slate-100">
+                      <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
                         {hit.title}
                       </div>
-                      <div className="truncate text-xs text-slate-400">{hit.subtitle}</div>
+                      <div className="truncate text-xs text-slate-600 dark:text-slate-400">
+                        {hit.subtitle}
+                      </div>
                     </div>
-                    <span className="rounded bg-slate-800 px-1.5 py-0.5 text-[11px] text-slate-400 capitalize">
+                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 capitalize dark:bg-[#1b2436] dark:text-slate-300">
                       {hit.kind}
                     </span>
                   </button>

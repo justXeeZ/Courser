@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { COURSES } from '@/data/courses';
 import { putFile } from '@/lib/fileStore';
 import { LessonDrawer } from '@/components/LessonDrawer';
+import { ProgressProvider, saveProgressState } from '@/store/useProgressStore';
 import type { CourseTree } from '@/types/course';
 
 describe('LessonDrawer', () => {
@@ -30,7 +31,7 @@ describe('LessonDrawer', () => {
 
     expect(screen.getByRole('dialog', { name: lesson.title })).toBeInTheDocument();
     expect(screen.getByText(lesson.summary)).toBeInTheDocument();
-    expect(screen.getByText('Reading')).toBeInTheDocument();
+    expect(screen.getByText('Document')).toBeInTheDocument();
     expect(screen.getByText('Official')).toBeInTheDocument();
     expect(
       screen.getAllByRole('button', { name: /Browsing & Bookmarks/i }).length
@@ -160,7 +161,7 @@ describe('LessonDrawer', () => {
                 },
                 {
                   title: 'Missing File',
-                  kind: 'reading',
+                  kind: 'document',
                   file: {
                     id: 'test101-file-missing0',
                     name: 'missing.pdf',
@@ -261,5 +262,124 @@ describe('LessonDrawer', () => {
     expect(prereqChip).not.toHaveClass('border-emerald-300', 'bg-emerald-50');
     expect(prereqChip.querySelectorAll('svg')).toHaveLength(1);
     expect(prereqChip.querySelector('svg')).toHaveClass('lucide-ban');
+  });
+
+  it('keeps empty resources message on sub-lessons and forwards viewer/assessment callbacks with Best score', () => {
+    localStorage.clear();
+    const onOpenMaterialViewer = vi.fn();
+    const onOpenAssessment = vi.fn();
+
+    const customCourse: CourseTree = {
+      slug: 'test106-lesson-callbacks',
+      code: 'TEST106',
+      title: 'Lesson Callbacks',
+      department: 'Preparatory',
+      description: 'Test',
+      chapters: [
+        {
+          id: 'test106-ch1-core',
+          order: 1,
+          title: '1. Core',
+          description: 'Core desc',
+          lessons: [
+            {
+              id: 'test106-empty-lesson',
+              title: 'Empty Lesson',
+              summary: 'No materials',
+              resources: [],
+            },
+            {
+              id: 'test106-rich-lesson',
+              title: 'Rich Lesson',
+              summary: 'Has viewer & assignment',
+              resources: [
+                {
+                  title: 'Slides PDF',
+                  kind: 'slides',
+                  file: {
+                    id: 'test106-file-1234abcd',
+                    name: 'slides.pdf',
+                    mimeType: 'application/pdf',
+                    sizeBytes: 1024,
+                  },
+                },
+                {
+                  title: 'Homework 1',
+                  kind: 'assignment',
+                  assessment: {
+                    mode: 'assignment',
+                    questions: [
+                      {
+                        id: 'q1',
+                        type: 'short-answer',
+                        header: { text: '2+2?' },
+                        acceptedAnswers: ['4'],
+                      },
+                    ],
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { rerender } = render(
+      <LessonDrawer
+        course={customCourse}
+        chapter={customCourse.chapters[0]}
+        lesson={customCourse.chapters[0].lessons[0]}
+        status="todo"
+        statuses={{}}
+        onChangeStatus={vi.fn()}
+        onSelectItem={vi.fn()}
+        onClose={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('No resources linked for this sub-lesson yet.')).toBeInTheDocument();
+
+    saveProgressState({
+      version: 1,
+      statuses: {},
+      bookmarks: [],
+      assessmentScores: {
+        'test106-lesson-callbacks': {
+          'test106-rich-lesson::Homework 1': {
+            bestScorePercent: 88,
+            latestScorePercent: 88,
+            attempts: 1,
+            passed: true,
+            updatedAt: '2026-11-22T00:00:00.000Z',
+          },
+        },
+      },
+    });
+
+    rerender(
+      <ProgressProvider>
+        <LessonDrawer
+          course={customCourse}
+          chapter={customCourse.chapters[0]}
+          lesson={customCourse.chapters[0].lessons[1]}
+          status="todo"
+          statuses={{}}
+          onChangeStatus={vi.fn()}
+          onSelectItem={vi.fn()}
+          onOpenMaterialViewer={onOpenMaterialViewer}
+          onOpenAssessment={onOpenAssessment}
+          onClose={vi.fn()}
+        />
+      </ProgressProvider>
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Slides PDF/i }));
+    expect(onOpenMaterialViewer).toHaveBeenCalledTimes(1);
+
+    const hwBtn = screen.getByRole('button', { name: /Homework 1/i });
+    expect(within(hwBtn).getByText('Best: 88%')).toBeInTheDocument();
+    fireEvent.click(hwBtn);
+    expect(onOpenAssessment).toHaveBeenCalledTimes(1);
   });
 });

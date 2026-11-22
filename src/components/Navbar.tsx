@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { Search, Bookmark, Plus, Sun, Moon, Monitor } from 'lucide-react';
+import { BRAND } from '@/config/brand';
 import { useTheme, type ThemeMode } from '@/store/useThemeStore';
 
 interface NavbarProps {
@@ -27,9 +28,9 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
             className="flex shrink-0 items-center gap-2.5 text-lg font-medium text-white transition-opacity hover:opacity-90"
           >
             <span className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-md bg-white font-mono text-lg font-extrabold tracking-tight text-slate-900">
-              c.
+              {BRAND.mark}
             </span>
-            <span className="hidden font-semibold tracking-tight sm:inline">Course Trees</span>
+            <span className="hidden font-semibold tracking-tight sm:inline">{BRAND.shortName}</span>
           </Link>
 
           <nav className="flex items-center gap-3 text-sm text-slate-300 sm:gap-5">

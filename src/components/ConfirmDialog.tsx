@@ -31,7 +31,7 @@ export function ConfirmDialog({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 dark:bg-black/70"
       onClick={onCancel}
     >
       <div
@@ -39,32 +39,32 @@ export function ConfirmDialog({
         aria-modal="true"
         aria-label={title}
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 text-gray-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
       >
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-950/60 dark:text-red-400">
               <AlertTriangle className="h-5 w-5" />
             </span>
-            <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">{title}</h2>
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">{title}</h2>
           </div>
           <button
             type="button"
             onClick={onCancel}
             aria-label="Cancel"
-            className="rounded-md bg-gray-100 p-1 text-gray-500 hover:bg-gray-200 hover:text-gray-800 dark:bg-slate-800 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
+            className="rounded-md bg-slate-100 p-1 text-slate-500 hover:bg-slate-200 hover:text-slate-800 dark:bg-[#1b2436] dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <p className="mb-5 text-sm text-gray-600 dark:text-slate-300">{description}</p>
+        <p className="mb-5 text-sm text-slate-600 dark:text-slate-300">{description}</p>
 
         <div className="flex items-center justify-end gap-2">
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Cancel
           </button>

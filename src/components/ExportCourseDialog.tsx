@@ -101,14 +101,14 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
         aria-modal="true"
         aria-label="Export Course"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border border-gray-200 bg-white p-5 text-gray-900 shadow-2xl dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+        className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-yellow-100 text-yellow-800 dark:bg-yellow-950/60 dark:text-yellow-300">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
               <FileArchive className="h-4 w-4" />
             </span>
-            <h2 className="text-base font-bold text-gray-900 dark:text-slate-100">
+            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
               Export Course
             </h2>
           </div>
@@ -116,30 +116,30 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
             type="button"
             onClick={onClose}
             aria-label="Close export dialog"
-            className="rounded-md bg-gray-100 p-1.5 text-gray-600 hover:bg-gray-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded-md bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <p className="mb-4 text-xs text-gray-600 dark:text-slate-300">
+        <p className="mb-4 text-xs text-slate-600 dark:text-slate-300">
           Download <span className="font-semibold">{course.code}: {course.title}</span> as a
           portable <code className="font-mono">.course.json</code> file that can be shared or
           re-imported from the New Course page.
         </p>
 
-        <label className="mb-4 flex cursor-pointer items-start gap-2.5 rounded-md border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-950">
+        <label className="mb-4 flex cursor-pointer items-start gap-2.5 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-[#0d131f]">
           <input
             type="checkbox"
             checked={includeFiles}
             onChange={(e) => setIncludeFiles(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-gray-300 text-yellow-500 focus:ring-yellow-500 dark:border-slate-600 dark:bg-slate-900"
+            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 dark:border-slate-600 dark:bg-[#121926]"
           />
           <div className="text-xs">
-            <div className="font-medium text-gray-900 dark:text-slate-100">
+            <div className="font-medium text-slate-900 dark:text-slate-100">
               Include uploaded files
             </div>
-            <div className="mt-0.5 text-gray-500 dark:text-slate-400">
+            <div className="mt-0.5 text-slate-500 dark:text-slate-400">
               {fileSummary === null
                 ? 'Calculating attached file size...'
                 : fileSummary.count === 0
@@ -163,7 +163,7 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-gray-300 bg-white px-3.5 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+            className="rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
           >
             Cancel
           </button>

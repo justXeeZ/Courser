@@ -14,7 +14,7 @@ import {
   isStandaloneChapter,
 } from '@/lib/courseItems';
 import { computeChapterStats } from '@/store/useProgressStore';
-import type { Chapter, CourseTree, LessonStatus } from '@/types/course';
+import type { Chapter, CourseTree, LessonResource, LessonStatus } from '@/types/course';
 import { DrawerShell } from '@/components/DrawerShell';
 import { MaterialList } from '@/components/MaterialList';
 import { StatusSegmentedControl } from '@/components/StatusSegmentedControl';
@@ -24,8 +24,11 @@ interface ChapterDrawerProps {
   chapter: Chapter;
   status: LessonStatus;
   statuses: Record<string, LessonStatus>;
+  courseSlug?: string;
   onChangeStatus: (status: LessonStatus) => void;
   onSelectItem: (itemId: string) => void;
+  onOpenMaterialViewer?: (resource: LessonResource) => void;
+  onOpenAssessment?: (resource: LessonResource) => void;
   onClose: () => void;
 }
 
@@ -34,8 +37,11 @@ export function ChapterDrawer({
   chapter,
   status,
   statuses,
+  courseSlug,
   onChangeStatus,
   onSelectItem,
+  onOpenMaterialViewer,
+  onOpenAssessment,
   onClose,
 }: ChapterDrawerProps) {
   const [activeTab, setActiveTab] = useState<'materials' | 'notes'>('materials');
@@ -123,11 +129,11 @@ export function ChapterDrawer({
         onClick={() => setActiveTab('materials')}
         className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
           activeTab === 'materials'
-            ? 'border-black bg-black text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
-            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+            ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
-        Materials
+        {standalone ? 'Materials' : 'Overview'}
       </button>
       <button
         type="button"
@@ -136,8 +142,8 @@ export function ChapterDrawer({
         onClick={() => setActiveTab('notes')}
         className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
           activeTab === 'notes'
-            ? 'border-black bg-black text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
-            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+            ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
         Notes
@@ -156,7 +162,7 @@ export function ChapterDrawer({
           type="button"
           disabled={!prevTarget}
           onClick={() => prevTarget && onSelectItem(prevTarget.id)}
-          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{prevTarget ? prevTarget.label : 'Start of course'}</span>
@@ -165,33 +171,33 @@ export function ChapterDrawer({
           type="button"
           disabled={!nextTarget}
           onClick={() => nextTarget && onSelectItem(nextTarget.id)}
-          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <span className="truncate">{nextTarget ? nextTarget.label : 'End of course'}</span>
           <ChevronRight className="h-3.5 w-3.5 shrink-0" />
         </button>
       </div>
-      <p className="mt-2.5 text-center text-xs text-gray-400 dark:text-slate-500">
+      <p className="mt-2.5 text-center text-xs text-slate-500 dark:text-slate-400">
         {standalone ? (
           <>
             Shortcuts:{' '}
-            <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
               L
             </kbd>{' '}
             Learning ·{' '}
-            <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
               D
             </kbd>{' '}
             Done ·{' '}
-            <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
               S
             </kbd>{' '}
             Skip ·{' '}
-            <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
               ←/→
             </kbd>{' '}
             Prev/Next ·{' '}
-            <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
               Esc
             </kbd>{' '}
             Close
@@ -199,11 +205,11 @@ export function ChapterDrawer({
         ) : (
           <>
             Shortcuts:{' '}
-            <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
               ←/→
             </kbd>{' '}
             Prev/Next chapter ·{' '}
-            <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
               Esc
             </kbd>{' '}
             Close
@@ -249,24 +255,24 @@ export function ChapterDrawer({
       </p>
 
       {/* Progress Bar */}
-      <div className="mb-5 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
+      <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700/80 dark:bg-[#1b2436]">
         <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="font-semibold text-gray-700 dark:text-slate-200">
+          <span className="font-semibold text-slate-700 dark:text-slate-200">
             Chapter Progress
           </span>
           <div className="flex items-center gap-2">
             {stats.skipped > 0 && (
-              <span className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300">
+              <span className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-300">
                 {stats.skipped} skipped
               </span>
             )}
-            <span className="font-mono font-semibold text-gray-900 dark:text-slate-100">
+            <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
               {stats.done}/{stats.required}
             </span>
-            <span className="text-gray-500 dark:text-slate-400">({stats.percentDone}%)</span>
+            <span className="text-slate-500 dark:text-slate-400">({stats.percentDone}%)</span>
           </div>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-slate-700">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-[#0d131f]">
           <div
             className="h-full rounded-full bg-emerald-500 transition-all duration-200 dark:bg-emerald-400"
             style={{ width: `${stats.percentDone}%` }}
@@ -276,8 +282,8 @@ export function ChapterDrawer({
 
       {/* Prerequisites */}
       {prereqItems.length > 0 && (
-        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-gray-600 uppercase dark:text-slate-300">
+        <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700/80 dark:bg-[#1b2436]">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-slate-600 uppercase dark:text-slate-300">
             <GitBranch className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
             Recommended Prerequisites
           </div>
@@ -316,8 +322,8 @@ export function ChapterDrawer({
                     isDone
                       ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
                       : isSkipped
-                        ? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                        : 'border-gray-300 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                        ? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-300'
+                        : 'border-slate-300 bg-white text-slate-800 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-200'
                   }`}
                 >
                   {isDone && (
@@ -334,26 +340,32 @@ export function ChapterDrawer({
 
       {/* Tab Panel: Materials / Notes */}
       {activeTab === 'materials' ? (
-        <div className="mb-6">
-          <h3 className="mb-3 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-slate-400">
-            Chapter Materials
-          </h3>
-          <MaterialList
-            resources={resources}
-            emptyText="No materials attached to this chapter yet."
-          />
-        </div>
+        (standalone || resources.length > 0) && (
+          <div className="mb-6">
+            <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+              Chapter Materials
+            </h3>
+            <MaterialList
+              resources={resources}
+              emptyText="No materials attached to this chapter yet."
+              courseSlug={courseSlug ?? course.slug}
+              itemId={chapter.id}
+              onOpenMaterialViewer={onOpenMaterialViewer}
+              onOpenAssessment={onOpenAssessment}
+            />
+          </div>
+        )
       ) : (
-        <div className="mb-6 rounded-lg border border-gray-200 bg-amber-50/50 p-4 dark:border-slate-700 dark:bg-amber-950/20">
-          <h3 className="mb-2 text-xs font-semibold tracking-wider text-gray-600 uppercase dark:text-slate-300">
+        <div className="mb-6 rounded-lg border border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 p-4 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436]">
+          <h3 className="mb-2 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300">
             Chapter Notes
           </h3>
           {chapter.notes ? (
-            <div className="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-slate-200">
+            <div className="whitespace-pre-line text-sm leading-relaxed text-slate-800 dark:text-slate-200">
               {chapter.notes}
             </div>
           ) : (
-            <p className="text-sm text-gray-500 dark:text-slate-400">
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               No study notes added for this chapter yet.
             </p>
           )}
@@ -363,10 +375,10 @@ export function ChapterDrawer({
       {/* Sub-lessons List (for chapters with sub-lessons) */}
       {!standalone && (
         <div>
-          <h3 className="mb-2.5 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-slate-400">
+          <h3 className="mb-2.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
             Sub-Lessons ({chapter.lessons.length})
           </h3>
-          <ul className="divide-y divide-gray-200 overflow-hidden rounded-lg border border-gray-200 bg-white dark:divide-slate-800 dark:border-slate-700 dark:bg-slate-950/40">
+          <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white dark:divide-slate-700/80 dark:border-slate-700/80 dark:bg-[#1b2436]">
             {chapter.lessons.map((sub) => {
               const subStatus = statuses[sub.id] ?? 'todo';
               return (
@@ -374,7 +386,7 @@ export function ChapterDrawer({
                   <button
                     type="button"
                     onClick={() => onSelectItem(sub.id)}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-gray-50 dark:hover:bg-slate-800"
+                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/60"
                   >
                     <span className="shrink-0">
                       {subStatus === 'done' ? (

@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { findCourseItem, getTrackableItems, isStandaloneChapter } from '@/lib/courseItems';
 import { computeChapterStats } from '@/store/useProgressStore';
-import type { Chapter, CourseTree, LessonStatus, SubLesson } from '@/types/course';
+import type { Chapter, CourseTree, LessonResource, LessonStatus, SubLesson } from '@/types/course';
 import { DrawerShell } from '@/components/DrawerShell';
 import { MaterialList } from '@/components/MaterialList';
 import { StatusSegmentedControl } from '@/components/StatusSegmentedControl';
@@ -19,9 +19,12 @@ interface LessonDrawerProps {
   lesson: SubLesson;
   status: LessonStatus;
   statuses: Record<string, LessonStatus>;
+  courseSlug?: string;
   onChangeStatus: (status: LessonStatus) => void;
   onNavigateLesson?: (lessonId: string) => void;
   onSelectItem?: (itemId: string) => void;
+  onOpenMaterialViewer?: (resource: LessonResource) => void;
+  onOpenAssessment?: (resource: LessonResource) => void;
   onClose: () => void;
 }
 
@@ -31,9 +34,12 @@ export function LessonDrawer({
   lesson,
   status,
   statuses,
+  courseSlug,
   onChangeStatus,
   onNavigateLesson,
   onSelectItem,
+  onOpenMaterialViewer,
+  onOpenAssessment,
   onClose,
 }: LessonDrawerProps) {
   const [activeTab, setActiveTab] = useState<'resources' | 'notes'>('resources');
@@ -99,8 +105,8 @@ export function LessonDrawer({
         onClick={() => setActiveTab('resources')}
         className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
           activeTab === 'resources'
-            ? 'border-black bg-black text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
-            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+            ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
         Resources
@@ -112,8 +118,8 @@ export function LessonDrawer({
         onClick={() => setActiveTab('notes')}
         className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
           activeTab === 'notes'
-            ? 'border-black bg-black text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
-            : 'border-gray-300 bg-white text-gray-600 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+            ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
         Study Notes
@@ -142,7 +148,7 @@ export function LessonDrawer({
           type="button"
           disabled={!prevItem}
           onClick={() => prevItem && navigateToItem?.(prevItem.id)}
-          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <ChevronLeft className="h-3.5 w-3.5 shrink-0" />
           <span className="truncate">{prevTitle}</span>
@@ -151,31 +157,31 @@ export function LessonDrawer({
           type="button"
           disabled={!nextItem}
           onClick={() => nextItem && navigateToItem?.(nextItem.id)}
-          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-gray-300 px-3 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex min-w-0 items-center gap-1 rounded-md border border-slate-300 px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
         >
           <span className="truncate">{nextTitle}</span>
           <ChevronRight className="h-3.5 w-3.5 shrink-0" />
         </button>
       </div>
-      <p className="mt-2.5 text-center text-xs text-gray-400 dark:text-slate-500">
+      <p className="mt-2.5 text-center text-xs text-slate-500 dark:text-slate-400">
         Shortcuts:{' '}
-        <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+        <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
           L
         </kbd>{' '}
         Learning ·{' '}
-        <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+        <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
           D
         </kbd>{' '}
         Done ·{' '}
-        <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+        <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
           S
         </kbd>{' '}
         Skip ·{' '}
-        <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+        <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
           ←/→
         </kbd>{' '}
         Prev/Next ·{' '}
-        <kbd className="rounded bg-gray-100 px-1 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+        <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
           Esc
         </kbd>{' '}
         Close
@@ -219,8 +225,8 @@ export function LessonDrawer({
 
       {/* Prerequisites */}
       {prereqItems.length > 0 && (
-        <div className="mb-6 rounded-lg border border-gray-200 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800/60">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-gray-600 uppercase dark:text-slate-300">
+        <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700/80 dark:bg-[#1b2436]">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-slate-600 uppercase dark:text-slate-300">
             <GitBranch className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
             Recommended Prerequisites
           </div>
@@ -259,8 +265,8 @@ export function LessonDrawer({
                     isDone
                       ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
                       : isSkipped
-                        ? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300'
-                        : 'border-gray-300 bg-white text-gray-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200'
+                        ? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-300'
+                        : 'border-slate-300 bg-white text-slate-800 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-200'
                   }`}
                 >
                   {isDone && (
@@ -277,37 +283,41 @@ export function LessonDrawer({
 
       {activeTab === 'resources' ? (
         <div>
-          <h3 className="mb-3 text-xs font-semibold tracking-wider text-gray-500 uppercase dark:text-slate-400">
+          <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
             Course Materials &amp; Resources
           </h3>
           <MaterialList
             resources={lesson.resources}
             emptyText="No resources linked for this sub-lesson yet."
+            courseSlug={courseSlug ?? course.slug}
+            itemId={lesson.id}
+            onOpenMaterialViewer={onOpenMaterialViewer}
+            onOpenAssessment={onOpenAssessment}
           />
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-lg border border-gray-200 bg-amber-50/50 p-4 dark:border-slate-700 dark:bg-amber-950/20">
-            <h3 className="mb-2 text-xs font-semibold tracking-wider text-gray-600 uppercase dark:text-slate-300">
+          <div className="rounded-lg border border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 p-4 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436]">
+            <h3 className="mb-2 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300">
               Key Study Notes
             </h3>
             {lesson.notes ? (
-              <div className="whitespace-pre-line text-sm leading-relaxed text-gray-800 dark:text-slate-200">
+              <div className="whitespace-pre-line text-sm leading-relaxed text-slate-800 dark:text-slate-200">
                 {lesson.notes}
               </div>
             ) : (
-              <p className="text-sm text-gray-500 dark:text-slate-400">
+              <p className="text-sm text-slate-500 dark:text-slate-400">
                 Review the linked lecture slides and textbook chapters for detailed proofs and worked
                 examples.
               </p>
             )}
           </div>
 
-          <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/60">
-            <h3 className="mb-1 text-xs font-semibold tracking-wider text-gray-600 uppercase dark:text-slate-300">
+          <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/80 dark:bg-[#1b2436]">
+            <h3 className="mb-1 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300">
               About {chapter.title}
             </h3>
-            <p className="text-sm text-gray-700 dark:text-slate-300">{chapter.description}</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300">{chapter.description}</p>
           </div>
         </div>
       )}

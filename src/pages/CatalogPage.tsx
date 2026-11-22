@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { Plus, RotateCcw } from 'lucide-react';
+import { BRAND } from '@/config/brand';
 import { getCoursesByDepartment } from '@/data/courses';
 import { useCourses } from '@/store/useCourseStore';
 import { useProgress } from '@/store/useProgressStore';
@@ -37,24 +38,23 @@ export function CatalogPage() {
   const departmentGroups = Array.from(getCoursesByDepartment(filteredCourses).entries());
 
   return (
-    <main className="flex min-h-[calc(100vh-64px)] flex-col bg-black text-white">
-      {/* Dark roadmap.sh Hero */}
-      <section className="border-b border-slate-800/80 bg-gradient-to-b from-slate-900 to-black">
+    <main className="flex min-h-[calc(100vh-64px)] flex-col bg-slate-50 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
+      {/* Light & Dark Hero */}
+      <section className="border-b border-slate-200 bg-gradient-to-b from-white to-slate-50 dark:border-slate-800/80 dark:from-[#121926] dark:to-[#0b0f17]">
         <div className="mx-auto max-w-5xl px-4 pt-10 sm:px-6 sm:pt-14">
-          <h1 className="mb-2 bg-gradient-to-b from-amber-50 to-purple-500 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:mb-3 sm:text-5xl">
-            College Course Trees
+          <h1 className="mb-2 text-3xl font-bold tracking-tight text-slate-900 sm:mb-3 sm:text-5xl dark:bg-gradient-to-b dark:from-amber-50 dark:to-purple-400 dark:bg-clip-text dark:text-transparent">
+            {BRAND.name}
           </h1>
-          <p className="max-w-2xl text-base text-gray-400 sm:text-lg">
-            Interactive chapter-and-lesson study trees for your college courses. Create, edit, and
-            track syllabi locally with lecture slides, labs, and exam packs in one place.
+          <p className="max-w-2xl text-base text-slate-600 sm:text-lg dark:text-slate-400">
+            {BRAND.heroDescription}
           </p>
 
-          {/* Browse Tabs with yellow-400 active underline */}
+          {/* Browse Tabs with amber/yellow active underline */}
           <div className="mt-6 flex min-w-0 items-center justify-between gap-4">
             <div className="flex min-w-0 gap-6 overflow-x-auto sm:gap-8" role="tablist">
               {(
                 [
-                  { id: 'all', label: 'Course Trees' },
+                  { id: 'all', label: BRAND.shortName },
                   { id: 'bookmarked', label: 'Bookmarked' },
                   { id: 'in-progress', label: 'In Progress' },
                 ] as const
@@ -67,8 +67,8 @@ export function CatalogPage() {
                   onClick={() => setTab(tab.id)}
                   className={`border-b-2 pb-3 text-sm font-medium whitespace-nowrap transition-colors ${
                     activeTab === tab.id
-                      ? 'border-yellow-400 text-white'
-                      : 'border-transparent text-slate-400 hover:text-slate-200'
+                      ? 'border-amber-500 text-slate-900 dark:border-yellow-400 dark:text-white'
+                      : 'border-transparent text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                   }`}
                 >
                   {tab.label}
@@ -79,18 +79,18 @@ export function CatalogPage() {
         </div>
       </section>
 
-      {/* Department Sections & 3-Column Dark Card Grid */}
+      {/* Department Sections & 3-Column Card Grid */}
       <section className="mx-auto w-full max-w-5xl flex-1 space-y-8 px-4 py-8 sm:px-6 sm:py-10">
         {departmentGroups.length === 0 ? (
-          <div className="rounded-lg border border-slate-800 bg-slate-900/60 p-8 text-center">
-            <p className="mb-1 text-sm font-medium text-slate-200">
+          <div className="rounded-lg border border-slate-200 bg-white p-8 text-center shadow-xs dark:border-slate-700/80 dark:bg-[#121926]">
+            <p className="mb-1 text-sm font-medium text-slate-900 dark:text-slate-100">
               {courses.length === 0
                 ? 'Your course catalog is empty.'
                 : activeTab === 'bookmarked'
                   ? 'No bookmarked courses yet.'
                   : 'No courses in progress yet.'}
             </p>
-            <p className="mb-5 text-xs text-slate-400">
+            <p className="mb-5 text-xs text-slate-600 dark:text-slate-400">
               {courses.length === 0
                 ? 'Create your own college course tree or restore the default sample courses.'
                 : 'Open any course tree to start tracking lessons or click the bookmark icon on a card.'}
@@ -107,7 +107,7 @@ export function CatalogPage() {
                 <button
                   type="button"
                   onClick={resetCatalogToDefaults}
-                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-700 bg-slate-800 px-3.5 py-2 text-xs font-medium text-slate-200 hover:bg-slate-700"
+                  className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3.5 py-2 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
                 >
                   <RotateCcw className="h-3.5 w-3.5" />
                   Restore Sample Courses
@@ -119,11 +119,15 @@ export function CatalogPage() {
           departmentGroups.map(([department, deptCourses]) => (
             <div key={department}>
               <div className="mb-3 flex items-baseline justify-between gap-4">
-                <h2 className="text-sm font-medium text-slate-300">{department}</h2>
-                <span className="font-mono text-xs text-slate-500">{deptCourses.length}</span>
+                <h2 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
+                  {department}
+                </h2>
+                <span className="font-mono text-xs text-slate-500 dark:text-slate-400">
+                  {deptCourses.length}
+                </span>
               </div>
 
-              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 md:grid-cols-3">
+              <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2 md:grid-cols-3">
                 {deptCourses.map((course) => (
                   <CourseCard
                     key={course.slug}
@@ -140,14 +144,14 @@ export function CatalogPage() {
         )}
       </section>
 
-      <footer className="border-t border-slate-800">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-slate-400 sm:px-6">
-          <span>Local-first course roadmaps · Stored in your browser</span>
+      <footer className="border-t border-slate-200 bg-white/70 dark:border-slate-800 dark:bg-[#0b0f17]">
+        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-slate-600 sm:px-6 dark:text-slate-400">
+          <span>{BRAND.footerNote}</span>
           <Link
             to="/docs/data-formats"
-            className="font-medium text-slate-300 transition-colors hover:text-yellow-400"
+            className="font-medium text-slate-800 transition-colors hover:text-amber-700 dark:text-slate-300 dark:hover:text-yellow-400"
           >
-            Data formats &amp; LLM course-authoring guide →
+            Data formats →
           </Link>
         </div>
       </footer>

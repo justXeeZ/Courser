@@ -3,13 +3,14 @@ import type { ResourceKind } from '@/types/course';
 
 interface ResourceBadgeProps {
   kind: ResourceKind;
+  className?: string;
 }
 
-export function ResourceBadge({ kind }: ResourceBadgeProps) {
+export function ResourceBadge({ kind, className = '' }: ResourceBadgeProps) {
   const style = RESOURCE_BADGE_STYLES[kind];
   return (
     <span
-      className={`inline-block shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize no-underline dark:ring-1 dark:ring-inset dark:ring-white/15 ${style.className}`}
+      className={`inline-block shrink-0 rounded-sm px-1.5 py-0.5 text-xs font-medium capitalize no-underline dark:ring-1 dark:ring-inset dark:ring-white/15 ${style.className} ${className}`.trim()}
     >
       {style.label}
     </span>

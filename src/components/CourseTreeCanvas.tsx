@@ -21,6 +21,7 @@ interface CourseTreeCanvasProps {
   activeLessonId?: string | null;
   activeChapterId?: string | null;
   statusFilter?: StatusFilter;
+  framed?: boolean;
   svgRef?: RefObject<SVGSVGElement | null>;
   onSelectLesson: (lessonId: string) => void;
   onSelectChapter?: (chapter: Chapter) => void;
@@ -35,11 +36,69 @@ function getStatusClass(status: LessonStatus): string {
   return '';
 }
 
-function getStandaloneBadge(status: LessonStatus): { symbol: string; fill: string } {
-  if (status === 'done') return { symbol: '✓', fill: '#16a34a' };
-  if (status === 'learning') return { symbol: '◐', fill: '#7c3aed' };
-  if (status === 'skipped') return { symbol: '—', fill: '#64748b' };
-  return { symbol: '○', fill: '#0f172b' };
+function renderStatusCornerBadge(status: LessonStatus, x: number, y: number) {
+  if (status === 'todo') return null;
+
+  if (status === 'done') {
+    return (
+      <g data-status-badge="done" transform={`translate(${x}, ${y})`}>
+        <circle
+          cx={8}
+          cy={8}
+          r={9}
+          fill="#16a34a"
+          stroke="#ffffff"
+          strokeWidth={1.5}
+        />
+        <path
+          d="M 4.5 8.2 L 7 10.6 L 11.6 5.6"
+          fill="none"
+          stroke="#ffffff"
+          strokeWidth={2}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </g>
+    );
+  }
+
+  if (status === 'learning') {
+    return (
+      <g data-status-badge="learning" transform={`translate(${x}, ${y})`}>
+        <circle
+          cx={8}
+          cy={8}
+          r={8}
+          fill="#7c3aed"
+          stroke="#ffffff"
+          strokeWidth={1.5}
+        />
+        <circle cx={8} cy={8} r={3} fill="#ffffff" />
+      </g>
+    );
+  }
+
+  return (
+    <g data-status-badge="skipped" transform={`translate(${x}, ${y})`}>
+      <circle
+        cx={8}
+        cy={8}
+        r={8}
+        fill="#64748b"
+        stroke="#ffffff"
+        strokeWidth={1.5}
+      />
+      <line
+        x1={4.5}
+        y1={8}
+        x2={11.5}
+        y2={8}
+        stroke="#ffffff"
+        strokeWidth={2}
+        strokeLinecap="round"
+      />
+    </g>
+  );
 }
 
 export function CourseTreeCanvas({
@@ -48,6 +107,7 @@ export function CourseTreeCanvas({
   activeLessonId,
   activeChapterId,
   statusFilter = 'all',
+  framed = true,
   svgRef,
   onSelectLesson,
   onSelectChapter,
@@ -105,8 +165,9 @@ export function CourseTreeCanvas({
       <div className="mb-2 flex items-center justify-end gap-1">
         <button
           type="button"
+          disabled={zoom <= 0.7}
           onClick={() => setZoom((z) => Math.max(0.7, Number((z - 0.1).toFixed(2))))}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Zoom out"
           aria-label="Zoom out"
         >
@@ -115,7 +176,7 @@ export function CourseTreeCanvas({
         <button
           type="button"
           onClick={() => setZoom(1)}
-          className="inline-flex h-7 items-center gap-1 rounded-md border border-gray-300 bg-white px-2 text-xs font-medium text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Reset zoom"
           aria-label="Reset zoom"
         >
@@ -124,8 +185,9 @@ export function CourseTreeCanvas({
         </button>
         <button
           type="button"
+          disabled={zoom >= 1.4}
           onClick={() => setZoom((z) => Math.min(1.4, Number((z + 0.1).toFixed(2))))}
-          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-gray-300 bg-white text-gray-700 hover:bg-gray-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-slate-800"
+          className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Zoom in"
           aria-label="Zoom in"
         >
@@ -133,9 +195,9 @@ export function CourseTreeCanvas({
         </button>
       </div>
 
-      <div className="w-full overflow-x-auto pb-8">
+      <div className={`w-full overflow-x-auto pb-8 ${framed ? 'roadmap-canvas-frame p-2 sm:p-4' : ''}`}>
         <div
-          className="mx-auto transition-[width] duration-150"
+          className="mx-auto transition-[width,max-width] duration-200 ease-out"
           style={{
             width: `${Math.round(zoom * 100)}%`,
             maxWidth: `${Math.round(layout.width * zoom)}px`,
@@ -173,22 +235,18 @@ export function CourseTreeCanvas({
                 const statusClass = standalone ? getStatusClass(chapterStatus) : '';
                 const isSelected = activeChapterId === node.id;
                 const isPrereqHighlighted = hoveredPrereqs.has(node.id);
+                const hasMatchingLesson = node.chapter.lessons.some(
+                  (lesson) => (statuses[lesson.id] ?? 'todo') === statusFilter
+                );
                 const isDimmed =
-                  standalone && statusFilter !== 'all' && chapterStatus !== statusFilter;
+                  statusFilter !== 'all' &&
+                  (standalone ? chapterStatus !== statusFilter : !hasMatchingLesson);
 
-                const allDone = stats.total > 0 && stats.percentDone === 100;
-                const standaloneBadge = getStandaloneBadge(chapterStatus);
-                const badgeText = standalone
-                  ? standaloneBadge.symbol
-                  : `${stats.done}/${stats.required}`;
-                const badgeFill = standalone
-                  ? standaloneBadge.fill
-                  : allDone
-                    ? '#16a34a'
-                    : '#0f172b';
-                const badgeWidth = standalone
-                  ? 28
-                  : Math.max(36, badgeText.length * 8 + 14);
+                const allSkipped = stats.required === 0 && stats.skipped > 0;
+                const allDone = !allSkipped && stats.required > 0 && stats.done === stats.required;
+                const badgeText = `${stats.done}/${stats.required}`;
+                const badgeFill = allSkipped ? '#64748b' : allDone ? '#16a34a' : '#0f172b';
+                const badgeWidth = Math.max(36, badgeText.length * 8 + 14);
 
                 return (
                   <g
@@ -264,30 +322,38 @@ export function CourseTreeCanvas({
                       ))}
                     </text>
 
-                    {/* Compact chapter completion or standalone status badge */}
-                    <g
-                      transform={`translate(${node.x + node.width - badgeWidth + 8}, ${node.y - 10})`}
-                    >
-                      <rect
-                        width={badgeWidth}
-                        height={20}
-                        rx={10}
-                        fill={badgeFill}
-                        stroke="#ffffff"
-                        strokeWidth={1.5}
-                      />
-                      <text
-                        x={badgeWidth / 2}
-                        y={14}
-                        textAnchor="middle"
-                        fill="#ffffff"
-                        fontSize={11}
-                        fontWeight={700}
-                        fontFamily="ui-sans-serif, system-ui, sans-serif"
+                    {/* Standalone circular status badge (hidden for 'todo') or multi-lesson completion pill */}
+                    {standalone ? (
+                      renderStatusCornerBadge(
+                        chapterStatus,
+                        node.x + node.width - 10,
+                        node.y - 8
+                      )
+                    ) : (
+                      <g
+                        transform={`translate(${node.x + node.width - badgeWidth + 8}, ${node.y - 10})`}
                       >
-                        {badgeText}
-                      </text>
-                    </g>
+                        <rect
+                          width={badgeWidth}
+                          height={20}
+                          rx={10}
+                          fill={badgeFill}
+                          stroke="#ffffff"
+                          strokeWidth={1.5}
+                        />
+                        <text
+                          x={badgeWidth / 2}
+                          y={14}
+                          textAnchor="middle"
+                          fill="#ffffff"
+                          fontSize={11}
+                          fontWeight={700}
+                          fontFamily="ui-sans-serif, system-ui, sans-serif"
+                        >
+                          {badgeText}
+                        </text>
+                      </g>
+                    )}
                   </g>
                 );
               })}
@@ -367,65 +433,7 @@ export function CourseTreeCanvas({
                       ))}
                     </text>
 
-                    {/* Done check badge (top-right) */}
-                    {status === 'done' && (
-                      <g transform={`translate(${node.x + node.width - 10}, ${node.y - 8})`}>
-                        <circle
-                          cx={8}
-                          cy={8}
-                          r={9}
-                          fill="#16a34a"
-                          stroke="#ffffff"
-                          strokeWidth={1.5}
-                        />
-                        <path
-                          d="M 4.5 8.2 L 7 10.6 L 11.6 5.6"
-                          fill="none"
-                          stroke="#ffffff"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </g>
-                    )}
-
-                    {/* Learning dot badge (top-right) */}
-                    {status === 'learning' && (
-                      <g transform={`translate(${node.x + node.width - 10}, ${node.y - 8})`}>
-                        <circle
-                          cx={8}
-                          cy={8}
-                          r={8}
-                          fill="#7c3aed"
-                          stroke="#ffffff"
-                          strokeWidth={1.5}
-                        />
-                        <circle cx={8} cy={8} r={3} fill="#ffffff" />
-                      </g>
-                    )}
-
-                    {/* Skipped slate badge (top-right) */}
-                    {status === 'skipped' && (
-                      <g transform={`translate(${node.x + node.width - 10}, ${node.y - 8})`}>
-                        <circle
-                          cx={8}
-                          cy={8}
-                          r={8}
-                          fill="#64748b"
-                          stroke="#ffffff"
-                          strokeWidth={1.5}
-                        />
-                        <line
-                          x1={4.5}
-                          y1={8}
-                          x2={11.5}
-                          y2={8}
-                          stroke="#ffffff"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                        />
-                      </g>
-                    )}
+                    {renderStatusCornerBadge(status, node.x + node.width - 10, node.y - 8)}
                   </g>
                 );
               })}
