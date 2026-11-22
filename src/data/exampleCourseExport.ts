@@ -25,7 +25,8 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
     code: 'STAT101',
     title: 'Probability & Statistics',
     department: 'Preparatory',
-    semester: 'Year 1 - First Semester',
+    year: 1,
+    semester: 1,
     credits: 3,
     description:
       'Foundational descriptive statistics, probability rules, common distributions, and an applied data lab capstone.',
@@ -43,6 +44,7 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
           {
             title: 'Chapter 1 Overview Slides',
             kind: 'slides',
+            recommended: true,
             url: 'https://example.edu/stat101/ch1-overview-slides.pdf',
           },
         ],
@@ -75,8 +77,8 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
             prerequisites: ['stat101-summary-measures-histograms'],
             resources: [
               {
-                title: 'OpenIntro Chapter 2 Reading',
-                kind: 'reading',
+                title: 'OpenIntro Chapter 2 Notes',
+                kind: 'document',
                 url: 'https://example.edu/stat101/openintro-ch2',
               },
             ],
@@ -133,7 +135,38 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
               {
                 title: 'Midterm Practice Exam',
                 kind: 'exam',
-                url: 'https://example.edu/stat101/midterm-practice',
+                recommended: true,
+                assessment: {
+                  mode: 'exam',
+                  instructions:
+                    'Solve each probability and distribution question. Standardize normal variables with $Z = \\frac{X - \\mu}{\\sigma}$.',
+                  timeLimitMinutes: 20,
+                  passingScorePercent: 70,
+                  questions: [
+                    {
+                      id: 'stat101-q1-zscore',
+                      type: 'mcq',
+                      header: {
+                        text: 'If $X \\sim \\mathcal{N}(\\mu = 70, \\sigma = 10)$, what is the standardized score $Z = \\frac{X - \\mu}{\\sigma}$ when $X = 85$?',
+                      },
+                      options: ['0.5', '1.5', '2.0', '-1.5'],
+                      correctIndices: [1],
+                      points: 1,
+                      explanation:
+                        'Substitute into $Z = \\frac{85 - 70}{10} = \\frac{15}{10} = 1.5$.',
+                    },
+                    {
+                      id: 'stat101-q2-binomial-mean',
+                      type: 'short-answer',
+                      header: {
+                        text: 'For $Y \\sim \\text{Binomial}(n = 40, p = 0.25)$, compute the expected value $\\mathbb{E}[Y] = np$.',
+                      },
+                      acceptedAnswers: ['10'],
+                      points: 1,
+                      explanation: 'The binomial expectation is $np = 40 \\times 0.25 = 10$.',
+                    },
+                  ],
+                },
               },
             ],
           },

@@ -5,10 +5,11 @@ export const demo201FeatureShowcase: CourseTree = {
   code: 'DEMO201',
   title: 'Feature Showcase: Sample Course',
   department: 'Computer Science',
-  semester: 'Year 2 - First Semester',
+  year: 2,
+  semester: 1,
   credits: 4,
   description:
-    'A comprehensive sample course demonstrating all nine material kinds, left/right/auto branch placement, cross-chapter and lesson-to-chapter prerequisites, a six-lesson chapter, long titles, and standalone chapters.',
+    'A comprehensive sample course demonstrating all nine material kinds, recommended pinning, interactive LaTeX exams and assignments, left/right/auto branch placement, cross-chapter and lesson-to-chapter prerequisites, a six-lesson chapter, long titles, and standalone chapters.',
   chapters: [
     {
       id: 'demo201-ch1-foundations-core-layouts',
@@ -29,6 +30,7 @@ export const demo201FeatureShowcase: CourseTree = {
           title: 'Algorithms Textbook (Open Edition)',
           url: 'https://algs4.cs.princeton.edu/home/',
           kind: 'textbook',
+          recommended: true,
         },
       ],
       lessons: [
@@ -50,6 +52,7 @@ export const demo201FeatureShowcase: CourseTree = {
               title: 'Course Intro Walkthrough Video',
               url: 'https://www.youtube.com/watch?v=ZA-tUyM_y7s',
               kind: 'video',
+              recommended: true,
             },
           ],
         },
@@ -66,7 +69,7 @@ export const demo201FeatureShowcase: CourseTree = {
             {
               title: 'Growth of Functions Reading Notes',
               url: 'https://www.bigocheatsheet.com/',
-              kind: 'reading',
+              kind: 'document',
             },
           ],
         },
@@ -122,7 +125,7 @@ export const demo201FeatureShowcase: CourseTree = {
         {
           title: 'Chapter 2 Study Guide & Problem Index',
           url: 'https://cp-algorithms.com/',
-          kind: 'reading',
+          kind: 'document',
         },
       ],
       lessons: [
@@ -145,6 +148,72 @@ export const demo201FeatureShowcase: CourseTree = {
               title: 'CLRS Recurrence Relations Reference',
               url: 'https://algs4.cs.princeton.edu/14analysis/',
               kind: 'textbook',
+            },
+            {
+              title: 'Interactive Quiz: Asymptotics & Master Theorem',
+              kind: 'exam',
+              recommended: true,
+              assessment: {
+                mode: 'exam',
+                instructions:
+                  'Evaluate asymptotic bounds and solve recurrences such as $$T(n) = 2T(n/2) + n$$ before submitting.',
+                timeLimitMinutes: 15,
+                passingScorePercent: 70,
+                questions: [
+                  {
+                    id: 'demo201-asymp-q1',
+                    type: 'mcq',
+                    header: {
+                      text: 'By the Master Theorem, what is the tight asymptotic bound for $$T(n) = 2T(n/2) + n$$?',
+                    },
+                    options: [
+                      '$\\Theta(n)$',
+                      '$\\Theta(n \\log n)$',
+                      '$\\Theta(n^2)$',
+                      '$\\Theta(\\log n)$',
+                    ],
+                    correctIndices: [1],
+                    points: 2,
+                    explanation:
+                      'Here $a = 2, b = 2, f(n) = n = \\Theta(n^{\\log_2 2})$, which falls in Case 2 giving $\\Theta(n \\log n)$.',
+                  },
+                  {
+                    id: 'demo201-asymp-q2',
+                    type: 'multi-select',
+                    header: {
+                      text: 'Select all functions that satisfy $g(n) = O(n \\log n)$.',
+                    },
+                    options: ['$n$', '$n \\log n$', '$n^2$', '$\\log n$'],
+                    correctIndices: [0, 1, 3],
+                    points: 2,
+                    explanation:
+                      '$n$, $\\log n$, and $n \\log n$ grow no faster than $n \\log n$, whereas $n^2$ grows strictly faster.',
+                  },
+                  {
+                    id: 'demo201-asymp-q3',
+                    type: 'true-false',
+                    header: {
+                      text: 'True or False: If $f(n) = \\Theta(g(n))$, then $f(n) = O(g(n))$ and $f(n) = \\Omega(g(n))$.',
+                    },
+                    options: ['True', 'False'],
+                    correctIndices: [0],
+                    points: 1,
+                    explanation:
+                      'By definition, $\\Theta(g(n))$ is the intersection of $O(g(n))$ (upper bound) and $\\Omega(g(n))$ (lower bound).',
+                  },
+                  {
+                    id: 'demo201-asymp-q4',
+                    type: 'short-answer',
+                    header: {
+                      text: 'For $T(n) = 4T(n/2) + n$, what is the exponent $c$ in the tight bound $\\Theta(n^c)$?',
+                    },
+                    acceptedAnswers: ['2'],
+                    points: 1,
+                    explanation:
+                      'Since $\\log_2 4 = 2$ and $n = O(n^{2 - \\epsilon})$, Master Theorem Case 1 gives $\\Theta(n^2)$.',
+                  },
+                ],
+              },
             },
           ],
         },
@@ -183,7 +252,44 @@ export const demo201FeatureShowcase: CourseTree = {
             {
               title: 'Amortized Analysis Primer',
               url: 'https://cp-algorithms.com/data_structures/disjoint_set_union.html',
-              kind: 'reading',
+              kind: 'document',
+            },
+            {
+              title: 'Interactive Assignment: Potential Method Practice',
+              kind: 'assignment',
+              assessment: {
+                mode: 'assignment',
+                instructions:
+                  'Practice computing amortized costs $\\hat{c}_i = c_i + \\Phi(D_i) - \\Phi(D_{i-1})$ with instant checks and hints.',
+                passingScorePercent: 60,
+                questions: [
+                  {
+                    id: 'demo201-amort-q1',
+                    type: 'mcq',
+                    header: {
+                      text: 'For a binary counter starting at $0$ with potential $\\Phi(D_i) = b_i$ (number of $1$-bits), what is the amortized cost $\\hat{c}_i$ of each increment?',
+                    },
+                    options: ['$1$', '$2$', '$\\log n$', '$n$'],
+                    correctIndices: [1],
+                    points: 1,
+                    hint: 'If $t_i$ bits flip from $1$ to $0$ and $1$ bit flips from $0$ to $1$, then $c_i = t_i + 1$ and $\\Phi(D_i) - \\Phi(D_{i-1}) = 1 - t_i$.',
+                    explanation:
+                      'Adding actual cost and potential change gives $\\hat{c}_i = (t_i + 1) + (1 - t_i) = 2 = O(1)$.',
+                  },
+                  {
+                    id: 'demo201-amort-q2',
+                    type: 'short-answer',
+                    header: {
+                      text: 'What minimum value must a valid potential function satisfy at step $0$ if $\\Phi(D_i) \\ge \\Phi(D_0)$ for all $i$, typically chosen as $\\Phi(D_0) = ?$',
+                    },
+                    acceptedAnswers: ['0'],
+                    points: 1,
+                    hint: 'Choosing $\\Phi(D_0) = 0$ and ensuring $\\Phi(D_i) \\ge 0$ guarantees total amortized cost upper-bounds total actual cost.',
+                    explanation:
+                      'Setting $\\Phi(D_0) = 0$ with $\\Phi(D_i) \\ge 0$ ensures $\\sum \\hat{c}_i = \\sum c_i + \\Phi(D_n) - \\Phi(D_0) \\ge \\sum c_i$.',
+                  },
+                ],
+              },
             },
           ],
         },

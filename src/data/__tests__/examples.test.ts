@@ -1,15 +1,22 @@
 import { createElement } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { CourseTreeSchema, SEMESTER_OPTIONS } from '@/types/course';
+import { CourseTreeSchema } from '@/types/course';
 import { ProgressStateSchema } from '@/lib/storage/types';
 import { rekeyCourseContentIds } from '@/lib/courseIds';
 import { getTrackableItems, isStandaloneChapter } from '@/lib/courseItems';
+import { parseAssessmentImport } from '@/lib/assessmentExchange';
 import { RESOURCE_BADGE_STYLES } from '@/lib/theme';
+import { getAssessmentScoreKey } from '@/store/useProgressStore';
 import { EXAMPLE_COURSE_EXPORT } from '@/data/exampleCourseExport';
 import { EXAMPLE_PROGRESS_BACKUP } from '@/data/exampleProgressBackup';
-import { DataFormatsPage, LLM_AUTHORING_PROMPT } from '@/pages/DataFormatsPage';
+import {
+  DataFormatsPage,
+  EXAMPLE_ASSESSMENT_EXPORT,
+  LLM_AUTHORING_PROMPT,
+  LLM_EXAM_PROMPT,
+} from '@/pages/DataFormatsPage';
 
 describe('EXAMPLE_COURSE_EXPORT', () => {
   it('uses the .course.json envelope with no attachments and passes CourseTreeSchema', () => {
@@ -20,7 +27,8 @@ describe('EXAMPLE_COURSE_EXPORT', () => {
 
     const parsed = CourseTreeSchema.parse(EXAMPLE_COURSE_EXPORT.course);
     expect(parsed.department).toBe('Preparatory');
-    expect(parsed.semester).toBe('Year 1 - First Semester');
+    expect(parsed.year).toBe(1);
+    expect(parsed.semester).toBe(1);
     expect(parsed.chapters).toHaveLength(3);
 
     const standaloneChapters = parsed.chapters.filter(isStandaloneChapter);
@@ -29,6 +37,14 @@ describe('EXAMPLE_COURSE_EXPORT', () => {
     expect(standalone.notes).toBeTruthy();
     expect(standalone.prerequisites?.length).toBeGreaterThanOrEqual(1);
     expect(standalone.resources?.length).toBeGreaterThanOrEqual(1);
+
+    // Showcases recommended pinning and an embedded interactive assessment
+    const allResources = parsed.chapters.flatMap((ch) => [
+      ...(ch.resources ?? []),
+      ...ch.lessons.flatMap((l) => l.resources),
+    ]);
+    expect(allResources.some((r) => r.recommended === true)).toBe(true);
+    expect(allResources.some((r) => Boolean(r.assessment))).toBe(true);
 
     // Cross-chapter prerequisites: lesson -> chapter and chapter -> lesson
     const ch2Lesson1 = parsed.chapters[1].lessons[0];
@@ -52,8 +68,21 @@ describe('EXAMPLE_COURSE_EXPORT', () => {
   });
 });
 
+describe('EXAMPLE_ASSESSMENT_EXPORT', () => {
+  it('passes parseAssessmentImport cleanly with LaTeX and all four question types', async () => {
+    const result = await parseAssessmentImport(JSON.stringify(EXAMPLE_ASSESSMENT_EXPORT));
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.warnings).toEqual([]);
+    expect(result.assessment.mode).toBe('exam');
+    const types = new Set(result.assessment.questions.map((q) => q.type));
+    expect(types).toEqual(new Set(['mcq', 'multi-select', 'true-false', 'short-answer']));
+  });
+});
+
 describe('EXAMPLE_PROGRESS_BACKUP', () => {
-  it('passes ProgressStateSchema and references only valid trackable items including standalone chapter', () => {
+  it('passes ProgressStateSchema and references valid trackable items and assessmentScores', () => {
     const parsed = ProgressStateSchema.parse(EXAMPLE_PROGRESS_BACKUP);
     const course = EXAMPLE_COURSE_EXPORT.course;
     const trackable = getTrackableItems(course);
@@ -79,6 +108,17 @@ describe('EXAMPLE_PROGRESS_BACKUP', () => {
     expect(statusValues).toContain('done');
     expect(statusValues).toContain('learning');
     expect(statusValues).toContain('skipped');
+
+    // Must cover assessmentScores matching getAssessmentScoreKey
+    const expectedScoreKey = getAssessmentScoreKey(
+      'stat101-normal-binomial-models',
+      'Midterm Practice Exam'
+    );
+    const courseScores = parsed.assessmentScores?.[course.slug];
+    expect(courseScores).toBeDefined();
+    expect(courseScores?.[expectedScoreKey]).toBeDefined();
+    expect(courseScores?.[expectedScoreKey].bestScorePercent).toBe(90);
+    expect(courseScores?.[expectedScoreKey].passed).toBe(true);
   });
 });
 
@@ -93,31 +133,51 @@ describe('DataFormatsPage', () => {
     vi.restoreAllMocks();
   });
 
-  it('renders all sections, semester options, resource kinds, LLM prompt, and working copy buttons', async () => {
+  it('renders TOC, sections 1-6 without Sparkles icon, exam/LaTeX/assessmentScores docs, and working copy buttons', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, 'clipboard', {
       configurable: true,
       value: { writeText },
     });
 
-    render(
-      createElement(MemoryRouter, null, createElement(DataFormatsPage))
-    );
+    render(createElement(MemoryRouter, null, createElement(DataFormatsPage)));
 
     const backLink = screen.getByRole('link', { name: /← Back to Catalog/i });
     expect(backLink).toHaveAttribute('href', '/');
 
+    // Structured TOCs (desktop sidebar + mobile "On this page") and no old pill bar
+    expect(screen.queryByRole('navigation', { name: /Page sections/i })).not.toBeInTheDocument();
+    const desktopToc = screen.getByRole('navigation', { name: /Table of contents/i });
+    const mobileToc = screen.getByRole('navigation', { name: /On this page/i });
+    expect(within(desktopToc).getByRole('link', { name: /3\. Interactive Exams/i })).toHaveAttribute(
+      'href',
+      '#assessment-json'
+    );
+    expect(within(mobileToc).getByRole('link', { name: /6\. Prompts for an LLM/i })).toHaveAttribute(
+      'href',
+      '#llm-prompt'
+    );
+
     expect(screen.getByRole('heading', { name: /1\. Overview/i })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: /2\. Course JSON Format/i })).toBeInTheDocument();
     expect(
-      screen.getByRole('heading', { name: /3\. Progress Backup JSON Format/i })
+      screen.getByRole('heading', { name: /3\. Interactive Exams & Assignments JSON/i })
     ).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /4\. Full Valid Examples/i })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: /5\. Prompt for an LLM/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { name: /4\. Progress Backup JSON Format/i })
+    ).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: /5\. Full Valid Examples/i })).toBeInTheDocument();
 
-    for (const semester of SEMESTER_OPTIONS) {
-      expect(screen.getAllByText(semester).length).toBeGreaterThanOrEqual(1);
-    }
+    const promptsHeading = screen.getByRole('heading', { name: /6\. Prompts for an LLM/i });
+    expect(promptsHeading).toBeInTheDocument();
+    expect(promptsHeading.querySelector('svg')).toBeNull();
+
+    expect(screen.getByText(/year: integer 1\.\.10/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/semester: 1 \(1st Semester\) \| 2 \(2nd Semester\)/i)
+    ).toBeInTheDocument();
+    expect(screen.getAllByText(/assessmentScores/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText(/KaTeX LaTeX Math Syntax/i)).toBeInTheDocument();
 
     for (const [kind, style] of Object.entries(RESOURCE_BADGE_STYLES)) {
       expect(screen.getAllByText(kind).length).toBeGreaterThanOrEqual(1);
@@ -126,25 +186,36 @@ describe('DataFormatsPage', () => {
 
     expect(LLM_AUTHORING_PROMPT).not.toContain('estimatedMinutes');
     expect(LLM_AUTHORING_PROMPT).not.toContain('durationMinutes');
-    expect(screen.getByText(/College Course Trees "\.course\.json" export envelope/i)).toBeInTheDocument();
+    expect(LLM_EXAM_PROMPT).toContain('college-assessment');
+    expect(LLM_EXAM_PROMPT).not.toContain('estimatedMinutes');
+    expect(
+      screen.getByText(/College Course Trees "\.course\.json" export envelope/i)
+    ).toBeInTheDocument();
 
-    const copyCourseBtn = screen.getByRole('button', { name: /Copy Course JSON/i });
-    fireEvent.click(copyCourseBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Copy Course JSON/i }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(JSON.stringify(EXAMPLE_COURSE_EXPORT, null, 2));
     });
     expect(await screen.findByText('Copied!')).toBeInTheDocument();
 
-    const copyProgressBtn = screen.getByRole('button', { name: /Copy Progress JSON/i });
-    fireEvent.click(copyProgressBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Copy Exam JSON/i }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(JSON.stringify(EXAMPLE_ASSESSMENT_EXPORT, null, 2));
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Copy Progress JSON/i }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(JSON.stringify(EXAMPLE_PROGRESS_BACKUP, null, 2));
     });
 
-    const copyPromptBtn = screen.getByRole('button', { name: /Copy LLM Prompt/i });
-    fireEvent.click(copyPromptBtn);
+    fireEvent.click(screen.getByRole('button', { name: /Copy LLM Prompt/i }));
     await waitFor(() => {
       expect(writeText).toHaveBeenCalledWith(LLM_AUTHORING_PROMPT);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Copy Exam Prompt/i }));
+    await waitFor(() => {
+      expect(writeText).toHaveBeenCalledWith(LLM_EXAM_PROMPT);
     });
   });
 });

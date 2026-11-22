@@ -12,4 +12,15 @@ export const EXAMPLE_PROGRESS_BACKUP: ProgressState = {
     },
   },
   bookmarks: ['stat101-probability-statistics'],
+  assessmentScores: {
+    'stat101-probability-statistics': {
+      'stat101-normal-binomial-models::Midterm Practice Exam': {
+        bestScorePercent: 90,
+        latestScorePercent: 90,
+        attempts: 2,
+        passed: true,
+        updatedAt: '2026-11-21T00:00:00.000Z',
+      },
+    },
+  },
 };
