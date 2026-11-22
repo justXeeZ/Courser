@@ -50,7 +50,7 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
         ],
         lessons: [
           {
-            id: 'stat101-summary-measures-histograms',
+            id: 'stat101-ch1-l1-summary-measures-histograms',
             title: 'Summary Measures & Histograms',
             summary:
               'Compute mean, median, and quartiles, and interpret histogram bin shapes.',
@@ -69,12 +69,12 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
             ],
           },
           {
-            id: 'stat101-variance-standard-deviation',
+            id: 'stat101-ch1-l2-variance-standard-deviation',
             title: 'Variance & Standard Deviation',
             summary:
               'Quantify spread around the mean and compare standardized z-scores across scales.',
             side: 'right',
-            prerequisites: ['stat101-summary-measures-histograms'],
+            prerequisites: ['stat101-ch1-l1-summary-measures-histograms'],
             resources: [
               {
                 title: 'OpenIntro Chapter 2 Notes',
@@ -95,7 +95,7 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
         prerequisites: ['stat101-ch1-descriptive-statistics'],
         lessons: [
           {
-            id: 'stat101-conditional-probability-bayes',
+            id: 'stat101-ch2-l1-conditional-probability-bayes',
             title: 'Conditional Probability & Bayes',
             summary:
               'Evaluate conditional events, independence, and posterior updates using Bayes theorem.',
@@ -117,14 +117,14 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
             ],
           },
           {
-            id: 'stat101-normal-binomial-models',
+            id: 'stat101-ch2-l2-normal-binomial-models',
             title: 'Normal & Binomial Models',
             summary:
               'Model repeated Bernoulli trials and approximate tail probabilities with normal curves.',
             side: 'right',
             prerequisites: [
-              'stat101-conditional-probability-bayes',
-              'stat101-variance-standard-deviation',
+              'stat101-ch2-l1-conditional-probability-bayes',
+              'stat101-ch1-l2-variance-standard-deviation',
             ],
             resources: [
               {
@@ -178,10 +178,10 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
         title: '3. Applied Data Lab Capstone',
         weekRange: 'Weeks 8–10',
         description:
-          'Standalone project chapter applying descriptive statistics and distribution checks to a real dataset.',
+          'Direct project chapter applying descriptive statistics and distribution checks to a real dataset.',
         notes:
-          'Standalone chapter (lessons: []): learners can track this milestone directly from the tree or checklist.',
-        prerequisites: ['stat101-normal-binomial-models'],
+          'Milestone chapter (lessons: []): learners can track this milestone directly from the tree or checklist.',
+        prerequisites: ['stat101-ch2-l2-normal-binomial-models'],
         resources: [
           {
             title: 'Capstone Data Analysis Lab',

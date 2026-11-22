@@ -9,13 +9,13 @@ import type { CourseTree } from '@/types/course';
 describe('LessonDrawer', () => {
   const course = COURSES[0]; // GUIDE101
   const chapter = course.chapters[0];
-  const lesson = chapter.lessons[1]; // Searching with Ctrl+K (has prerequisite guide101-browsing-bookmarks)
+  const lesson = chapter.lessons[1]; // Searching with Ctrl+K (has prerequisite guide101-ch1-l1-browsing-bookmarks)
 
   beforeEach(() => {
     vi.restoreAllMocks();
   });
 
-  it('renders lesson details, prerequisites, and color-coded resources', () => {
+  it('renders lesson details, prerequisites, color-coded resources, and Study Notes tab when lesson has notes', () => {
     render(
       <LessonDrawer
         course={course}
@@ -36,6 +36,7 @@ describe('LessonDrawer', () => {
     expect(
       screen.getAllByRole('button', { name: /Browsing & Bookmarks/i }).length
     ).toBeGreaterThanOrEqual(1);
+    expect(screen.getByRole('tab', { name: /Study Notes/i })).toBeInTheDocument();
   });
 
   it('supports L, D, S, and Escape keyboard shortcuts', () => {
@@ -84,7 +85,7 @@ describe('LessonDrawer', () => {
     );
 
     fireEvent.click(screen.getAllByRole('button', { name: /Browsing & Bookmarks/i })[0]);
-    expect(onNavigateLesson).toHaveBeenCalledWith('guide101-browsing-bookmarks');
+    expect(onNavigateLesson).toHaveBeenCalledWith('guide101-ch1-l1-browsing-bookmarks');
   });
 
   it('resolves and navigates to chapter prerequisites via onSelectItem', () => {
@@ -207,7 +208,7 @@ describe('LessonDrawer', () => {
     });
   });
 
-  it('renders a skipped standalone chapter prerequisite chip in slate gray with Ban icon only (not emerald Done)', () => {
+  it('renders a skipped leaf chapter prerequisite chip in slate gray with Ban icon only (not emerald Done)', () => {
     const customCourse: CourseTree = {
       slug: 'test103-lesson-prereq',
       code: 'TEST103',
@@ -216,10 +217,10 @@ describe('LessonDrawer', () => {
       description: 'Test course',
       chapters: [
         {
-          id: 'test103-ch1-standalone-prereq',
+          id: 'test103-ch1-leaf-prereq',
           order: 1,
-          title: '1. Skipped Standalone Prereq',
-          description: 'Standalone chapter',
+          title: '1. Skipped Milestone Prereq',
+          description: 'Leaf milestone chapter',
           lessons: [],
         },
         {
@@ -229,10 +230,10 @@ describe('LessonDrawer', () => {
           description: 'Core chapter',
           lessons: [
             {
-              id: 'test103-target-lesson',
+              id: 'test103-ch2-l1-target-lesson',
               title: 'Target Lesson',
-              summary: 'Depends on skipped standalone chapter',
-              prerequisites: ['test103-ch1-standalone-prereq'],
+              summary: 'Depends on skipped leaf chapter',
+              prerequisites: ['test103-ch1-leaf-prereq'],
               resources: [],
             },
           ],
@@ -246,7 +247,7 @@ describe('LessonDrawer', () => {
         chapter={customCourse.chapters[1]}
         lesson={customCourse.chapters[1].lessons[0]}
         status="todo"
-        statuses={{ 'test103-ch1-standalone-prereq': 'skipped' }}
+        statuses={{ 'test103-ch1-leaf-prereq': 'skipped' }}
         onChangeStatus={vi.fn()}
         onSelectItem={vi.fn()}
         onClose={vi.fn()}
@@ -256,7 +257,7 @@ describe('LessonDrawer', () => {
     const prereqHeading = screen.getByText(/Recommended Prerequisites/i);
     const prereqSection = prereqHeading.parentElement!;
     const prereqChip = within(prereqSection).getByRole('button', {
-      name: /1\. Skipped Standalone Prereq/i,
+      name: /1\. Skipped Milestone Prereq/i,
     });
     expect(prereqChip).toHaveClass('border-slate-300', 'bg-slate-100', 'text-slate-700');
     expect(prereqChip).not.toHaveClass('border-emerald-300', 'bg-emerald-50');
@@ -339,6 +340,7 @@ describe('LessonDrawer', () => {
     );
 
     expect(screen.getByText('No resources linked for this sub-lesson yet.')).toBeInTheDocument();
+    expect(screen.queryByRole('tab', { name: /Study Notes/i })).not.toBeInTheDocument();
 
     saveProgressState({
       version: 1,

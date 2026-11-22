@@ -529,19 +529,21 @@ export function MaterialViewerModal({
   );
 
   const renderAudioPlayer = (srcUrl: string, label: string) => (
-    <div className="mx-auto flex max-w-xl flex-col items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-[#1b2436]">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-200">
-        <Music className="h-7 w-7" />
+    <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
+      <div className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-6 dark:border-slate-700 dark:bg-[#1b2436]">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-200">
+          <Music className="h-7 w-7" />
+        </div>
+        <div className="text-center">
+          <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+            {label}
+          </p>
+          <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+            Audio Material
+          </p>
+        </div>
+        <audio controls src={srcUrl} className="w-full" />
       </div>
-      <div className="text-center">
-        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-          {label}
-        </p>
-        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-          Audio Material
-        </p>
-      </div>
-      <audio controls src={srcUrl} className="w-full" />
     </div>
   );
 
@@ -682,7 +684,7 @@ export function MaterialViewerModal({
         return (
           <div
             role="status"
-            className="flex h-full flex-col items-center justify-center gap-2 text-sm text-slate-600 dark:text-slate-300"
+            className="flex min-h-[360px] flex-1 flex-col items-center justify-center gap-2 p-6 text-sm text-slate-600 dark:text-slate-300"
           >
             <Loader2 className="h-6 w-6 animate-spin" />
             Loading file...
@@ -692,7 +694,7 @@ export function MaterialViewerModal({
 
       if (fileState.status === 'error') {
         return (
-          <div className="flex h-full items-center justify-center">
+          <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
             <div
               role="alert"
               className="max-w-md rounded-xl border border-red-200 bg-red-50 p-5 text-center text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
@@ -738,7 +740,7 @@ export function MaterialViewerModal({
       }
 
       return (
-        <div className="flex h-full items-center justify-center">
+        <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
           <div className="max-w-md rounded-xl border border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-700 dark:bg-[#1b2436]">
             <FileIcon className="mx-auto mb-3 h-10 w-10 text-slate-500 dark:text-slate-400" />
             <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -766,7 +768,7 @@ export function MaterialViewerModal({
     // External URL
     if (!resolvedUrl) {
       return (
-        <div className="flex h-full items-center justify-center">
+        <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
           <div
             role="alert"
             className="max-w-md rounded-xl border border-red-200 bg-red-50 p-5 text-center text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
@@ -830,7 +832,7 @@ export function MaterialViewerModal({
 
     // Fallback card for non-embeddable links (OneDrive/SharePoint share links, GDrive folders, external/Notion)
     return (
-      <div className="flex h-full items-center justify-center">
+      <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
         <div className="max-w-lg rounded-xl border border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-700 dark:bg-[#1b2436]">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {resolvedUrl.providerLabel}
@@ -940,7 +942,7 @@ export function MaterialViewerModal({
         </div>
 
         {/* Viewer Body */}
-        <div className="min-h-0 flex-1 overflow-auto p-3 sm:p-4">{renderContent()}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-auto p-3 sm:p-4">{renderContent()}</div>
       </div>
     </div>
   );

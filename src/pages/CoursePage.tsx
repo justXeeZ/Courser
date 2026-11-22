@@ -297,6 +297,7 @@ export function CoursePage() {
             }
           }}
           onSelectItem={openItem}
+          onToggleLessonDone={(lessonId) => toggleDone(course.slug, lessonId)}
           onOpenMaterialViewer={(resource) => setActiveViewerMaterial(resource)}
           onOpenAssessment={(resource) =>
             setActiveAssessmentMaterial({

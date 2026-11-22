@@ -29,7 +29,7 @@ interface CourseHeaderProps {
 }
 
 const REVEAL_LABEL_CLASS =
-  'max-w-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0 transition-all duration-200 ease-out group-hover/btn:ml-1.5 group-hover/btn:max-w-[9rem] group-hover/btn:opacity-100 group-focus-visible/btn:ml-1.5 group-focus-visible/btn:max-w-[9rem] group-focus-visible/btn:opacity-100 sm:text-sm';
+  'max-w-0 overflow-hidden whitespace-nowrap text-xs font-medium opacity-0 transition-all duration-300 ease-out group-hover/btn:ml-1.5 group-hover/btn:max-w-[9rem] group-hover/btn:opacity-100 group-focus-visible/btn:ml-1.5 group-focus-visible/btn:max-w-[9rem] group-focus-visible/btn:opacity-100 sm:text-sm';
 
 export function CourseHeader({
   course,
@@ -62,7 +62,7 @@ export function CourseHeader({
             {/* Extra action controls: horizontally reveal to the left of mobile toggle */}
             <div
               id="course-header-extra-actions"
-              className={`flex items-center justify-end gap-1 overflow-hidden transition-all duration-200 ease-out sm:pointer-events-auto sm:visible sm:max-w-none sm:gap-1.5 sm:overflow-visible sm:opacity-100 ${
+              className={`flex items-center justify-end gap-1 overflow-hidden transition-all duration-300 ease-out sm:pointer-events-auto sm:visible sm:max-w-none sm:gap-1.5 sm:overflow-visible sm:opacity-100 ${
                 actionsExpanded
                   ? 'pointer-events-auto visible max-w-[22rem] opacity-100'
                   : 'pointer-events-none invisible max-w-0 opacity-0'
@@ -134,13 +134,13 @@ export function CourseHeader({
               className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-100 sm:hidden dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
             >
               <ChevronLeft
-                className={`h-4 w-4 transition-transform duration-200 ${
+                className={`h-4 w-4 transition-transform duration-300 ease-out ${
                   actionsExpanded ? 'rotate-180' : ''
                 }`}
               />
             </button>
 
-            {/* Standalone Bookmark icon button (always visible) */}
+            {/* Bookmark icon button (always visible) */}
             <button
               type="button"
               onClick={onToggleBookmark}

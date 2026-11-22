@@ -1,17 +1,21 @@
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
+import { formatLessonPositionTag } from '@/lib/courseIds';
 import type { Chapter, SubLesson } from '@/types/course';
 
 interface LessonEditorCardProps {
   lesson: SubLesson;
   lessonIndex: number;
   totalLessons: number;
+  chapterOrder: number;
   chapterId: string;
   derivedLessonId: string;
   courseCode: string;
   allChapters: Chapter[];
   isExpanded: boolean;
+  errorPrefix?: string;
+  fieldErrors?: Record<string, string>;
   onToggleExpand: () => void;
   onUpdate: (updater: (lesson: SubLesson) => SubLesson) => void;
   onMove: (direction: -1 | 1) => void;
@@ -23,23 +27,31 @@ export function LessonEditorCard({
   lesson,
   lessonIndex,
   totalLessons,
+  chapterOrder,
   chapterId,
   derivedLessonId,
   courseCode,
   allChapters,
   isExpanded,
+  errorPrefix,
+  fieldErrors,
   onToggleExpand,
   onUpdate,
   onMove,
   onRemove,
   onTogglePrerequisite,
 }: LessonEditorCardProps) {
+  const titleErrorKey = errorPrefix ? `${errorPrefix}.title` : undefined;
+  const summaryErrorKey = errorPrefix ? `${errorPrefix}.summary` : undefined;
+  const titleError = titleErrorKey ? fieldErrors?.[titleErrorKey] : undefined;
+  const summaryError = summaryErrorKey ? fieldErrors?.[summaryErrorKey] : undefined;
+
   return (
     <div data-edit-lesson={lesson.id} className="py-2.5 first:pt-0 last:pb-0">
       {/* Lesson Header Row — sticky below chapter header when expanded; identical colors in collapsed & expanded states */}
       <div
         className={`flex flex-wrap items-center justify-between gap-2 border border-slate-200 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:bg-[#1b2436] ${
-          isExpanded ? 'sticky top-[104px] z-10 rounded-t-md' : 'rounded-md'
+          isExpanded ? 'sticky top-[168px] z-10 rounded-t-md' : 'rounded-md'
         }`}
       >
         <button
@@ -53,6 +65,9 @@ export function LessonEditorCard({
           ) : (
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
           )}
+          <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-white dark:bg-slate-950">
+            {formatLessonPositionTag(chapterOrder, lessonIndex + 1)}
+          </span>
           <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
             {lesson.title || 'Untitled Lesson'}
           </span>
@@ -115,8 +130,20 @@ export function LessonEditorCard({
                   }))
                 }
                 aria-label="Sub-Lesson Title"
-                className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                aria-invalid={Boolean(titleError)}
+                data-error-key={titleErrorKey}
+                data-field-error={titleError ? 'true' : undefined}
+                className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500 ${
+                  titleError
+                    ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                    : 'border-slate-300 dark:border-slate-600'
+                }`}
               />
+              {titleError && (
+                <p role="alert" className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+                  {titleError}
+                </p>
+              )}
             </div>
 
             <div>
@@ -158,8 +185,20 @@ export function LessonEditorCard({
                 }))
               }
               aria-label="Lesson Summary"
-              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+              aria-invalid={Boolean(summaryError)}
+              data-error-key={summaryErrorKey}
+              data-field-error={summaryError ? 'true' : undefined}
+              className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500 ${
+                summaryError
+                  ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                  : 'border-slate-300 dark:border-slate-600'
+              }`}
             />
+            {summaryError && (
+              <p role="alert" className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+                {summaryError}
+              </p>
+            )}
           </div>
 
           <div>
@@ -193,6 +232,8 @@ export function LessonEditorCard({
           <MaterialsEditor
             resources={lesson.resources}
             courseCode={courseCode}
+            errorPrefix={errorPrefix ? `${errorPrefix}.resources` : undefined}
+            fieldErrors={fieldErrors}
             onChange={(nextResources) =>
               onUpdate((l) => ({
                 ...l,

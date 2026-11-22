@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom';
 import { CourseTreeSchema } from '@/types/course';
 import { ProgressStateSchema } from '@/lib/storage/types';
 import { rekeyCourseContentIds } from '@/lib/courseIds';
-import { getTrackableItems, isStandaloneChapter } from '@/lib/courseItems';
+import { getTrackableItems, isLeafChapter } from '@/lib/courseItems';
 import { parseAssessmentImport } from '@/lib/assessmentExchange';
 import { RESOURCE_BADGE_STYLES } from '@/lib/theme';
 import { getAssessmentScoreKey } from '@/store/useProgressStore';
@@ -31,12 +31,12 @@ describe('EXAMPLE_COURSE_EXPORT', () => {
     expect(parsed.semester).toBe(1);
     expect(parsed.chapters).toHaveLength(3);
 
-    const standaloneChapters = parsed.chapters.filter(isStandaloneChapter);
-    expect(standaloneChapters.length).toBeGreaterThanOrEqual(1);
-    const standalone = standaloneChapters[0];
-    expect(standalone.notes).toBeTruthy();
-    expect(standalone.prerequisites?.length).toBeGreaterThanOrEqual(1);
-    expect(standalone.resources?.length).toBeGreaterThanOrEqual(1);
+    const leafChapters = parsed.chapters.filter(isLeafChapter);
+    expect(leafChapters.length).toBeGreaterThanOrEqual(1);
+    const leafChapter = leafChapters[0];
+    expect(leafChapter.notes).toBeTruthy();
+    expect(leafChapter.prerequisites?.length).toBeGreaterThanOrEqual(1);
+    expect(leafChapter.resources?.length).toBeGreaterThanOrEqual(1);
 
     // Showcases recommended pinning and an embedded interactive assessment
     const allResources = parsed.chapters.flatMap((ch) => [
@@ -49,7 +49,7 @@ describe('EXAMPLE_COURSE_EXPORT', () => {
     // Cross-chapter prerequisites: lesson -> chapter and chapter -> lesson
     const ch2Lesson1 = parsed.chapters[1].lessons[0];
     expect(ch2Lesson1.prerequisites).toContain(parsed.chapters[0].id);
-    expect(standalone.prerequisites).toContain(parsed.chapters[1].lessons[1].id);
+    expect(leafChapter.prerequisites).toContain(parsed.chapters[1].lessons[1].id);
 
     const serialized = JSON.stringify(EXAMPLE_COURSE_EXPORT);
     expect(serialized).not.toContain('estimatedMinutes');
@@ -87,7 +87,7 @@ describe('EXAMPLE_PROGRESS_BACKUP', () => {
     const course = EXAMPLE_COURSE_EXPORT.course;
     const trackable = getTrackableItems(course);
     const trackableIds = new Set(trackable.map((item) => item.id));
-    const standaloneIds = new Set(
+    const leafIds = new Set(
       trackable.filter((item) => item.kind === 'chapter').map((item) => item.id)
     );
 
@@ -102,8 +102,8 @@ describe('EXAMPLE_PROGRESS_BACKUP', () => {
       expect(trackableIds.has(id)).toBe(true);
     }
 
-    // Must cover both standalone chapter IDs and lesson IDs, plus done/learning/skipped
-    expect(referencedIds.some((id) => standaloneIds.has(id))).toBe(true);
+    // Must cover both leaf chapter IDs and lesson IDs, plus done/learning/skipped
+    expect(referencedIds.some((id) => leafIds.has(id))).toBe(true);
     const statusValues = Object.values(courseStatuses);
     expect(statusValues).toContain('done');
     expect(statusValues).toContain('learning');
@@ -111,7 +111,7 @@ describe('EXAMPLE_PROGRESS_BACKUP', () => {
 
     // Must cover assessmentScores matching getAssessmentScoreKey
     const expectedScoreKey = getAssessmentScoreKey(
-      'stat101-normal-binomial-models',
+      'stat101-ch2-l2-normal-binomial-models',
       'Midterm Practice Exam'
     );
     const courseScores = parsed.assessmentScores?.[course.slug];

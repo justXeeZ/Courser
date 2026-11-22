@@ -11,7 +11,7 @@ import {
   getAllItemRefs,
   getAllLessonIds,
   getTrackableItems,
-  isStandaloneChapter,
+  isLeafChapter,
   parseCourseTree,
 } from '@/data/validateCourse';
 import { rekeyCourseContentIds } from '@/lib/courseIds';
@@ -37,7 +37,7 @@ describe('Course schema & seed validation', () => {
     }
   });
 
-  it('validates GUIDE101 structure, departments, and standalone chapters', () => {
+  it('validates GUIDE101 structure, departments, and leaf milestone chapters', () => {
     const guide101 = getCourseBySlug('guide101-quick-start');
     expect(guide101).toBeDefined();
     expect(guide101!.code).toBe('GUIDE101');
@@ -46,15 +46,15 @@ describe('Course schema & seed validation', () => {
     expect(guide101!.semester).toBe(1);
     expect(guide101!.chapters).toHaveLength(6);
 
-    const hit = findLessonWithChapter(guide101!, 'guide101-searching-with-ctrl-k');
+    const hit = findLessonWithChapter(guide101!, 'guide101-ch1-l2-searching-with-ctrl-k');
     expect(hit?.chapter.id).toBe('guide101-ch1-navigating-the-catalog');
     expect(hit?.lesson.title).toBe('Searching with Ctrl+K');
 
-    // Chapters 5 & 6 are standalone chapters
+    // Chapters 5 & 6 are leaf milestone chapters
     const ch5 = guide101!.chapters[4];
     const ch6 = guide101!.chapters[5];
-    expect(isStandaloneChapter(ch5)).toBe(true);
-    expect(isStandaloneChapter(ch6)).toBe(true);
+    expect(isLeafChapter(ch5)).toBe(true);
+    expect(isLeafChapter(ch6)).toBe(true);
     expect(ch5.notes).toBeTruthy();
     expect(ch5.resources).toHaveLength(2);
     expect(ch5.prerequisites?.length).toBeGreaterThanOrEqual(1);
@@ -62,7 +62,7 @@ describe('Course schema & seed validation', () => {
     expect(ch6.resources?.length).toBeGreaterThanOrEqual(1);
   });
 
-  it('validates DEMO201 feature coverage: 9 resource kinds, sides, 6-lesson chapter, long title, cross-chapter & lesson-to-chapter prereqs, and 2 standalone chapters', () => {
+  it('validates DEMO201 feature coverage: 10 resource kinds, sides, 6-lesson chapter, long title, cross-chapter & lesson-to-chapter prereqs, and 2 leaf chapters', () => {
     const demo201 = getCourseBySlug('demo201-feature-showcase');
     expect(demo201).toBeDefined();
     expect(demo201!.code).toBe('DEMO201');
@@ -120,10 +120,10 @@ describe('Course schema & seed validation', () => {
     // ~40-character lesson title
     expect(allLessons.some((l) => l.title.length >= 38 && l.title.length <= 44)).toBe(true);
 
-    // Two standalone chapters with materials & prerequisites
-    const standalone = demo201!.chapters.filter(isStandaloneChapter);
-    expect(standalone).toHaveLength(2);
-    for (const ch of standalone) {
+    // Two leaf chapters with materials & prerequisites
+    const leafChapters = demo201!.chapters.filter(isLeafChapter);
+    expect(leafChapters).toHaveLength(2);
+    for (const ch of leafChapters) {
       expect((ch.resources ?? []).length).toBeGreaterThan(0);
       expect((ch.prerequisites ?? []).length).toBeGreaterThan(0);
       expect(ch.notes).toBeTruthy();
@@ -200,7 +200,7 @@ describe('Course schema & seed validation', () => {
     expect(() => parseCourseTree(invalidChapter)).toThrow(/cannot depend on itself/);
   });
 
-  it('supports chapter prerequisites, notes, resources, and standalone chapters', () => {
+  it('supports chapter prerequisites, notes, resources, and leaf milestone chapters', () => {
     const course: CourseTree = {
       slug: 'guide101-intro',
       code: 'GUIDE101',
@@ -208,7 +208,7 @@ describe('Course schema & seed validation', () => {
       department: 'Preparatory',
       year: 1,
       semester: 1,
-      description: 'Course with standalone chapter and cross-kind prerequisites.',
+      description: 'Course with leaf chapter and cross-kind prerequisites.',
       chapters: [
         {
           id: 'guide101-ch1-basics',
@@ -217,7 +217,7 @@ describe('Course schema & seed validation', () => {
           description: 'First chapter',
           lessons: [
             {
-              id: 'guide101-welcome',
+              id: 'guide101-ch1-l1-welcome',
               title: 'Welcome',
               summary: 'Intro lesson',
               resources: [
@@ -240,9 +240,9 @@ describe('Course schema & seed validation', () => {
           id: 'guide101-ch2-capstone',
           order: 2,
           title: '2. Capstone',
-          description: 'Standalone chapter',
+          description: 'Milestone chapter',
           notes: 'Read carefully.',
-          prerequisites: ['guide101-ch1-basics', 'guide101-welcome'],
+          prerequisites: ['guide101-ch1-basics', 'guide101-ch1-l1-welcome'],
           resources: [
             {
               title: 'Project Spec',
@@ -256,9 +256,9 @@ describe('Course schema & seed validation', () => {
     };
 
     const parsed = parseCourseTree(course);
-    expect(isStandaloneChapter(parsed.chapters[1])).toBe(true);
+    expect(isLeafChapter(parsed.chapters[1])).toBe(true);
     expect(getTrackableItems(parsed).map((i) => i.id)).toEqual([
-      'guide101-welcome',
+      'guide101-ch1-l1-welcome',
       'guide101-ch2-capstone',
     ]);
     expect(findCourseItem(parsed, 'guide101-ch2-capstone')?.kind).toBe('chapter');

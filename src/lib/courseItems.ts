@@ -11,7 +11,7 @@ export interface CourseItemRef {
   chapterTitle: string;
 }
 
-export function isStandaloneChapter(chapter: Chapter): boolean {
+export function isLeafChapter(chapter: Chapter): boolean {
   return chapter.lessons.length === 0;
 }
 
@@ -21,7 +21,7 @@ export function getTrackableItems(course: CourseTree): CourseItem[] {
   let index = 0;
 
   for (const chapter of orderedChapters) {
-    if (isStandaloneChapter(chapter)) {
+    if (isLeafChapter(chapter)) {
       items.push({
         kind: 'chapter',
         id: chapter.id,

@@ -6,12 +6,21 @@ import {
   ChevronRight,
   GitBranch,
 } from 'lucide-react';
-import { findCourseItem, getTrackableItems, isStandaloneChapter } from '@/lib/courseItems';
+import { findCourseItem, getTrackableItems, isLeafChapter } from '@/lib/courseItems';
 import { computeChapterStats } from '@/store/useProgressStore';
 import type { Chapter, CourseTree, LessonResource, LessonStatus, SubLesson } from '@/types/course';
 import { DrawerShell } from '@/components/DrawerShell';
 import { MaterialList } from '@/components/MaterialList';
 import { StatusSegmentedControl } from '@/components/StatusSegmentedControl';
+
+function isRedundantWeekRange(weekRange: string | undefined, chapterOrder: number): boolean {
+  if (!weekRange) return true;
+  const trimmed = weekRange.trim();
+  if (!trimmed) return true;
+  return new RegExp(`^(?:ch(?:apter)?|part|unit|module|section)\\s*0*${chapterOrder}$`, 'i').test(
+    trimmed
+  );
+}
 
 interface LessonDrawerProps {
   course: CourseTree;
@@ -43,6 +52,7 @@ export function LessonDrawer({
   onClose,
 }: LessonDrawerProps) {
   const [activeTab, setActiveTab] = useState<'resources' | 'notes'>('resources');
+  const hasNotes = Boolean(lesson.notes && lesson.notes.trim().length > 0);
 
   const navigateToItem = onSelectItem ?? onNavigateLesson;
 
@@ -61,6 +71,12 @@ export function LessonDrawer({
   useEffect(() => {
     setActiveTab('resources');
   }, [lesson.id]);
+
+  useEffect(() => {
+    if (!hasNotes && activeTab === 'notes') {
+      setActiveTab('resources');
+    }
+  }, [hasNotes, activeTab]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -111,19 +127,21 @@ export function LessonDrawer({
       >
         Resources
       </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'notes'}
-        onClick={() => setActiveTab('notes')}
-        className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
-          activeTab === 'notes'
-            ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
-            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
-        }`}
-      >
-        Study Notes
-      </button>
+      {hasNotes && (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'notes'}
+          onClick={() => setActiveTab('notes')}
+          className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
+            activeTab === 'notes'
+              ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+              : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
+          }`}
+        >
+          Study Notes
+        </button>
+      )}
     </div>
   );
 
@@ -208,7 +226,7 @@ export function LessonDrawer({
         >
           {chapter.title}
         </button>
-        {chapter.weekRange && (
+        {chapter.weekRange && !isRedundantWeekRange(chapter.weekRange, chapter.order) && (
           <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
             {chapter.weekRange}
           </span>
@@ -233,14 +251,14 @@ export function LessonDrawer({
           <div className="flex flex-wrap gap-1.5">
             {prereqItems.map((item) => {
               const title = item.kind === 'chapter' ? item.chapter.title : item.lesson.title;
-              const isStandalone =
-                item.kind === 'chapter' && isStandaloneChapter(item.chapter);
+              const isLeafChapterItem =
+                item.kind === 'chapter' && isLeafChapter(item.chapter);
               const chapterStats =
-                item.kind === 'chapter' && !isStandalone
+                item.kind === 'chapter' && !isLeafChapterItem
                   ? computeChapterStats(item.chapter, statuses)
                   : null;
               const isSkipped =
-                item.kind === 'lesson' || isStandalone
+                item.kind === 'lesson' || isLeafChapterItem
                   ? statuses[item.id] === 'skipped'
                   : Boolean(
                       chapterStats &&
@@ -248,7 +266,7 @@ export function LessonDrawer({
                         chapterStats.skipped === chapterStats.total
                     );
               const isDone =
-                item.kind === 'lesson' || isStandalone
+                item.kind === 'lesson' || isLeafChapterItem
                   ? statuses[item.id] === 'done'
                   : Boolean(
                       chapterStats &&

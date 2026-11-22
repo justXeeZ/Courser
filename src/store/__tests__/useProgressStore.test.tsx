@@ -62,7 +62,7 @@ describe('useProgressStore', () => {
 
     act(() => {
       result.current.toggleBookmark('guide101-quick-start');
-      result.current.setLessonStatus('guide101-quick-start', 'guide101-browsing-bookmarks', 'done');
+      result.current.setLessonStatus('guide101-quick-start', 'guide101-ch1-l1-browsing-bookmarks', 'done');
     });
 
     expect(result.current.isBookmarked('guide101-quick-start')).toBe(true);
@@ -73,14 +73,14 @@ describe('useProgressStore', () => {
       result.current.toggleBookmark('guide101-quick-start');
     });
     expect(result.current.isBookmarked('guide101-quick-start')).toBe(false);
-    expect(result.current.getLessonStatus('guide101-quick-start', 'guide101-browsing-bookmarks')).toBe('todo');
+    expect(result.current.getLessonStatus('guide101-quick-start', 'guide101-ch1-l1-browsing-bookmarks')).toBe('todo');
 
     act(() => {
       const res = result.current.importProgressJson(exported);
       expect(res.ok).toBe(true);
     });
     expect(result.current.isBookmarked('guide101-quick-start')).toBe(true);
-    expect(result.current.getLessonStatus('guide101-quick-start', 'guide101-browsing-bookmarks')).toBe('done');
+    expect(result.current.getLessonStatus('guide101-quick-start', 'guide101-ch1-l1-browsing-bookmarks')).toBe('done');
   });
 
   it('recovers safely from corrupted localStorage and invalid import payloads', () => {
@@ -137,26 +137,26 @@ describe('useProgressStore', () => {
     expect(allSkipped.percentDone).toBe(100);
   });
 
-  it('counts standalone chapters as 1 item in chapter and course stats', () => {
+  it('counts leaf milestone chapters as 1 item in chapter and course stats', () => {
     const course: CourseTree = {
-      slug: 'cs101-standalone',
+      slug: 'cs101-milestones',
       code: 'CS101',
-      title: 'Standalone Demo',
+      title: 'Milestone Demo',
       department: 'Preparatory',
-      description: 'Tests standalone chapter counting.',
+      description: 'Tests leaf chapter counting.',
       chapters: [
         {
           id: 'cs101-ch1-project',
           order: 1,
           title: '1. Project',
-          description: 'Standalone',
+          description: 'First milestone',
           lessons: [],
         },
         {
           id: 'cs101-ch2-review',
           order: 2,
           title: '2. Review',
-          description: 'Standalone',
+          description: 'Second milestone',
           lessons: [],
         },
       ],

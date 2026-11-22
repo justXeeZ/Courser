@@ -23,6 +23,10 @@ export const RESOURCE_BADGE_STYLES = {
     label: 'Video',
     className: 'bg-purple-300 text-slate-950 dark:bg-purple-400/25 dark:text-purple-200',
   },
+  audio: {
+    label: 'Audio',
+    className: 'bg-rose-300 text-slate-950 dark:bg-rose-400/25 dark:text-rose-200',
+  },
   lab: {
     label: 'Lab',
     className: 'bg-emerald-400 text-slate-950 dark:bg-emerald-400/25 dark:text-emerald-200',

@@ -1,6 +1,6 @@
-import { useState, type MouseEvent, type RefObject } from 'react';
+import { useRef, useState, type MouseEvent, type RefObject } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
-import { isStandaloneChapter } from '@/lib/courseItems';
+import { isLeafChapter } from '@/lib/courseItems';
 import { ROADMAP_COLORS } from '@/lib/theme';
 import { NODE_LINE_HEIGHT, type TreeLayout } from '@/lib/layoutTree';
 import type { Chapter, LessonStatus } from '@/types/course';
@@ -116,6 +116,69 @@ export function CourseTreeCanvas({
 }: CourseTreeCanvasProps) {
   const [zoom, setZoom] = useState(1);
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const dragStateRef = useRef<{
+    active: boolean;
+    startX: number;
+    startY: number;
+    scrollLeft: number;
+    scrollTop: number;
+    moved: boolean;
+  }>({
+    active: false,
+    startX: 0,
+    startY: 0,
+    scrollLeft: 0,
+    scrollTop: 0,
+    moved: false,
+  });
+
+  const handleContainerMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    dragStateRef.current = {
+      active: true,
+      startX: e.clientX,
+      startY: e.clientY,
+      scrollLeft: container.scrollLeft,
+      scrollTop: container.scrollTop,
+      moved: false,
+    };
+    setIsDragging(true);
+  };
+
+  const handleContainerMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    const state = dragStateRef.current;
+    if (!state.active) return;
+    const container = scrollContainerRef.current;
+    if (!container) return;
+    const dx = e.clientX - state.startX;
+    const dy = e.clientY - state.startY;
+    if (!state.moved && Math.hypot(dx, dy) > 5) {
+      state.moved = true;
+    }
+    if (state.moved) {
+      e.preventDefault();
+      container.scrollLeft = state.scrollLeft - dx;
+      container.scrollTop = state.scrollTop - dy;
+    }
+  };
+
+  const endContainerDrag = () => {
+    if (!dragStateRef.current.active) return;
+    dragStateRef.current.active = false;
+    setIsDragging(false);
+  };
+
+  const handleContainerClickCapture = (e: MouseEvent<HTMLDivElement>) => {
+    if (dragStateRef.current.moved) {
+      dragStateRef.current.moved = false;
+      e.stopPropagation();
+      e.preventDefault();
+    }
+  };
 
   const hoveredPrereqs = (() => {
     if (!hoveredItemId) return new Set<string>();
@@ -138,9 +201,9 @@ export function CourseTreeCanvas({
   const handleChapterClick = (
     e: MouseEvent<SVGGElement>,
     chapter: Chapter,
-    standalone: boolean
+    isLeaf: boolean
   ) => {
-    if (standalone && e.shiftKey) {
+    if (isLeaf && e.shiftKey) {
       e.preventDefault();
       onQuickToggleDone(chapter.id);
       return;
@@ -165,8 +228,8 @@ export function CourseTreeCanvas({
       <div className="mb-2 flex items-center justify-end gap-1">
         <button
           type="button"
-          disabled={zoom <= 0.7}
-          onClick={() => setZoom((z) => Math.max(0.7, Number((z - 0.1).toFixed(2))))}
+          disabled={zoom <= 0.5}
+          onClick={() => setZoom((z) => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Zoom out"
           aria-label="Zoom out"
@@ -185,8 +248,8 @@ export function CourseTreeCanvas({
         </button>
         <button
           type="button"
-          disabled={zoom >= 1.4}
-          onClick={() => setZoom((z) => Math.min(1.4, Number((z + 0.1).toFixed(2))))}
+          disabled={zoom >= 2.5}
+          onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.1).toFixed(2))))}
           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Zoom in"
           aria-label="Zoom in"
@@ -195,11 +258,23 @@ export function CourseTreeCanvas({
         </button>
       </div>
 
-      <div className={`w-full overflow-x-auto pb-8 ${framed ? 'roadmap-canvas-frame p-2 sm:p-4' : ''}`}>
+      <div
+        ref={scrollContainerRef}
+        data-testid="tree-scroll-container"
+        onMouseDown={handleContainerMouseDown}
+        onMouseMove={handleContainerMouseMove}
+        onMouseUp={endContainerDrag}
+        onMouseLeave={endContainerDrag}
+        onClickCapture={handleContainerClickCapture}
+        className={`w-full overflow-auto pb-8 ${
+          isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
+        } ${framed ? 'roadmap-canvas-frame p-2 sm:p-4' : ''}`}
+      >
         <div
-          className="mx-auto transition-[width,max-width] duration-200 ease-out"
+          className="mx-auto transition-[width,max-width,min-width] duration-200 ease-out"
           style={{
             width: `${Math.round(zoom * 100)}%`,
+            minWidth: `${Math.round(Math.min(layout.width, 640) * zoom)}px`,
             maxWidth: `${Math.round(layout.width * zoom)}px`,
           }}
         >
@@ -227,12 +302,12 @@ export function CourseTreeCanvas({
             {/* Primary Spine Chapter Nodes (#fdff00) */}
             <g>
               {layout.chapterNodes.map((node) => {
-                const standalone = isStandaloneChapter(node.chapter);
+                const isLeaf = isLeafChapter(node.chapter);
                 const stats = computeChapterStats(node.chapter, statuses);
-                const chapterStatus: LessonStatus = standalone
+                const chapterStatus: LessonStatus = isLeaf
                   ? (statuses[node.id] ?? 'todo')
                   : 'todo';
-                const statusClass = standalone ? getStatusClass(chapterStatus) : '';
+                const statusClass = isLeaf ? getStatusClass(chapterStatus) : '';
                 const isSelected = activeChapterId === node.id;
                 const isPrereqHighlighted = hoveredPrereqs.has(node.id);
                 const hasMatchingLesson = node.chapter.lessons.some(
@@ -240,7 +315,7 @@ export function CourseTreeCanvas({
                 );
                 const isDimmed =
                   statusFilter !== 'all' &&
-                  (standalone ? chapterStatus !== statusFilter : !hasMatchingLesson);
+                  (isLeaf ? chapterStatus !== statusFilter : !hasMatchingLesson);
 
                 const allSkipped = stats.required === 0 && stats.skipped > 0;
                 const allDone = !allSkipped && stats.required > 0 && stats.done === stats.required;
@@ -253,8 +328,8 @@ export function CourseTreeCanvas({
                     key={node.id}
                     data-node-id={node.id}
                     data-node-kind="chapter"
-                    data-standalone={standalone ? 'true' : undefined}
-                    data-status={standalone ? chapterStatus : undefined}
+                    data-leaf-chapter={isLeaf ? 'true' : undefined}
+                    data-status={isLeaf ? chapterStatus : undefined}
                     className={[
                       statusClass,
                       isSelected || isPrereqHighlighted ? 'node-highlighted' : '',
@@ -265,13 +340,13 @@ export function CourseTreeCanvas({
                     role="button"
                     tabIndex={0}
                     aria-label={
-                      standalone
-                        ? `Chapter ${node.chapter.title}, standalone, status ${chapterStatus}`
+                      isLeaf
+                        ? `Chapter ${node.chapter.title}, status ${chapterStatus}`
                         : `Chapter ${node.chapter.title}, ${stats.done} of ${stats.required} required lessons done`
                     }
-                    onClick={(e) => handleChapterClick(e, node.chapter, standalone)}
+                    onClick={(e) => handleChapterClick(e, node.chapter, isLeaf)}
                     onContextMenu={(e) => {
-                      if (standalone) {
+                      if (isLeaf) {
                         openNodeContextMenu(e, node.id);
                       }
                     }}
@@ -322,8 +397,8 @@ export function CourseTreeCanvas({
                       ))}
                     </text>
 
-                    {/* Standalone circular status badge (hidden for 'todo') or multi-lesson completion pill */}
-                    {standalone ? (
+                    {/* Leaf circular status badge (hidden for 'todo') or multi-lesson completion pill */}
+                    {isLeaf ? (
                       renderStatusCornerBadge(
                         chapterStatus,
                         node.x + node.width - 10,

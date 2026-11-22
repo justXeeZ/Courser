@@ -9,7 +9,7 @@ export const demo201FeatureShowcase: CourseTree = {
   semester: 1,
   credits: 4,
   description:
-    'A comprehensive sample course demonstrating all nine material kinds, recommended pinning, interactive LaTeX exams and assignments, left/right/auto branch placement, cross-chapter and lesson-to-chapter prerequisites, a six-lesson chapter, long titles, and standalone chapters.',
+    'A comprehensive sample course demonstrating all material kinds, recommended pinning, interactive LaTeX exams and assignments, left/right/auto branch placement, cross-chapter and lesson-to-chapter prerequisites, a six-lesson chapter, long titles, and direct milestone chapters.',
   chapters: [
     {
       id: 'demo201-ch1-foundations-core-layouts',
@@ -35,7 +35,7 @@ export const demo201FeatureShowcase: CourseTree = {
       ],
       lessons: [
         {
-          id: 'demo201-course-overview-tree-structure',
+          id: 'demo201-ch1-l1-course-overview-tree-structure',
           title: 'Course Overview & Tree Structure',
           summary:
             'Introduces the sample course layout with lecture slides and an introductory walkthrough video.',
@@ -54,34 +54,39 @@ export const demo201FeatureShowcase: CourseTree = {
               kind: 'video',
               recommended: true,
             },
+            {
+              title: 'Episode 01 Audio Summary: Big-O Intuition',
+              url: 'https://example.edu/demo201/audio/episode-01-big-o.mp3',
+              kind: 'audio',
+            },
           ],
         },
         {
-          id: 'demo201-left-branch-placement-example',
+          id: 'demo201-ch1-l2-left-branch-placement-example',
           title: 'Left Branch Placement Example',
           summary:
-            'Explicitly pinned to the left side of the chapter spine using side: "left", paired with a focused reading reference.',
+            'Explicitly pinned to the left side of the chapter spine using side: "left", paired with a focused document reference.',
           notes:
             'Pinning related theory topics to the left branch keeps conceptual material visually grouped together.',
           side: 'left',
-          prerequisites: ['demo201-course-overview-tree-structure'],
+          prerequisites: ['demo201-ch1-l1-course-overview-tree-structure'],
           resources: [
             {
-              title: 'Growth of Functions Reading Notes',
+              title: 'Growth of Functions Study Notes',
               url: 'https://www.bigocheatsheet.com/',
               kind: 'document',
             },
           ],
         },
         {
-          id: 'demo201-right-branch-placement-example',
+          id: 'demo201-ch1-l3-right-branch-placement-example',
           title: 'Right Branch Placement Example',
           summary:
             'Explicitly pinned to the right side of the chapter spine using side: "right", linked to an official interactive visualization.',
           notes:
             'Pinning applied or visual topics to the right branch contrasts cleanly against left-branch theory nodes.',
           side: 'right',
-          prerequisites: ['demo201-course-overview-tree-structure'],
+          prerequisites: ['demo201-ch1-l1-course-overview-tree-structure'],
           resources: [
             {
               title: 'VisuAlgo Official Algorithm Visualizer',
@@ -91,15 +96,15 @@ export const demo201FeatureShowcase: CourseTree = {
           ],
         },
         {
-          id: 'demo201-auto-balanced-placement-example',
+          id: 'demo201-ch1-l4-auto-balanced-placement-example',
           title: 'Auto-Balanced Placement Example',
           summary:
             'Omits the explicit side field (auto mode) so the layout engine assigns left or right automatically based on index.',
           notes:
             'Auto placement lets authors add lessons quickly without manually managing branch symmetry.',
           prerequisites: [
-            'demo201-left-branch-placement-example',
-            'demo201-right-branch-placement-example',
+            'demo201-ch1-l2-left-branch-placement-example',
+            'demo201-ch1-l3-right-branch-placement-example',
           ],
           resources: [
             {
@@ -130,7 +135,7 @@ export const demo201FeatureShowcase: CourseTree = {
       ],
       lessons: [
         {
-          id: 'demo201-asymptotic-notation-recurrences',
+          id: 'demo201-ch2-l1-asymptotic-notation-recurrences',
           title: 'Asymptotic Notation & Recurrences',
           summary:
             'Demonstrates a lesson-to-chapter prerequisite by depending directly on Chapter 1 as a whole.',
@@ -218,14 +223,14 @@ export const demo201FeatureShowcase: CourseTree = {
           ],
         },
         {
-          id: 'demo201-implementing-lock-free-concurrent-queues',
+          id: 'demo201-ch2-l2-implementing-lock-free-concurrent-queues',
           title: 'Implementing Lock-Free Concurrent Queues',
           summary:
             'Showcases a 40-character lesson title to verify tree node width clamping, text wrapping, and drawer header responsiveness.',
           notes:
             'Long titles automatically expand node boxes up to the layout maximum without overlapping neighboring nodes.',
           side: 'right',
-          prerequisites: ['demo201-asymptotic-notation-recurrences'],
+          prerequisites: ['demo201-ch2-l1-asymptotic-notation-recurrences'],
           resources: [
             {
               title: 'Lab 02: Atomic Compare-and-Swap Ring Buffer',
@@ -240,14 +245,14 @@ export const demo201FeatureShowcase: CourseTree = {
           ],
         },
         {
-          id: 'demo201-amortized-potential-analysis',
+          id: 'demo201-ch2-l3-amortized-potential-analysis',
           title: 'Amortized Potential Analysis',
           summary:
             'Covers aggregate, accounting, and potential-function proofs for resizable tables and disjoint-set structures.',
           notes:
             'Define a non-negative potential function Phi(D_i) so amortized cost bounds worst-case operation sequences.',
           side: 'left',
-          prerequisites: ['demo201-asymptotic-notation-recurrences'],
+          prerequisites: ['demo201-ch2-l1-asymptotic-notation-recurrences'],
           resources: [
             {
               title: 'Amortized Analysis Primer',
@@ -294,14 +299,14 @@ export const demo201FeatureShowcase: CourseTree = {
           ],
         },
         {
-          id: 'demo201-balanced-search-tree-rotations',
+          id: 'demo201-ch2-l4-balanced-search-tree-rotations',
           title: 'Balanced Search Tree Rotations',
           summary:
             'Demonstrates a cross-chapter lesson-to-lesson prerequisite linking back to Chapter 1 Auto-Balanced Placement Example.',
           notes:
             'Single and double tree rotations restore logarithmic height invariants in O(1) structural pointer updates.',
           side: 'right',
-          prerequisites: ['demo201-auto-balanced-placement-example'],
+          prerequisites: ['demo201-ch1-l4-auto-balanced-placement-example'],
           resources: [
             {
               title: 'AVL & Red-Black Rotations Lecture Video',
@@ -316,13 +321,13 @@ export const demo201FeatureShowcase: CourseTree = {
           ],
         },
         {
-          id: 'demo201-skip-lists-probabilistic-bounds',
+          id: 'demo201-ch2-l5-skip-lists-probabilistic-bounds',
           title: 'Skip Lists & Probabilistic Bounds',
           summary:
             'Uses auto-balanced placement (omitted side) to explore randomized multi-level linked lists with expected O(log n) search.',
           notes:
             'Skip lists trade deterministic rotations for coin-flip tower heights that remain simple to implement concurrently.',
-          prerequisites: ['demo201-balanced-search-tree-rotations'],
+          prerequisites: ['demo201-ch2-l4-balanced-search-tree-rotations'],
           resources: [
             {
               title: 'MIT 6.046 Randomized Structures Module',
@@ -332,7 +337,7 @@ export const demo201FeatureShowcase: CourseTree = {
           ],
         },
         {
-          id: 'demo201-midterm-practice-synthesis',
+          id: 'demo201-ch2-l6-midterm-practice-synthesis',
           title: 'Midterm Practice & Synthesis',
           summary:
             'Combines earlier Chapter 2 lessons into a timed exam preparation pack with worked solutions.',
@@ -340,8 +345,8 @@ export const demo201FeatureShowcase: CourseTree = {
             'Try skipping one non-essential lesson in this chapter to verify the progress badge updates from 0/6 to 0/5.',
           side: 'right',
           prerequisites: [
-            'demo201-amortized-potential-analysis',
-            'demo201-skip-lists-probabilistic-bounds',
+            'demo201-ch2-l3-amortized-potential-analysis',
+            'demo201-ch2-l5-skip-lists-probabilistic-bounds',
           ],
           resources: [
             {
@@ -359,12 +364,12 @@ export const demo201FeatureShowcase: CourseTree = {
       title: '3. Capstone Lab Milestone',
       weekRange: 'Weeks 9–10',
       description:
-        'First standalone chapter (0 sub-lessons) showcasing chapter-level assignment and lab materials plus mixed chapter and lesson prerequisites.',
+        'First direct milestone chapter (0 sub-lessons) showcasing chapter-level assignment and lab materials plus mixed chapter and lesson prerequisites.',
       notes:
-        'Standalone chapters appear directly on the spine with a status pill instead of an x/y counter, and can be marked Learning, Done, or Skipped in both Tree View and Checklist View.',
+        'Chapters without sub-lessons appear directly on the spine and can be marked Learning, Done, or Skipped in both Tree View and Checklist View.',
       prerequisites: [
         'demo201-ch2-six-lesson-deep-dive',
-        'demo201-implementing-lock-free-concurrent-queues',
+        'demo201-ch2-l2-implementing-lock-free-concurrent-queues',
       ],
       resources: [
         {
@@ -386,7 +391,7 @@ export const demo201FeatureShowcase: CourseTree = {
       title: '4. Final Exam & Course Retrospective',
       weekRange: 'Week 11',
       description:
-        'Second standalone chapter wrapping up the showcase course with final exam materials, review slides, and a prerequisite on Chapter 3.',
+        'Second direct milestone chapter wrapping up the showcase course with final exam materials, review slides, and a prerequisite on Chapter 3.',
       notes:
         'Try exporting this course from the header Export button and importing it as a new draft to test slug conflict resolution and full schema round-tripping.',
       prerequisites: ['demo201-ch3-capstone-lab-milestone'],

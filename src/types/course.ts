@@ -7,6 +7,7 @@ export type LessonStatus = z.infer<typeof LessonStatusSchema>;
 export const ResourceKindSchema = z.enum([
   'slides',
   'video',
+  'audio',
   'lab',
   'document',
   'textbook',

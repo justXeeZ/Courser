@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   AlertCircle,
   AlertTriangle,
@@ -18,6 +18,8 @@ import {
   deriveCoursePrefix,
   deriveCourseSlug,
   deriveLessonId,
+  formatChapterPositionTag,
+  formatLessonPositionTag,
   rekeyCourseContentIds,
 } from '@/lib/courseIds';
 import { layoutCourseTree } from '@/lib/layoutTree';
@@ -29,6 +31,7 @@ import { ImportCourseDialog } from '@/components/editor/ImportCourseDialog';
 import {
   type Chapter,
   type CourseTree,
+  type LessonResource,
   type SubLesson,
 } from '@/types/course';
 
@@ -53,7 +56,7 @@ function createBlankCourse(): CourseTree {
         description: 'Core introductory concepts for this course.',
         lessons: [
           {
-            id: deriveLessonId(code, 'Course Introduction'),
+            id: deriveLessonId(code, 1, 1, 'Course Introduction'),
             title: 'Course Introduction',
             summary: 'Key terminology, setup, and roadmap for the semester.',
             side: 'left',
@@ -65,10 +68,172 @@ function createBlankCourse(): CourseTree {
   };
 }
 
+function isValidHttpUrlString(urlStr: string): boolean {
+  try {
+    const parsed = new URL(urlStr);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}
+
+interface ValidationResult {
+  fieldErrors: Record<string, string>;
+  firstErrorMsg: string | null;
+  lessonsToExpand: string[];
+}
+
+function validateCourseDraft(
+  draft: CourseTree,
+  yearError: string | null
+): ValidationResult {
+  const fieldErrors: Record<string, string> = {};
+  const lessonsToExpand: string[] = [];
+  let firstErrorMsg: string | null = null;
+
+  const recordError = (key: string, msg: string, expandLessonId?: string) => {
+    if (!fieldErrors[key]) {
+      fieldErrors[key] = msg;
+    }
+    if (!firstErrorMsg) {
+      firstErrorMsg = msg;
+    }
+    if (expandLessonId && !lessonsToExpand.includes(expandLessonId)) {
+      lessonsToExpand.push(expandLessonId);
+    }
+  };
+
+  if (!draft.code.trim()) {
+    recordError('code', 'Course Metadata: Please enter a Course Code.');
+  }
+  if (!draft.title.trim()) {
+    recordError('title', 'Course Metadata: Please enter a Course Title.');
+  }
+  if (!draft.department.trim()) {
+    recordError('department', 'Course Metadata: Please enter a Department.');
+  }
+  if (yearError) {
+    recordError('year', `Course Metadata: ${yearError}`);
+  }
+  if (!draft.slug.trim()) {
+    recordError('slug', 'Course Metadata: Please enter a URL Slug.');
+  }
+  if (!draft.description.trim()) {
+    recordError('description', 'Course Metadata: Please enter a Course Description.');
+  }
+
+  const validateResource = (
+    res: LessonResource,
+    rIdx: number,
+    locationLabel: string,
+    keyPrefix: string,
+    expandLessonId?: string
+  ) => {
+    const matNum = rIdx + 1;
+    const matTitle = res.title.trim();
+    const matLabel = matTitle
+      ? `Material #${matNum} ("${matTitle}")`
+      : `Material #${matNum}`;
+    const errKey = `${keyPrefix}.${rIdx}`;
+
+    if (!matTitle) {
+      recordError(
+        errKey,
+        `${locationLabel}, Material #${matNum}: Please enter a title for this material.`,
+        expandLessonId
+      );
+      return;
+    }
+
+    const hasUrl = Boolean(res.url && res.url.trim().length > 0);
+    const hasFile = Boolean(res.file);
+    const hasAssessment = Boolean(res.assessment);
+    const sourceCount = Number(hasUrl) + Number(hasFile) + Number(hasAssessment);
+
+    if (sourceCount === 0) {
+      const hint =
+        res.kind === 'exam' || res.kind === 'assignment'
+          ? 'Please enter a valid URL (https://...), upload a file, or configure an interactive assessment.'
+          : 'Please enter a valid URL (https://...) or upload a file.';
+      recordError(errKey, `${locationLabel}, ${matLabel}: ${hint}`, expandLessonId);
+      return;
+    }
+
+    if (hasUrl && !isValidHttpUrlString(res.url!.trim())) {
+      recordError(
+        errKey,
+        `${locationLabel}, ${matLabel}: Please enter a valid URL starting with http:// or https://.`,
+        expandLessonId
+      );
+      return;
+    }
+
+    if (hasAssessment && res.assessment!.questions.length === 0) {
+      recordError(
+        errKey,
+        `${locationLabel}, ${matLabel}: Interactive assessment must contain at least one question.`,
+        expandLessonId
+      );
+    }
+  };
+
+  draft.chapters.forEach((chapter, cIdx) => {
+    const chOrder = cIdx + 1;
+    const chTag = formatChapterPositionTag(chOrder);
+    const chTitle = chapter.title.trim();
+    const chLabel = chTitle ? `${chTag} ("${chTitle}")` : chTag;
+    const chPrefix = `chapters.${cIdx}`;
+
+    if (!chTitle) {
+      recordError(`${chPrefix}.title`, `${chTag}: Please enter a Chapter Title.`);
+    }
+    if (!chapter.description.trim()) {
+      recordError(
+        `${chPrefix}.description`,
+        `${chLabel}: Please enter a Chapter Description.`
+      );
+    }
+
+    (chapter.resources ?? []).forEach((res, rIdx) => {
+      validateResource(res, rIdx, chLabel, `${chPrefix}.resources`);
+    });
+
+    chapter.lessons.forEach((lesson, lIdx) => {
+      const lOrder = lIdx + 1;
+      const lTag = formatLessonPositionTag(chOrder, lOrder);
+      const lTitle = lesson.title.trim();
+      const lLabel = lTitle ? `${lTag} ("${lTitle}")` : lTag;
+      const lPrefix = `${chPrefix}.lessons.${lIdx}`;
+
+      if (!lTitle) {
+        recordError(
+          `${lPrefix}.title`,
+          `${lTag}: Please enter a Sub-Lesson Title.`,
+          lesson.id
+        );
+      }
+      if (!lesson.summary.trim()) {
+        recordError(
+          `${lPrefix}.summary`,
+          `${lLabel}: Please enter a Sub-Lesson Summary.`,
+          lesson.id
+        );
+      }
+
+      lesson.resources.forEach((res, rIdx) => {
+        validateResource(res, rIdx, lLabel, `${lPrefix}.resources`, lesson.id);
+      });
+    });
+  });
+
+  return { fieldErrors, firstErrorMsg, lessonsToExpand };
+}
+
 export function CourseEditorPage() {
   const { slug } = useParams();
   const isEditing = Boolean(slug);
   const navigate = useNavigate();
+  const location = useLocation();
   const { courses, getCourseBySlug, addCourse, updateCourse, deleteCourse } = useCourses();
   const { remapCourseProgress, forgetCourse } = useProgress();
 
@@ -76,6 +241,9 @@ export function CourseEditorPage() {
 
   const [draft, setDraft] = useState<CourseTree>(() =>
     existingCourse ? structuredClone(existingCourse) : createBlankCourse()
+  );
+  const [baselineJson, setBaselineJson] = useState<string>(() =>
+    JSON.stringify(existingCourse ? structuredClone(existingCourse) : createBlankCourse())
   );
   const [yearInput, setYearInput] = useState<string>(() =>
     existingCourse?.year !== undefined ? String(existingCourse.year) : ''
@@ -89,6 +257,8 @@ export function CourseEditorPage() {
   const [focusedChapterId, setFocusedChapterId] = useState<string | null>(null);
   const [focusedLessonId, setFocusedLessonId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importBanner, setImportBanner] = useState<{ warnings: string[] } | null>(null);
@@ -97,6 +267,11 @@ export function CourseEditorPage() {
   const prevRouteSlugRef = useRef<string | undefined>(slug);
   const pendingScrollChapterIdRef = useRef<string | null>(null);
 
+  const isDirty = useMemo(
+    () => JSON.stringify(draft) !== baselineJson,
+    [draft, baselineJson]
+  );
+
   useEffect(() => {
     if (prevRouteSlugRef.current === slug) return;
     prevRouteSlugRef.current = slug;
@@ -104,6 +279,7 @@ export function CourseEditorPage() {
     const targetCourse = slug ? getCourseBySlug(slug) : undefined;
     const nextDraft = targetCourse ? structuredClone(targetCourse) : createBlankCourse();
     setDraft(nextDraft);
+    setBaselineJson(JSON.stringify(nextDraft));
     setYearInput(nextDraft.year !== undefined ? String(nextDraft.year) : '');
     setSlugTouched(Boolean(slug));
     const firstLessonId = nextDraft.chapters[0]?.lessons[0]?.id;
@@ -111,10 +287,49 @@ export function CourseEditorPage() {
     setFocusedChapterId(null);
     setFocusedLessonId(null);
     setErrorMsg(null);
+    setFieldErrors({});
+    setPendingNavPath(null);
     setImportBanner(null);
     setConfirmDeleteOpen(false);
     setImportOpen(false);
   }, [slug, getCourseBySlug]);
+
+  useEffect(() => {
+    if (!isDirty) return;
+
+    const handleDocumentClickCapture = (e: MouseEvent) => {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
+        return;
+      }
+      const target = e.target;
+      if (!(target instanceof Element)) return;
+      const anchor = target.closest('a[href]') as HTMLAnchorElement | null;
+      if (!anchor) return;
+      if (anchor.target && anchor.target !== '_self') return;
+      if (anchor.hasAttribute('download')) return;
+
+      const rawHref = anchor.getAttribute('href');
+      if (!rawHref || rawHref.startsWith('#') || rawHref.startsWith('mailto:') || rawHref.startsWith('tel:')) {
+        return;
+      }
+
+      try {
+        const resolved = new URL(anchor.href, window.location.origin);
+        if (resolved.origin !== window.location.origin) return;
+        const targetPath = `${resolved.pathname}${resolved.search}${resolved.hash}`;
+        if (resolved.pathname !== location.pathname) {
+          e.preventDefault();
+          e.stopPropagation();
+          setPendingNavPath(targetPath);
+        }
+      } catch {
+        // Ignore malformed hrefs
+      }
+    };
+
+    document.addEventListener('click', handleDocumentClickCapture, true);
+    return () => document.removeEventListener('click', handleDocumentClickCapture, true);
+  }, [isDirty, location.pathname]);
 
   useEffect(() => {
     const targetId = pendingScrollChapterIdRef.current;
@@ -169,9 +384,14 @@ export function CourseEditorPage() {
 
   const focusedLessonEntry = useMemo(() => {
     if (!focusedChapterEntry || !focusedLessonId) return null;
-    return (
-      focusedChapterEntry.chapter.lessons.find((l) => l.id === focusedLessonId) ?? null
+    const lessonIdx = focusedChapterEntry.chapter.lessons.findIndex(
+      (l) => l.id === focusedLessonId
     );
+    if (lessonIdx === -1) return null;
+    return {
+      lesson: focusedChapterEntry.chapter.lessons[lessonIdx],
+      order: lessonIdx + 1,
+    };
   }, [focusedChapterEntry, focusedLessonId]);
 
   if (isEditing && !existingCourse) {
@@ -233,7 +453,7 @@ export function CourseEditorPage() {
     );
     const newChapterTitle = `${nextOrder}. New Chapter`;
     const newChapterId = deriveChapterId(draft.code, nextOrder, newChapterTitle, existingIds);
-    const newLessonId = deriveLessonId(draft.code, `Topic ${nextOrder}.1`, existingIds);
+    const newLessonId = deriveLessonId(draft.code, nextOrder, 1, `Topic ${nextOrder}.1`, existingIds);
     const newChapter: Chapter = {
       id: newChapterId,
       order: nextOrder,
@@ -317,7 +537,7 @@ export function CourseEditorPage() {
       );
       const nextNum = prev.chapters[chapterIdx].lessons.length + 1;
       const title = `New Sub-Lesson ${nextNum}`;
-      const newId = deriveLessonId(prev.code, title, existingIds);
+      const newId = deriveLessonId(prev.code, chapterIdx + 1, nextNum, title, existingIds);
       const newLesson: SubLesson = {
         id: newId,
         title,
@@ -391,31 +611,61 @@ export function CourseEditorPage() {
     });
   };
 
-  const handleSave = () => {
-    setErrorMsg(null);
+  const scrollFirstErrorIntoView = () => {
+    requestAnimationFrame(() => {
+      const firstErrEl = document.querySelector('[data-field-error="true"]');
+      if (firstErrEl && typeof firstErrEl.scrollIntoView === 'function') {
+        firstErrEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    });
+  };
 
-    if (yearError) {
-      setErrorMsg(yearError);
-      return;
+  const handleSave = (redirectTarget?: string): boolean => {
+    setErrorMsg(null);
+    setFieldErrors({});
+
+    const validation = validateCourseDraft(draft, yearError);
+    if (validation.firstErrorMsg) {
+      setActiveTab('editor');
+      setFieldErrors(validation.fieldErrors);
+      setErrorMsg(validation.firstErrorMsg);
+      if (validation.lessonsToExpand.length > 0) {
+        setExpandedLessons((prev) => {
+          const next = { ...prev };
+          for (const lid of validation.lessonsToExpand) {
+            next[lid] = true;
+          }
+          return next;
+        });
+      }
+      scrollFirstErrorIntoView();
+      return false;
     }
 
     if (isEditing && slug) {
       const result = updateCourse(slug, draft);
       if (!result.ok) {
+        setActiveTab('editor');
         setErrorMsg(result.error);
-        return;
+        scrollFirstErrorIntoView();
+        return false;
       }
       remapCourseProgress(result.previousSlug, result.course.slug, result.idMap);
-      navigate(`/course/${result.course.slug}`);
-      return;
+      setBaselineJson(JSON.stringify(draft));
+      navigate(redirectTarget ?? `/course/${result.course.slug}`);
+      return true;
     }
 
     const result = addCourse(draft);
     if (!result.ok) {
+      setActiveTab('editor');
       setErrorMsg(result.error);
-      return;
+      scrollFirstErrorIntoView();
+      return false;
     }
-    navigate(`/course/${result.course.slug}`);
+    setBaselineJson(JSON.stringify(draft));
+    navigate(redirectTarget ?? `/course/${result.course.slug}`);
+    return true;
   };
 
   const handleConfirmDelete = () => {
@@ -432,6 +682,7 @@ export function CourseEditorPage() {
     setYearInput(imported.year !== undefined ? String(imported.year) : '');
     setSlugTouched(true);
     setErrorMsg(null);
+    setFieldErrors({});
     setFocusedChapterId(null);
     setFocusedLessonId(null);
     const firstLessonId = imported.chapters[0]?.lessons[0]?.id;
@@ -452,6 +703,13 @@ export function CourseEditorPage() {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <Link
               to={isEditing ? `/course/${slug}` : '/'}
+              onClick={(e) => {
+                if (isDirty) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setPendingNavPath(isEditing ? `/course/${slug}` : '/');
+                }
+              }}
               className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -483,7 +741,7 @@ export function CourseEditorPage() {
 
               <button
                 type="button"
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 className="inline-flex h-8 items-center gap-1.5 rounded-md bg-yellow-400 px-3.5 text-xs font-semibold text-black transition-colors hover:bg-yellow-500 sm:text-sm"
               >
                 <Save className="h-3.5 w-3.5" />
@@ -554,15 +812,22 @@ export function CourseEditorPage() {
               : null
           }
           focusedLesson={
-            focusedLessonEntry ? { title: focusedLessonEntry.title } : null
+            focusedLessonEntry
+              ? {
+                  order: focusedLessonEntry.order,
+                  title: focusedLessonEntry.lesson.title,
+                }
+              : null
           }
           hasExpandedLessons={hasExpandedLessons}
+          errorMsg={errorMsg}
+          onDismissError={() => setErrorMsg(null)}
           onAddChapter={addChapter}
           onCollapseAll={() => {
             setExpandedLessons({});
             setFocusedLessonId(null);
           }}
-          onSave={handleSave}
+          onSave={() => handleSave()}
         />
       )}
 
@@ -662,7 +927,14 @@ export function CourseEditorPage() {
                     value={draft.code}
                     onChange={(e) => updateMeta({ code: e.target.value })}
                     placeholder="e.g. MATH201"
-                    className={`${inputClass} font-mono`}
+                    aria-invalid={Boolean(fieldErrors.code)}
+                    data-error-key="code"
+                    data-field-error={fieldErrors.code ? 'true' : undefined}
+                    className={`${inputClass} font-mono ${
+                      fieldErrors.code
+                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        : ''
+                    }`}
                   />
                 </div>
 
@@ -679,7 +951,14 @@ export function CourseEditorPage() {
                     value={draft.title}
                     onChange={(e) => updateMeta({ title: e.target.value })}
                     placeholder="e.g. Linear Algebra"
-                    className={inputClass}
+                    aria-invalid={Boolean(fieldErrors.title)}
+                    data-error-key="title"
+                    data-field-error={fieldErrors.title ? 'true' : undefined}
+                    className={`${inputClass} ${
+                      fieldErrors.title
+                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        : ''
+                    }`}
                   />
                 </div>
 
@@ -696,7 +975,14 @@ export function CourseEditorPage() {
                     value={draft.department}
                     onChange={(e) => updateMeta({ department: e.target.value })}
                     placeholder="e.g. Preparatory"
-                    className={inputClass}
+                    aria-invalid={Boolean(fieldErrors.department)}
+                    data-error-key="department"
+                    data-field-error={fieldErrors.department ? 'true' : undefined}
+                    className={`${inputClass} ${
+                      fieldErrors.department
+                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        : ''
+                    }`}
                   />
                 </div>
 
@@ -713,23 +999,39 @@ export function CourseEditorPage() {
                     min={1}
                     max={10}
                     value={yearInput}
-                    aria-invalid={Boolean(yearError)}
+                    aria-invalid={Boolean(yearError || fieldErrors.year)}
+                    data-error-key="year"
+                    data-field-error={yearError || fieldErrors.year ? 'true' : undefined}
                     onChange={(e) => {
                       const raw = e.target.value;
                       setYearInput(raw);
                       const trimmed = raw.trim();
                       if (!trimmed) {
                         updateMeta({ year: undefined });
-                        if (errorMsg === YEAR_VALIDATION_ERROR) {
+                        if (errorMsg?.includes(YEAR_VALIDATION_ERROR)) {
                           setErrorMsg(null);
+                        }
+                        if (fieldErrors.year) {
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.year;
+                            return next;
+                          });
                         }
                         return;
                       }
                       const parsed = Number(trimmed);
                       if (Number.isInteger(parsed) && parsed >= 1 && parsed <= 10) {
                         updateMeta({ year: parsed });
-                        if (errorMsg === YEAR_VALIDATION_ERROR) {
+                        if (errorMsg?.includes(YEAR_VALIDATION_ERROR)) {
                           setErrorMsg(null);
+                        }
+                        if (fieldErrors.year) {
+                          setFieldErrors((prev) => {
+                            const next = { ...prev };
+                            delete next.year;
+                            return next;
+                          });
                         }
                       } else {
                         updateMeta({ year: undefined });
@@ -737,7 +1039,9 @@ export function CourseEditorPage() {
                     }}
                     placeholder="e.g. 2"
                     className={`${inputClass} ${
-                      yearError ? 'border-red-500 focus:border-red-500 dark:border-red-500' : ''
+                      yearError || fieldErrors.year
+                        ? 'border-red-500 ring-1 ring-red-500/30 focus:border-red-500 dark:border-red-500'
+                        : ''
                     }`}
                   />
                   {yearError && (
@@ -833,7 +1137,14 @@ export function CourseEditorPage() {
                         slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
                       });
                     }}
-                    className={`${inputClass} font-mono text-xs`}
+                    aria-invalid={Boolean(fieldErrors.slug)}
+                    data-error-key="slug"
+                    data-field-error={fieldErrors.slug ? 'true' : undefined}
+                    className={`${inputClass} font-mono text-xs ${
+                      fieldErrors.slug
+                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        : ''
+                    }`}
                   />
                 </div>
 
@@ -849,7 +1160,14 @@ export function CourseEditorPage() {
                     rows={2}
                     value={draft.description}
                     onChange={(e) => updateMeta({ description: e.target.value })}
-                    className={inputClass}
+                    aria-invalid={Boolean(fieldErrors.description)}
+                    data-error-key="description"
+                    data-field-error={fieldErrors.description ? 'true' : undefined}
+                    className={`${inputClass} ${
+                      fieldErrors.description
+                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        : ''
+                    }`}
                   />
                 </div>
               </div>
@@ -881,6 +1199,7 @@ export function CourseEditorPage() {
                     courseCode={draft.code}
                     allChapters={draft.chapters}
                     expandedLessons={expandedLessons}
+                    fieldErrors={fieldErrors}
                     onToggleLessonExpand={(lessonId) =>
                       setExpandedLessons((prev) => ({
                         ...prev,
@@ -923,6 +1242,67 @@ export function CourseEditorPage() {
         onConfirm={handleConfirmDelete}
         onCancel={() => setConfirmDeleteOpen(false)}
       />
+
+      {pendingNavPath && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          onClick={() => setPendingNavPath(null)}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Unsaved changes"
+            onClick={(e) => e.stopPropagation()}
+            className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700/80 dark:bg-[#121926]"
+          >
+            <div className="mb-3 flex items-center gap-2.5">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+                <AlertTriangle className="h-5 w-5" />
+              </div>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                Unsaved changes
+              </h2>
+            </div>
+
+            <p className="mb-6 text-sm text-slate-600 dark:text-slate-300">
+              You have unsaved edits to <strong className="font-semibold text-slate-900 dark:text-slate-100">{draft.code || 'this course'}</strong>. Would you like to save your changes or discard them before leaving?
+            </p>
+
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setPendingNavPath(null)}
+                className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 sm:text-sm dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+              >
+                Keep Editing
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = pendingNavPath;
+                  setPendingNavPath(null);
+                  navigate(target);
+                }}
+                className="inline-flex h-9 items-center rounded-md border border-red-200 bg-white px-3.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 sm:text-sm dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
+              >
+                Discard Edits
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const target = pendingNavPath;
+                  setPendingNavPath(null);
+                  handleSave(target);
+                }}
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-yellow-400 px-3.5 text-xs font-semibold text-black transition-colors hover:bg-yellow-500 sm:text-sm"
+              >
+                <Save className="h-3.5 w-3.5" />
+                Save &amp; Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

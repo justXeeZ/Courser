@@ -45,6 +45,7 @@ const DANGEROUS_MIME_TYPES_SET = new Set<string>(DANGEROUS_MIME_TYPES);
 export const EXPECTED_EXTENSIONS_BY_KIND: Record<ResourceKind, readonly string[]> = {
   slides: ['.pdf', '.ppt', '.pptx', '.key', '.odp'],
   video: ['.mp4', '.webm', '.mov', '.mkv', '.m4v'],
+  audio: ['.mp3', '.wav', '.m4a', '.ogg', '.aac', '.flac'],
   lab: ['.pdf', '.zip', '.ipynb', '.py', '.js', '.ts', '.java', '.c', '.cpp', '.mp4', '.webm'],
   document: ['.pdf', '.doc', '.docx', '.txt', '.md', '.epub'],
   textbook: ['.pdf', '.epub', '.djvu', '.doc', '.docx'],
@@ -62,9 +63,14 @@ const VIDEO_SUGGEST_EXTENSIONS = new Set([
   '.mkv',
   '.m4v',
   '.avi',
+]);
+const AUDIO_SUGGEST_EXTENSIONS = new Set([
   '.mp3',
   '.wav',
   '.m4a',
+  '.ogg',
+  '.aac',
+  '.flac',
 ]);
 const LAB_SUGGEST_EXTENSIONS = new Set([
   '.zip',
@@ -105,6 +111,7 @@ export function suggestResourceKind(fileName: string): ResourceKind {
   const ext = extractExtension(fileName);
   if (SLIDES_SUGGEST_EXTENSIONS.has(ext)) return 'slides';
   if (VIDEO_SUGGEST_EXTENSIONS.has(ext)) return 'video';
+  if (AUDIO_SUGGEST_EXTENSIONS.has(ext)) return 'audio';
   if (LAB_SUGGEST_EXTENSIONS.has(ext)) return 'lab';
   if (TEXTBOOK_SUGGEST_EXTENSIONS.has(ext)) return 'textbook';
   return 'document';

@@ -1,4 +1,5 @@
-import { ChevronsUp, Plus, Save } from 'lucide-react';
+import { AlertCircle, ChevronsUp, Plus, Save, X } from 'lucide-react';
+import { formatLessonPositionTag } from '@/lib/courseIds';
 
 export interface FocusedChapterContext {
   order: number;
@@ -6,6 +7,7 @@ export interface FocusedChapterContext {
 }
 
 export interface FocusedLessonContext {
+  order?: number;
   title: string;
 }
 
@@ -14,6 +16,8 @@ interface EditorStickyBarProps {
   focusedChapter: FocusedChapterContext | null;
   focusedLesson: FocusedLessonContext | null;
   hasExpandedLessons: boolean;
+  errorMsg?: string | null;
+  onDismissError?: () => void;
   onAddChapter: () => void;
   onCollapseAll: () => void;
   onSave: () => void;
@@ -24,6 +28,8 @@ export function EditorStickyBar({
   focusedChapter,
   focusedLesson,
   hasExpandedLessons,
+  errorMsg,
+  onDismissError,
   onAddChapter,
   onCollapseAll,
   onSave,
@@ -33,7 +39,7 @@ export function EditorStickyBar({
   return (
     <div
       data-testid="editor-sticky-bar"
-      className="sticky top-0 z-30 min-h-14 border-b border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]"
+      className="sticky top-16 z-30 min-h-14 border-b border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]"
     >
       <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
         <nav
@@ -58,6 +64,11 @@ export function EditorStickyBar({
                   <span className="shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true">
                     ›
                   </span>
+                  {focusedLesson.order !== undefined && (
+                    <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-white dark:bg-slate-950">
+                      {formatLessonPositionTag(focusedChapter.order, focusedLesson.order)}
+                    </span>
+                  )}
                   <span className="truncate font-semibold text-slate-900 dark:text-slate-100">
                     {focusedLesson.title || 'Untitled Lesson'}
                   </span>
@@ -106,6 +117,30 @@ export function EditorStickyBar({
           </button>
         </div>
       </div>
+
+      {errorMsg && (
+        <div
+          role="alert"
+          className="border-t border-red-200 bg-red-50 px-4 py-2 text-xs text-red-700 sm:px-6 dark:border-red-900/60 dark:bg-red-950/60 dark:text-red-300"
+        >
+          <div className="mx-auto flex max-w-5xl items-center justify-between gap-2">
+            <div className="flex items-center gap-1.5 font-medium">
+              <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+              <span>{errorMsg}</span>
+            </div>
+            {onDismissError && (
+              <button
+                type="button"
+                onClick={onDismissError}
+                aria-label="Dismiss validation error"
+                className="rounded p-0.5 hover:bg-red-200/60 dark:hover:bg-red-900/40"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

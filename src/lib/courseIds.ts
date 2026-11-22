@@ -40,6 +40,14 @@ function makeUniqueId(base: string, existingIds?: Set<string>): string {
   return unique;
 }
 
+export function formatChapterPositionTag(chapterOrder: number): string {
+  return `Ch ${chapterOrder}`;
+}
+
+export function formatLessonPositionTag(chapterOrder: number, lessonOrder: number): string {
+  return `Ch ${chapterOrder} - L ${lessonOrder}`;
+}
+
 export function deriveChapterId(
   courseCode: string,
   order: number,
@@ -56,12 +64,18 @@ export function deriveChapterId(
 
 export function deriveLessonId(
   courseCode: string,
+  chapterOrder: number,
+  lessonOrder: number,
   title: string,
   existingIds?: Set<string>
 ): string {
   const prefix = deriveCoursePrefix(courseCode);
-  const titlePart = slugify(title) || 'lesson';
-  const base = `${prefix}-${titlePart}`;
+  const stripped = title.replace(
+    /^(?:ch(?:apter)?\s*\d+\s*[-.:)]*\s*)?(?:l(?:esson)?\s*)?\d+(?:\.\d+)?\s*[.:)-]?\s*/i,
+    ''
+  );
+  const titlePart = slugify(stripped) || slugify(title) || 'lesson';
+  const base = `${prefix}-ch${chapterOrder}-l${lessonOrder}-${titlePart}`;
   return makeUniqueId(base, existingIds);
 }
 
@@ -109,8 +123,8 @@ export function rekeyCourseContentIdsWithMap(course: CourseTree): {
     const newChapterId = deriveChapterId(course.code, order, chapter.title, usedItemIds);
     idMap.set(chapter.id, newChapterId);
 
-    const lessons = chapter.lessons.map((lesson) => {
-      const newLessonId = deriveLessonId(course.code, lesson.title, usedItemIds);
+    const lessons = chapter.lessons.map((lesson, lIdx) => {
+      const newLessonId = deriveLessonId(course.code, order, lIdx + 1, lesson.title, usedItemIds);
       idMap.set(lesson.id, newLessonId);
       return {
         ...lesson,

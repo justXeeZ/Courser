@@ -114,10 +114,10 @@ Do not include "attachments".
 - "notes" (optional, string): study tips or context.
 - "prerequisites" (optional, string[]): array of chapter or lesson IDs present in this same course (no self-references).
 - "resources" (optional, LessonResource[]): chapter-level study materials.
-- "lessons" (required, SubLesson[]): array of lessons, OR an empty array [] for a standalone chapter (a milestone/project chapter tracked directly without sub-lessons).
+- "lessons" (required, SubLesson[]): array of lessons, OR an empty array [] for a single-unit milestone chapter tracked directly without sub-lessons.
 
 4. SubLesson fields:
-- "id" (required, string): unique across ALL chapters and lessons, prefixed with "<prefix>-" (canonical: "<prefix>-<slugified-title>").
+- "id" (required, string): unique across ALL chapters and lessons, prefixed with "<prefix>-" (canonical: "<prefix>-ch<chapterOrder>-l<lessonOrder>-<slugified-title>").
 - "title" (required, non-empty string).
 - "summary" (required, non-empty string).
 - "notes" (optional, string).
@@ -352,9 +352,9 @@ export function DataFormatsPage() {
               <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl dark:text-slate-100">
                 Course &amp; Progress JSON Formats
               </h1>
-              <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
+               <p className="max-w-3xl text-sm text-slate-600 dark:text-slate-300">
                 Reference specification for importing and exporting{' '}
-                <code className="font-mono text-xs">.course.json</code> course trees, standalone{' '}
+                <code className="font-mono text-xs">.course.json</code> course trees,{' '}
                 <code className="font-mono text-xs">.assessment.json</code> interactive exams and
                 assignments with KaTeX LaTeX, backing up personal study progress, and prompting an LLM.
               </p>
@@ -417,7 +417,7 @@ export function DataFormatsPage() {
             >
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">1. Overview</h2>
               <p className="text-sm text-slate-600 dark:text-slate-300">
-                {BRAND.name} uses three distinct JSON formats so syllabi, standalone interactive
+                {BRAND.name} uses three distinct JSON formats so syllabi, portable interactive
                 assessments, and personal study state stay clean and portable:
               </p>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
@@ -437,7 +437,7 @@ export function DataFormatsPage() {
                     Assessment JSON (<code className="font-mono text-xs">.assessment.json</code>)
                   </h3>
                   <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
-                    Packages a standalone interactive exam or assignment (
+                    Packages an interactive exam or assignment (
                     <code className="font-mono">AssessmentData</code> with KaTeX math and optional
                     header image attachments) for importing or exporting directly inside any
                     material row or the visual builder.
@@ -632,7 +632,7 @@ export function DataFormatsPage() {
                     type: 'SubLesson[]',
                     required: 'Required',
                     details:
-                      'Sub-lessons belonging to this chapter. Set lessons: [] to create a standalone chapter.',
+                      'Sub-lessons belonging to this chapter. Set lessons: [] to create a single-unit milestone chapter.',
                   },
                 ]}
               />
@@ -645,7 +645,7 @@ export function DataFormatsPage() {
                     type: 'string',
                     required: 'Required',
                     details:
-                      'Unique item ID starting with "<coursePrefix>-". Canonical form: "<prefix>-<slugified-title>".',
+                      'Unique item ID starting with "<coursePrefix>-". Canonical form: "<prefix>-ch<chapterOrder>-l<lessonOrder>-<slugified-title>".',
                   },
                   {
                     field: 'title',
@@ -701,7 +701,7 @@ export function DataFormatsPage() {
                       field: 'kind',
                       type: 'ResourceKind',
                       required: 'Required',
-                      details: 'One of the 9 ResourceKind tags listed below.',
+                      details: 'One of the 10 ResourceKind tags listed below.',
                     },
                     {
                       field: 'recommended',
@@ -817,15 +817,15 @@ export function DataFormatsPage() {
                 </div>
               </div>
 
-              {/* Standalone Chapters & ID Rules */}
+              {/* Direct Milestone Chapters & ID Rules */}
               <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
                 <div className="space-y-2 rounded-lg border border-slate-200 bg-slate-50 p-4 dark:border-slate-700/80 dark:bg-[#1b2436]">
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                    Standalone Chapters (<code className="font-mono text-xs">lessons: []</code>)
+                    Direct Milestone Chapters (<code className="font-mono text-xs">lessons: []</code>)
                   </h3>
                   <p className="text-xs leading-relaxed text-slate-600 dark:text-slate-300">
                     A chapter with an empty <code className="font-mono">lessons: []</code> array
-                    acts as a standalone chapter (great for capstones, exams, or short modules). It
+                    acts as a single-unit milestone chapter (great for capstones, exams, or short modules). It
                     supports <code className="font-mono">notes</code>,{' '}
                     <code className="font-mono">prerequisites</code>, and{' '}
                     <code className="font-mono">resources</code>, and is directly trackable as 1
@@ -873,7 +873,7 @@ export function DataFormatsPage() {
                 <p className="text-sm text-slate-600 dark:text-slate-300">
                   Interactive assessments can live either embedded inside a{' '}
                   <code className="font-mono text-xs">LessonResource.assessment</code> or as a
-                  standalone <code className="font-mono text-xs">.assessment.json</code> file. Both
+                  dedicated <code className="font-mono text-xs">.assessment.json</code> file. Both
                   the full <code className="font-mono text-xs">AssessmentExportEnvelope</code> and a
                   bare <code className="font-mono text-xs">AssessmentData</code> object are accepted
                   on import.
@@ -1127,7 +1127,7 @@ export function DataFormatsPage() {
                     type: 'Record<courseSlug, Record<itemId, Status>>',
                     required: 'Required',
                     details:
-                      'Status is "todo" | "learning" | "done" | "skipped". itemId can be either a lesson ID or a standalone chapter ID.',
+                      'Status is "todo" | "learning" | "done" | "skipped". itemId can be either a lesson ID or a single-unit chapter ID.',
                   },
                   {
                     field: 'bookmarks',
@@ -1213,7 +1213,7 @@ export function DataFormatsPage() {
                   <CopyButton text={EXAMPLE_COURSE_JSON} label="Copy Course JSON" />
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Demonstrates 3 chapters (including a standalone Chapter 3 with{' '}
+                  Demonstrates 3 chapters (including a direct milestone Chapter 3 with{' '}
                   <code className="font-mono">lessons: []</code>), cross-chapter prerequisites,{' '}
                   <code className="font-mono">Preparatory</code> department,{' '}
                   <code className="font-mono">Year 1 · 1st Semester</code>,{' '}
@@ -1234,7 +1234,7 @@ export function DataFormatsPage() {
                   <CopyButton text={EXAMPLE_ASSESSMENT_JSON} label="Copy Exam JSON" />
                 </div>
                 <p className="text-xs text-slate-600 dark:text-slate-400">
-                  Demonstrates a standalone <code className="font-mono">.assessment.json</code>{' '}
+                  Demonstrates an <code className="font-mono">.assessment.json</code>{' '}
                   envelope covering all four question types (<code className="font-mono">mcq</code>,{' '}
                   <code className="font-mono">multi-select</code>,{' '}
                   <code className="font-mono">true-false</code>,{' '}
@@ -1257,7 +1257,7 @@ export function DataFormatsPage() {
                 <p className="text-xs text-slate-600 dark:text-slate-400">
                   Demonstrates <code className="font-mono">done</code>,{' '}
                   <code className="font-mono">learning</code>, and{' '}
-                  <code className="font-mono">skipped</code> statuses, standalone chapter ID{' '}
+                  <code className="font-mono">skipped</code> statuses, milestone chapter ID{' '}
                   <code className="font-mono">stat101-ch3-applied-data-lab-capstone</code>, and
                   persisted <code className="font-mono">assessmentScores</code>.
                 </p>
@@ -1278,7 +1278,7 @@ export function DataFormatsPage() {
                 </h2>
                 <p className="text-sm text-slate-600 dark:text-slate-300">
                   Use these prompts with any LLM to generate directly importable course trees (
-                  <code className="font-mono text-xs">.course.json</code>) or standalone interactive
+                  <code className="font-mono text-xs">.course.json</code>) or interactive
                   exams and assignments (
                   <code className="font-mono text-xs">.assessment.json</code>).
                 </p>
@@ -1311,7 +1311,7 @@ export function DataFormatsPage() {
                       <code className="font-mono text-xs">.assessment.json</code>)
                     </h3>
                     <p className="text-xs text-slate-600 dark:text-slate-400">
-                      Generates a standalone KaTeX-enabled exam or assignment you can paste into any
+                      Generates a KaTeX-enabled exam or assignment you can paste into any
                       Interactive material row.
                     </p>
                   </div>

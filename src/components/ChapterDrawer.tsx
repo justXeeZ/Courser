@@ -11,13 +11,22 @@ import {
 import {
   findCourseItem,
   getTrackableItems,
-  isStandaloneChapter,
+  isLeafChapter,
 } from '@/lib/courseItems';
 import { computeChapterStats } from '@/store/useProgressStore';
 import type { Chapter, CourseTree, LessonResource, LessonStatus } from '@/types/course';
 import { DrawerShell } from '@/components/DrawerShell';
 import { MaterialList } from '@/components/MaterialList';
 import { StatusSegmentedControl } from '@/components/StatusSegmentedControl';
+
+function isRedundantWeekRange(weekRange: string | undefined, chapterOrder: number): boolean {
+  if (!weekRange) return true;
+  const trimmed = weekRange.trim();
+  if (!trimmed) return true;
+  return new RegExp(`^(?:ch(?:apter)?|part|unit|module|section)\\s*0*${chapterOrder}$`, 'i').test(
+    trimmed
+  );
+}
 
 interface ChapterDrawerProps {
   course: CourseTree;
@@ -27,6 +36,7 @@ interface ChapterDrawerProps {
   courseSlug?: string;
   onChangeStatus: (status: LessonStatus) => void;
   onSelectItem: (itemId: string) => void;
+  onToggleLessonDone?: (lessonId: string) => void;
   onOpenMaterialViewer?: (resource: LessonResource) => void;
   onOpenAssessment?: (resource: LessonResource) => void;
   onClose: () => void;
@@ -40,21 +50,29 @@ export function ChapterDrawer({
   courseSlug,
   onChangeStatus,
   onSelectItem,
+  onToggleLessonDone,
   onOpenMaterialViewer,
   onOpenAssessment,
   onClose,
 }: ChapterDrawerProps) {
   const [activeTab, setActiveTab] = useState<'materials' | 'notes'>('materials');
-  const standalone = isStandaloneChapter(chapter);
+  const isLeaf = isLeafChapter(chapter);
   const stats = computeChapterStats(chapter, statuses);
   const resources = chapter.resources ?? [];
+  const hasNotes = Boolean(chapter.notes && chapter.notes.trim().length > 0);
 
   useEffect(() => {
     setActiveTab('materials');
   }, [chapter.id]);
 
+  useEffect(() => {
+    if (!hasNotes && activeTab === 'notes') {
+      setActiveTab('materials');
+    }
+  }, [hasNotes, activeTab]);
+
   const { prevTarget, nextTarget } = useMemo(() => {
-    if (standalone) {
+    if (isLeaf) {
       const trackable = getTrackableItems(course);
       const idx = trackable.findIndex((item) => item.id === chapter.id);
       const prev = idx > 0 ? trackable[idx - 1] : undefined;
@@ -84,7 +102,7 @@ export function ChapterDrawer({
       prevTarget: prev ? { id: prev.id, label: prev.title } : undefined,
       nextTarget: next ? { id: next.id, label: next.title } : undefined,
     };
-  }, [course, chapter.id, standalone]);
+  }, [course, chapter.id, isLeaf]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -99,11 +117,11 @@ export function ChapterDrawer({
         return;
       }
 
-      if (standalone && (e.key === 'l' || e.key === 'L')) {
+      if (isLeaf && (e.key === 'l' || e.key === 'L')) {
         onChangeStatus(status === 'learning' ? 'todo' : 'learning');
-      } else if (standalone && (e.key === 'd' || e.key === 'D')) {
+      } else if (isLeaf && (e.key === 'd' || e.key === 'D')) {
         onChangeStatus(status === 'done' ? 'todo' : 'done');
-      } else if (standalone && (e.key === 's' || e.key === 'S')) {
+      } else if (isLeaf && (e.key === 's' || e.key === 'S')) {
         onChangeStatus(status === 'skipped' ? 'todo' : 'skipped');
       } else if (e.key === 'ArrowLeft' && prevTarget) {
         onSelectItem(prevTarget.id);
@@ -114,7 +132,7 @@ export function ChapterDrawer({
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [standalone, status, prevTarget, nextTarget, onChangeStatus, onSelectItem]);
+  }, [isLeaf, status, prevTarget, nextTarget, onChangeStatus, onSelectItem]);
 
   const prereqItems = (chapter.prerequisites ?? [])
     .map((id) => findCourseItem(course, id))
@@ -133,25 +151,27 @@ export function ChapterDrawer({
             : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
-        {standalone ? 'Materials' : 'Overview'}
+        {isLeaf ? 'Materials' : 'Overview'}
       </button>
-      <button
-        type="button"
-        role="tab"
-        aria-selected={activeTab === 'notes'}
-        onClick={() => setActiveTab('notes')}
-        className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
-          activeTab === 'notes'
-            ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
-            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
-        }`}
-      >
-        Notes
-      </button>
+      {hasNotes && (
+        <button
+          type="button"
+          role="tab"
+          aria-selected={activeTab === 'notes'}
+          onClick={() => setActiveTab('notes')}
+          className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
+            activeTab === 'notes'
+              ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+              : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
+          }`}
+        >
+          Notes
+        </button>
+      )}
     </div>
   );
 
-  const headerRight = standalone ? (
+  const headerRight = isLeaf ? (
     <StatusSegmentedControl status={status} onChange={onChangeStatus} />
   ) : null;
 
@@ -178,7 +198,7 @@ export function ChapterDrawer({
         </button>
       </div>
       <p className="mt-2.5 text-center text-xs text-slate-500 dark:text-slate-400">
-        {standalone ? (
+        {isLeaf ? (
           <>
             Shortcuts:{' '}
             <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
@@ -234,14 +254,9 @@ export function ChapterDrawer({
           Ch {chapter.order}
         </span>
         <span className="font-semibold text-gray-700 dark:text-slate-200">{course.code}</span>
-        {chapter.weekRange && (
+        {chapter.weekRange && !isRedundantWeekRange(chapter.weekRange, chapter.order) && (
           <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
             {chapter.weekRange}
-          </span>
-        )}
-        {standalone && (
-          <span className="rounded border border-amber-300 bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800 dark:border-amber-800 dark:bg-amber-950/50 dark:text-amber-300">
-            Standalone
           </span>
         )}
       </div>
@@ -290,14 +305,14 @@ export function ChapterDrawer({
           <div className="flex flex-wrap gap-1.5">
             {prereqItems.map((item) => {
               const title = item.kind === 'chapter' ? item.chapter.title : item.lesson.title;
-              const isStandalone =
-                item.kind === 'chapter' && isStandaloneChapter(item.chapter);
+              const isLeafChapterItem =
+                item.kind === 'chapter' && isLeafChapter(item.chapter);
               const chapterStats =
-                item.kind === 'chapter' && !isStandalone
+                item.kind === 'chapter' && !isLeafChapterItem
                   ? computeChapterStats(item.chapter, statuses)
                   : null;
               const isSkipped =
-                item.kind === 'lesson' || isStandalone
+                item.kind === 'lesson' || isLeafChapterItem
                   ? statuses[item.id] === 'skipped'
                   : Boolean(
                       chapterStats &&
@@ -305,7 +320,7 @@ export function ChapterDrawer({
                         chapterStats.skipped === chapterStats.total
                     );
               const isDone =
-                item.kind === 'lesson' || isStandalone
+                item.kind === 'lesson' || isLeafChapterItem
                   ? statuses[item.id] === 'done'
                   : Boolean(
                       chapterStats &&
@@ -340,7 +355,7 @@ export function ChapterDrawer({
 
       {/* Tab Panel: Materials / Notes */}
       {activeTab === 'materials' ? (
-        (standalone || resources.length > 0) && (
+        (isLeaf || resources.length > 0) && (
           <div className="mb-6">
             <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
               Chapter Materials
@@ -373,7 +388,7 @@ export function ChapterDrawer({
       )}
 
       {/* Sub-lessons List (for chapters with sub-lessons) */}
-      {!standalone && (
+      {!isLeaf && (
         <div>
           <h3 className="mb-2.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
             Sub-Lessons ({chapter.lessons.length})
@@ -382,23 +397,34 @@ export function ChapterDrawer({
             {chapter.lessons.map((sub) => {
               const subStatus = statuses[sub.id] ?? 'todo';
               return (
-                <li key={sub.id}>
+                <li
+                  key={sub.id}
+                  className="flex items-center gap-2 px-3 py-2.5 transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/60"
+                >
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleLessonDone?.(sub.id);
+                    }}
+                    aria-label={`Toggle done for ${sub.title}`}
+                    className="shrink-0 rounded p-0.5 text-gray-400 transition-colors hover:text-emerald-600 dark:text-slate-500 dark:hover:text-emerald-400"
+                  >
+                    {subStatus === 'done' ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    ) : subStatus === 'learning' ? (
+                      <BookOpen className="h-4 w-4 text-violet-600 dark:text-violet-400" />
+                    ) : subStatus === 'skipped' ? (
+                      <Ban className="h-4 w-4 text-slate-500 dark:text-slate-400" />
+                    ) : (
+                      <Circle className="h-4 w-4 text-gray-400 dark:text-slate-500" />
+                    )}
+                  </button>
                   <button
                     type="button"
                     onClick={() => onSelectItem(sub.id)}
-                    className="flex w-full items-center gap-3 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/60"
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
                   >
-                    <span className="shrink-0">
-                      {subStatus === 'done' ? (
-                        <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                      ) : subStatus === 'learning' ? (
-                        <BookOpen className="h-4 w-4 text-violet-600 dark:text-violet-400" />
-                      ) : subStatus === 'skipped' ? (
-                        <Ban className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                      ) : (
-                        <Circle className="h-4 w-4 text-gray-400 dark:text-slate-500" />
-                      )}
-                    </span>
                     <div className="min-w-0 flex-1">
                       <div
                         className={`text-sm font-medium ${

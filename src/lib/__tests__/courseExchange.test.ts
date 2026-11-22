@@ -193,7 +193,7 @@ describe('courseExchange', () => {
         },
         {
           title: 'Capstone Review',
-          description: 'Standalone review chapter',
+          description: 'Direct milestone review chapter',
           prerequisites: ['raw-ch-1', 'raw-lesson-a'],
           lessons: [],
         },
@@ -208,15 +208,17 @@ describe('courseExchange', () => {
     expect(result.course.chapters[0].order).toBe(1);
     expect(result.course.chapters[0].id).toBe('math105-ch1-limits');
     expect(result.course.chapters[0].resources).toEqual([]);
-    expect(result.course.chapters[0].lessons[0].id).toBe('math105-epsilon-delta');
+    expect(result.course.chapters[0].lessons[0].id).toBe('math105-ch1-l1-epsilon-delta');
     expect(result.course.chapters[0].lessons[0].resources).toEqual([]);
-    expect(result.course.chapters[0].lessons[1].id).toBe('math105-continuity');
-    expect(result.course.chapters[0].lessons[1].prerequisites).toEqual(['math105-epsilon-delta']);
+    expect(result.course.chapters[0].lessons[1].id).toBe('math105-ch1-l2-continuity');
+    expect(result.course.chapters[0].lessons[1].prerequisites).toEqual([
+      'math105-ch1-l1-epsilon-delta',
+    ]);
     expect(result.course.chapters[1].order).toBe(2);
     expect(result.course.chapters[1].id).toBe('math105-ch2-capstone-review');
     expect(result.course.chapters[1].prerequisites).toEqual([
       'math105-ch1-limits',
-      'math105-epsilon-delta',
+      'math105-ch1-l1-epsilon-delta',
     ]);
   });
 

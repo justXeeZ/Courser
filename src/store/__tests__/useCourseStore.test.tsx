@@ -75,10 +75,10 @@ describe('useCourseStore CRUD, migration, and repository boundaries', () => {
       if (res.ok) {
         addedSlug = res.course.slug;
         expect(res.course.chapters[0].id).toBe('math201-ch1-vectors-matrices');
-        expect(res.course.chapters[0].lessons[0].id).toBe('math201-dot-products');
-        expect(res.course.chapters[0].lessons[1].id).toBe('math201-matrix-inverses');
+        expect(res.course.chapters[0].lessons[0].id).toBe('math201-ch1-l1-dot-products');
+        expect(res.course.chapters[0].lessons[1].id).toBe('math201-ch1-l2-matrix-inverses');
         expect(res.course.chapters[0].lessons[1].prerequisites).toEqual([
-          'math201-dot-products',
+          'math201-ch1-l1-dot-products',
         ]);
       }
     });
@@ -116,8 +116,12 @@ describe('useCourseStore CRUD, migration, and repository boundaries', () => {
         expect(res.idMap.get('math201-ch1-vectors-matrices')).toBe(
           'math202-ch1-vectors-matrices'
         );
-        expect(res.idMap.get('math201-dot-products')).toBe('math202-inner-products');
-        expect(res.idMap.get('math201-matrix-inverses')).toBe('math202-matrix-inverses');
+        expect(res.idMap.get('math201-ch1-l1-dot-products')).toBe(
+          'math202-ch1-l1-inner-products'
+        );
+        expect(res.idMap.get('math201-ch1-l2-matrix-inverses')).toBe(
+          'math202-ch1-l2-matrix-inverses'
+        );
       }
     });
     expect(result.current.getCourseBySlug(updatedSlug)?.title).toBe('Applied Linear Algebra');

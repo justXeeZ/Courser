@@ -3,7 +3,7 @@ export {
   findCourseItem,
   getAllItemRefs,
   getTrackableItems,
-  isStandaloneChapter,
+  isLeafChapter,
   type CourseItem,
   type CourseItemRef,
 } from '@/lib/courseItems';

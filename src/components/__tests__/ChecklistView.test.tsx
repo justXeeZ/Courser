@@ -4,7 +4,7 @@ import { COURSES } from '@/data/courses';
 import { ChecklistView } from '@/components/ChecklistView';
 
 describe('ChecklistView', () => {
-  const demoCourse = COURSES[1]; // DEMO201: Ch1 has 4 lessons, Ch3 & Ch4 are standalone
+  const demoCourse = COURSES[1]; // DEMO201: Ch1 has 4 lessons, Ch3 & Ch4 are leaf chapters
 
   it('shows 0/3 chapter fraction after skipping 1 of 4 lessons and styles skip icons/badges in slate gray', () => {
     const skippedLesson = demoCourse.chapters[0].lessons[0];
@@ -31,15 +31,15 @@ describe('ChecklistView', () => {
     expect(container.innerHTML).not.toContain('teal');
   });
 
-  it('renders standalone chapters as checkable rows with Open button triggering ChapterDrawer', () => {
+  it('renders leaf chapters as checkable rows with Open button triggering ChapterDrawer', () => {
     const onToggleDone = vi.fn();
     const onSelectChapter = vi.fn();
-    const standaloneCh3 = demoCourse.chapters[2];
+    const leafCh3 = demoCourse.chapters[2];
 
     render(
       <ChecklistView
         course={demoCourse}
-        statuses={{ [standaloneCh3.id]: 'learning' }}
+        statuses={{ [leafCh3.id]: 'learning' }}
         statusFilter="all"
         onSelectLesson={vi.fn()}
         onSelectChapter={onSelectChapter}
@@ -48,19 +48,19 @@ describe('ChecklistView', () => {
     );
 
     const toggleBtn = screen.getByRole('button', {
-      name: `Toggle done for ${standaloneCh3.title}`,
+      name: `Toggle done for ${leafCh3.title}`,
     });
     fireEvent.click(toggleBtn);
-    expect(onToggleDone).toHaveBeenCalledWith(standaloneCh3.id);
+    expect(onToggleDone).toHaveBeenCalledWith(leafCh3.id);
 
     const openBtn = screen.getByRole('button', {
-      name: `Open ${standaloneCh3.title}`,
+      name: `Open ${leafCh3.title}`,
     });
     fireEvent.click(openBtn);
-    expect(onSelectChapter).toHaveBeenCalledWith(standaloneCh3);
+    expect(onSelectChapter).toHaveBeenCalledWith(leafCh3);
   });
 
-  it('removes Standalone badge and redundant child row, formats singular/plural materials, and uses neutral amber-accented chapter headers', () => {
+  it('omits extra leaf badge and redundant child row, formats singular/plural materials, and uses neutral amber-accented chapter headers', () => {
     const { container } = render(
       <ChecklistView
         course={demoCourse}
@@ -72,7 +72,6 @@ describe('ChecklistView', () => {
       />
     );
 
-    expect(screen.queryByText('Standalone')).not.toBeInTheDocument();
     expect(screen.getAllByText('1 material').length).toBeGreaterThanOrEqual(1);
     expect(screen.queryByText('1 materials')).not.toBeInTheDocument();
     expect(container.innerHTML).not.toContain('bg-[#fdff00]');
@@ -83,12 +82,12 @@ describe('ChecklistView', () => {
     expect(headerBar.nextElementSibling).toBeNull();
   });
 
-  it('dims non-matching standalone chapter cards when statusFilter is active', () => {
-    const standaloneCh3 = demoCourse.chapters[2];
+  it('dims non-matching leaf chapter cards when statusFilter is active', () => {
+    const leafCh3 = demoCourse.chapters[2];
     const { container } = render(
       <ChecklistView
         course={demoCourse}
-        statuses={{ [standaloneCh3.id]: 'todo' }}
+        statuses={{ [leafCh3.id]: 'todo' }}
         statusFilter="done"
         onSelectLesson={vi.fn()}
         onSelectChapter={vi.fn()}

@@ -1,5 +1,5 @@
 import { Ban, BookOpen, CheckCircle2, ChevronRight, Circle } from 'lucide-react';
-import { isStandaloneChapter } from '@/lib/courseItems';
+import { isLeafChapter } from '@/lib/courseItems';
 import type { Chapter, CourseTree, LessonStatus } from '@/types/course';
 import { computeChapterStats } from '@/store/useProgressStore';
 import type { StatusFilter } from '@/components/CourseTreeCanvas';
@@ -44,10 +44,10 @@ export function ChecklistView({
     <div className="mx-auto max-w-4xl space-y-5 pb-12">
       {orderedChapters.map((chapter) => {
         const stats = computeChapterStats(chapter, statuses);
-        const standalone = isStandaloneChapter(chapter);
-        const standaloneStatus: LessonStatus = statuses[chapter.id] ?? 'todo';
-        const standaloneMatchesFilter =
-          statusFilter === 'all' || standaloneStatus === statusFilter;
+        const isLeaf = isLeafChapter(chapter);
+        const leafStatus: LessonStatus = statuses[chapter.id] ?? 'todo';
+        const leafMatchesFilter =
+          statusFilter === 'all' || leafStatus === statusFilter;
 
         const visibleLessons = chapter.lessons.filter((lesson) => {
           const st = statuses[lesson.id] ?? 'todo';
@@ -57,25 +57,25 @@ export function ChecklistView({
         return (
           <div
             key={chapter.id}
-            data-filtered-out={standalone && !standaloneMatchesFilter ? 'true' : undefined}
+            data-filtered-out={isLeaf && !leafMatchesFilter ? 'true' : undefined}
             className={`overflow-hidden rounded-lg border border-slate-200 bg-white shadow-xs transition-opacity dark:border-slate-700/80 dark:bg-[#121926] ${
-              standalone && !standaloneMatchesFilter ? 'opacity-40' : ''
+              isLeaf && !leafMatchesFilter ? 'opacity-40' : ''
             }`}
           >
             <div
               className={`flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-3 dark:border-l-amber-400 dark:bg-[#1b2436] ${
-                !standalone ? 'border-b border-slate-200 dark:border-slate-700/80' : ''
+                !isLeaf ? 'border-b border-slate-200 dark:border-slate-700/80' : ''
               }`}
             >
               <div className="flex min-w-0 flex-1 items-start gap-3">
-                {standalone && (
+                {isLeaf && (
                   <button
                     type="button"
                     onClick={() => onToggleDone(chapter.id)}
                     aria-label={`Toggle done for ${chapter.title}`}
                     className="mt-0.5 shrink-0 text-slate-400 transition-colors hover:text-emerald-600 dark:text-slate-500 dark:hover:text-emerald-400"
                   >
-                    <StatusIcon status={standaloneStatus} />
+                    <StatusIcon status={leafStatus} />
                   </button>
                 )}
 
@@ -86,8 +86,8 @@ export function ChecklistView({
                         type="button"
                         onClick={() => onSelectChapter(chapter)}
                         className={`font-roadmap text-left text-lg font-bold hover:underline ${
-                          standalone &&
-                          (standaloneStatus === 'done' || standaloneStatus === 'skipped')
+                          isLeaf &&
+                          (leafStatus === 'done' || leafStatus === 'skipped')
                             ? 'text-slate-500 line-through dark:text-slate-400'
                             : 'text-slate-900 dark:text-slate-100'
                         }`}
@@ -97,8 +97,8 @@ export function ChecklistView({
                     ) : (
                       <h2
                         className={`font-roadmap text-lg font-bold ${
-                          standalone &&
-                          (standaloneStatus === 'done' || standaloneStatus === 'skipped')
+                          isLeaf &&
+                          (leafStatus === 'done' || leafStatus === 'skipped')
                             ? 'text-slate-500 line-through dark:text-slate-400'
                             : 'text-slate-900 dark:text-slate-100'
                         }`}
@@ -107,12 +107,12 @@ export function ChecklistView({
                       </h2>
                     )}
 
-                    {standalone && standaloneStatus === 'learning' && (
+                    {isLeaf && leafStatus === 'learning' && (
                       <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[11px] font-medium text-violet-800 dark:bg-violet-950/60 dark:text-violet-300">
                         Learning
                       </span>
                     )}
-                    {standalone && standaloneStatus === 'skipped' && (
+                    {isLeaf && leafStatus === 'skipped' && (
                       <span className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 text-[11px] font-medium text-slate-700 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-300">
                         Skipped
                       </span>
@@ -130,7 +130,7 @@ export function ChecklistView({
                     {chapter.weekRange}
                   </span>
                 )}
-                {standalone ? (
+                {isLeaf ? (
                   <>
                     <span className="hidden rounded border border-slate-200 bg-white px-2 py-0.5 text-slate-600 sm:inline dark:border-slate-700 dark:bg-[#121926] dark:text-slate-300">
                       {formatMaterialCount((chapter.resources ?? []).length)}
@@ -160,7 +160,7 @@ export function ChecklistView({
               </div>
             </div>
 
-            {!standalone &&
+            {!isLeaf &&
               (visibleLessons.length === 0 ? (
                 <p className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                   No lessons match the current filter in this chapter.

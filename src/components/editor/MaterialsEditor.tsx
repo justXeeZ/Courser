@@ -35,6 +35,8 @@ interface MaterialsEditorProps {
   courseCode: string;
   onChange: (nextResources: LessonResource[]) => void;
   titleLabel?: string;
+  errorPrefix?: string;
+  fieldErrors?: Record<string, string>;
 }
 
 interface RowFeedback {
@@ -79,6 +81,8 @@ export function MaterialsEditor({
   courseCode,
   onChange,
   titleLabel = 'Course Materials',
+  errorPrefix,
+  fieldErrors,
 }: MaterialsEditorProps) {
   const rowIdCounterRef = useRef(0);
   const downloadTimeoutRef = useRef<number | null>(null);
@@ -223,7 +227,19 @@ export function MaterialsEditor({
     const current = resources[index];
     if (!current) return;
 
-    updateRow(index, { kind: nextKind });
+    const isInteractiveEligible = nextKind === 'exam' || nextKind === 'assignment';
+    if (!isInteractiveEligible && getMode(key, current) === 'interactive') {
+      setModes((prev) => ({ ...prev, [key]: 'link' }));
+      setImportOpenByRow((prev) => ({ ...prev, [key]: false }));
+      setImportErrorByRow((prev) => ({ ...prev, [key]: null }));
+      updateRow(index, {
+        kind: nextKind,
+        assessment: undefined,
+        url: current.url ?? '',
+      });
+    } else {
+      updateRow(index, { kind: nextKind });
+    }
 
     if (current.file) {
       const check = getWarningForExistingFile(current.file.name, nextKind);
@@ -477,14 +493,21 @@ export function MaterialsEditor({
             const importOpen = Boolean(importOpenByRow[rowKey]);
             const importText = importTextByRow[rowKey] ?? '';
             const importError = importErrorByRow[rowKey] ?? null;
+            const errorKey = errorPrefix ? `${errorPrefix}.${rIdx}` : undefined;
+            const rowValidationError = errorKey ? fieldErrors?.[errorKey] : undefined;
+            const showInteractiveTab = res.kind === 'exam' || res.kind === 'assignment';
 
             return (
               <div
                 key={rowKey}
+                data-error-key={errorKey}
+                data-field-error={rowValidationError ? 'true' : undefined}
                 className={`space-y-2 rounded-md border p-2.5 transition-colors ${
-                  res.recommended
-                    ? 'border-amber-300 bg-amber-50/40 dark:border-amber-500/40 dark:bg-amber-400/5'
-                    : 'border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]'
+                  rowValidationError
+                    ? 'border-red-500 bg-red-50/20 ring-1 ring-red-500/30 dark:border-red-500 dark:bg-red-950/20'
+                    : res.recommended
+                      ? 'border-amber-300 bg-amber-50/40 dark:border-amber-500/40 dark:bg-amber-400/5'
+                      : 'border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]'
                 }`}
               >
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -550,19 +573,21 @@ export function MaterialsEditor({
                         <Upload className="h-3 w-3" />
                         Upload
                       </button>
-                      <button
-                        type="button"
-                        onClick={() => handleSwitchMode(rIdx, rowKey, 'interactive')}
-                        aria-pressed={mode === 'interactive'}
-                        className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
-                          mode === 'interactive'
-                            ? 'bg-slate-900 text-white dark:bg-slate-700'
-                            : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
-                        }`}
-                      >
-                        <ClipboardList className="h-3 w-3" />
-                        Interactive
-                      </button>
+                      {showInteractiveTab && (
+                        <button
+                          type="button"
+                          onClick={() => handleSwitchMode(rIdx, rowKey, 'interactive')}
+                          aria-pressed={mode === 'interactive'}
+                          className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                            mode === 'interactive'
+                              ? 'bg-slate-900 text-white dark:bg-slate-700'
+                              : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                          }`}
+                        >
+                          <ClipboardList className="h-3 w-3" />
+                          Interactive
+                        </button>
+                      )}
                     </div>
 
                     <div className="flex items-center gap-1">
@@ -924,6 +949,16 @@ export function MaterialsEditor({
                       </div>
                     )}
                   </div>
+                )}
+
+                {rowValidationError && (
+                  <p
+                    role="alert"
+                    className="flex items-center gap-1.5 text-xs font-medium text-red-600 dark:text-red-400"
+                  >
+                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
+                    <span>{rowValidationError}</span>
+                  </p>
                 )}
               </div>
             );

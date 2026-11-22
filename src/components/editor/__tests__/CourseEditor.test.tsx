@@ -173,7 +173,7 @@ describe('CourseEditorPage & editor components', () => {
     expect(lessonScope.queryByRole('alert')).not.toBeInTheDocument();
   });
 
-  it('toggles chapter prerequisites while excluding self and own lessons, and displays standalone hint when 0 lessons', () => {
+  it('toggles chapter prerequisites while excluding self and own lessons, and displays 0-lesson hint when 0 lessons', () => {
     renderEditor('/editor/new');
 
     // Add a second chapter so Chapter 2 has Chapter 1 + Lesson 1 as eligible prerequisites
@@ -207,11 +207,11 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.click(ch1PrereqBtn);
     expect(ch1PrereqBtn).toHaveAttribute('aria-pressed', 'false');
 
-    // Delete Chapter 2's only lesson -> becomes standalone chapter with hint
+    // Delete Chapter 2's only lesson -> becomes 0-lesson chapter with hint
     const ch2Scope = within(chapter2Card);
     fireEvent.click(ch2Scope.getByRole('button', { name: /Delete Topic 2\.1/i }));
     expect(
-      ch2Scope.getByText('Standalone chapter — students can check it off directly')
+      ch2Scope.getByText('No sub-lessons — students can check off this chapter directly.')
     ).toBeInTheDocument();
   });
 
@@ -227,10 +227,11 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.focus(ch1TitleInput);
     expect(within(stickyBar).getByText('Ch 1: 1. Foundations')).toBeInTheDocument();
 
-    // Focus lesson title input inside Lesson 1
+    // Focus lesson title input inside Lesson 1 -> shows Ch 1 - L 1 position tag and lesson title
     const lessonTitleInput = screen.getByLabelText('Sub-Lesson Title');
     fireEvent.focus(lessonTitleInput);
     expect(within(stickyBar).getByText('Ch 1: 1. Foundations')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('Ch 1 - L 1')).toBeInTheDocument();
     expect(within(stickyBar).getByText('Course Introduction')).toBeInTheDocument();
 
     // Focus metadata input -> falls back cleanly to Course Overview
@@ -240,12 +241,12 @@ describe('CourseEditorPage & editor components', () => {
   });
 
   it('remaps saved progress and bookmarks when renaming a lesson and course code on save', () => {
-    // Seed existing progress on GUIDE101's first lesson ("guide101-browsing-bookmarks")
+    // Seed existing progress on GUIDE101's first lesson ("guide101-ch1-l1-browsing-bookmarks")
     saveProgressState({
       version: 1,
       statuses: {
         'guide101-quick-start': {
-          'guide101-browsing-bookmarks': 'done',
+          'guide101-ch1-l1-browsing-bookmarks': 'done',
         },
       },
       bookmarks: ['guide101-quick-start'],
@@ -272,11 +273,11 @@ describe('CourseEditorPage & editor components', () => {
     const updatedProgress = loadProgressState();
     expect(updatedProgress.statuses['guide101-quick-start']).toBeUndefined();
     expect(updatedProgress.statuses['guide102-quick-start']).toEqual({
-      'guide102-catalog-navigation': 'done',
+      'guide102-ch1-l1-catalog-navigation': 'done',
     });
     expect(updatedProgress.bookmarks).toEqual(['guide102-quick-start']);
     expect(window.localStorage.getItem(PROGRESS_STORAGE_KEY)).toContain(
-      'guide102-catalog-navigation'
+      'guide102-ch1-l1-catalog-navigation'
     );
   });
 
@@ -386,7 +387,7 @@ describe('CourseEditorPage & editor components', () => {
       version: 1,
       statuses: {
         'guide101-quick-start': {
-          'guide101-browsing-bookmarks': 'done',
+          'guide101-ch1-l1-browsing-bookmarks': 'done',
         },
       },
       bookmarks: ['guide101-quick-start'],
@@ -525,7 +526,7 @@ describe('CourseEditorPage & editor components', () => {
     expect(resource?.recommended).toBe(true);
   });
 
-  it('supports Interactive material mode: 3-way XOR, Build / Edit modal, inline Import JSON, and Export JSON', async () => {
+  it('supports Interactive material mode only when exam or assignment kind is chosen: 3-way XOR, Build / Edit modal, inline Import JSON, and Export JSON', async () => {
     renderEditor('/editor/new');
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
@@ -535,6 +536,14 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.change(lessonScope.getByLabelText(/Material URL/i), {
       target: { value: 'https://example.edu/will-be-cleared' },
     });
+
+    // Default kind is 'document' -> Interactive tab is NOT visible
+    expect(lessonScope.queryByRole('button', { name: /^Interactive$/i })).not.toBeInTheDocument();
+
+    // Select 'exam' kind -> Interactive tab becomes visible
+    const kindSelect = lessonScope.getByLabelText(/Resource kind/i) as HTMLSelectElement;
+    fireEvent.change(kindSelect, { target: { value: 'exam' } });
+    expect(lessonScope.getByRole('button', { name: /^Interactive$/i })).toBeInTheDocument();
 
     // Switch to Interactive mode (clears URL)
     fireEvent.click(lessonScope.getByRole('button', { name: /^Interactive$/i }));
@@ -682,13 +691,15 @@ describe('CourseEditorPage & editor components', () => {
     expect(savedResource?.assessment?.questions).toHaveLength(2);
   });
 
-  it('clears interactive assessment when switching back to Link mode', () => {
+  it('clears interactive assessment when switching back to Link mode or changing kind away from exam/assignment', () => {
     renderEditor('/editor/new');
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
     const lessonScope = within(lessonCard);
 
     fireEvent.click(lessonScope.getByRole('button', { name: /Add Material/i }));
+    const kindSelect = lessonScope.getByLabelText(/Resource kind/i) as HTMLSelectElement;
+    fireEvent.change(kindSelect, { target: { value: 'exam' } });
     fireEvent.click(lessonScope.getByRole('button', { name: /^Interactive$/i }));
     fireEvent.click(lessonScope.getByRole('button', { name: /Import JSON/i }));
 
@@ -723,7 +734,52 @@ describe('CourseEditorPage & editor components', () => {
       expect(
         lessonScope.getByText(/No interactive exam or assignment configured yet\./i)
       ).toBeInTheDocument();
+
+      // Changing kind to 'video' hides Interactive tab and switches back to Link mode
+      fireEvent.change(kindSelect, { target: { value: 'video' } });
+      expect(lessonScope.queryByRole('button', { name: /^Interactive$/i })).not.toBeInTheDocument();
+      expect(lessonScope.getByLabelText(/Material URL/i)).toBeInTheDocument();
     });
+  });
+
+  it('surfaces human-clear validation errors in EditorStickyBar, highlights offending field, and prompts before leaving with unsaved edits', () => {
+    renderEditor('/editor/new');
+
+    const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
+    const lessonScope = within(lessonCard);
+
+    // Add a material row with a title but leave URL empty
+    fireEvent.click(lessonScope.getByRole('button', { name: /Add Material/i }));
+    fireEvent.change(lessonScope.getByLabelText(/Material title/i), {
+      target: { value: 'Incomplete Lecture Link' },
+    });
+
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
+
+    // Save is blocked, error is shown inside sticky bar with clear Ch 1 - L 1 and Material #1 context
+    expect(screen.queryByTestId('course-view-destination')).not.toBeInTheDocument();
+    expect(within(stickyBar).getByRole('alert')).toHaveTextContent(
+      /Ch 1 - L 1 \("Course Introduction"\), Material #1 \("Incomplete Lecture Link"\): Please enter a valid URL/i
+    );
+
+    // Offending material row and URL input are highlighted
+    expect(document.querySelectorAll('[data-field-error="true"]').length).toBeGreaterThanOrEqual(1);
+
+    // Clicking Back link while dirty opens the Unsaved changes confirmation dialog
+    fireEvent.click(screen.getByRole('link', { name: /All Courses/i }));
+    const unsavedDialog = screen.getByRole('dialog', { name: /Unsaved changes/i });
+    expect(unsavedDialog).toBeInTheDocument();
+
+    // Keep Editing closes the dialog and stays in the editor
+    fireEvent.click(within(unsavedDialog).getByRole('button', { name: /Keep Editing/i }));
+    expect(screen.queryByRole('dialog', { name: /Unsaved changes/i })).not.toBeInTheDocument();
+
+    // Clicking Back link again and choosing Discard Edits navigates away
+    fireEvent.click(screen.getByRole('link', { name: /All Courses/i }));
+    const unsavedDialog2 = screen.getByRole('dialog', { name: /Unsaved changes/i });
+    fireEvent.click(within(unsavedDialog2).getByRole('button', { name: /Discard Edits/i }));
+    expect(screen.getByTestId('catalog-destination')).toBeInTheDocument();
   });
 
   it('renders Live Tree Preview unframed (framed={false}) and uses 4-tier Light/Dark classes without legacy washes', () => {

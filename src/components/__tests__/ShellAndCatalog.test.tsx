@@ -179,7 +179,7 @@ describe('CatalogPage & CourseCard', () => {
       version: 1,
       statuses: {
         'guide101-quick-start': {
-          'guide101-browsing-bookmarks': 'done',
+          'guide101-ch1-l1-browsing-bookmarks': 'done',
         },
       },
       bookmarks: [],
@@ -292,7 +292,7 @@ describe('SearchModal', () => {
     expect(within(lessonBtn).getByText('lesson')).toBeInTheDocument();
     fireEvent.click(lessonBtn);
     expect(screen.getByTestId('location-probe')).toHaveTextContent(
-      '/course/guide101-quick-start?lesson=guide101-searching-with-ctrl-k'
+      '/course/guide101-quick-start?lesson=guide101-ch1-l2-searching-with-ctrl-k'
     );
   });
 });

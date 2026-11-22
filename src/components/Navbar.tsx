@@ -20,7 +20,7 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
   const themeTitle = `${themeMeta.label} (${themeMeta.next})`;
 
   return (
-    <header className="border-b border-slate-800/80 bg-slate-900 text-white">
+    <header className="sticky top-0 z-40 border-b border-slate-800/80 bg-slate-900 text-white">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between gap-2 px-4 sm:gap-4 sm:px-6">
         <div className="flex min-w-0 items-center gap-3 sm:gap-6">
           <Link

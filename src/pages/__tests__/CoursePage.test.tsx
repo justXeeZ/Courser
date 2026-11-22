@@ -54,7 +54,7 @@ describe('CoursePage integration', () => {
 
   it('opens MaterialViewerModal for YouTube resource and guards drawer Escape/shortcuts while modal is open', () => {
     renderCoursePage(
-      '/course/demo201-feature-showcase?lesson=demo201-course-overview-tree-structure'
+      '/course/demo201-feature-showcase?lesson=demo201-ch1-l1-course-overview-tree-structure'
     );
 
     const drawer = screen.getByRole('dialog', { name: 'Course Overview & Tree Structure' });
@@ -97,7 +97,7 @@ describe('CoursePage integration', () => {
 
   it('opens AssessmentRunnerModal for DEMO201 LaTeX exam, records Best score badge, and guards Escape', () => {
     renderCoursePage(
-      '/course/demo201-feature-showcase?lesson=demo201-asymptotic-notation-recurrences'
+      '/course/demo201-feature-showcase?lesson=demo201-ch2-l1-asymptotic-notation-recurrences'
     );
 
     const drawer = screen.getByRole('dialog', { name: 'Asymptotic Notation & Recurrences' });

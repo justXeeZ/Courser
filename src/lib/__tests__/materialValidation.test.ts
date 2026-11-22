@@ -91,6 +91,9 @@ describe('materialValidation', () => {
     expect(suggestResourceKind('deck.PPT')).toBe('slides');
     expect(suggestResourceKind('lecture.mp4')).toBe('video');
     expect(suggestResourceKind('recording.webm')).toBe('video');
+    expect(suggestResourceKind('podcast.mp3')).toBe('audio');
+    expect(suggestResourceKind('voice-note.wav')).toBe('audio');
+    expect(suggestResourceKind('lecture-audio.m4a')).toBe('audio');
     expect(suggestResourceKind('starter.zip')).toBe('lab');
     expect(suggestResourceKind('analysis.ipynb')).toBe('lab');
     expect(suggestResourceKind('solution.py')).toBe('lab');

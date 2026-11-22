@@ -5,6 +5,8 @@ import {
   deriveCourseSlug,
   deriveFileId,
   deriveLessonId,
+  formatChapterPositionTag,
+  formatLessonPositionTag,
   rekeyCourseContentIds,
   rekeyCourseContentIdsWithMap,
 } from '@/lib/courseIds';
@@ -12,15 +14,17 @@ import { parseCourseTree } from '@/data/validateCourse';
 import type { CourseTree } from '@/types/course';
 
 describe('courseIds derivation helpers', () => {
-  it('derives normalized prefixes and course slugs', () => {
+  it('derives normalized prefixes, course slugs, and position tags', () => {
     expect(deriveCoursePrefix('CS 201')).toBe('cs201');
     expect(deriveCoursePrefix('MATH-101')).toBe('math101');
     expect(deriveCourseSlug('CS201', 'Data Structures & Algorithms')).toBe(
       'cs201-data-structures-algorithms'
     );
+    expect(formatChapterPositionTag(1)).toBe('Ch 1');
+    expect(formatLessonPositionTag(1, 3)).toBe('Ch 1 - L 3');
   });
 
-  it('derives unique chapter and lesson IDs prefixed by course code', () => {
+  it('derives unique chapter and lesson IDs prefixed by course code and chapter/lesson order', () => {
     const chIds = new Set<string>();
     expect(deriveChapterId('CS201', 1, '1. Complexity & Linear Data', chIds)).toBe(
       'cs201-ch1-complexity-linear-data'
@@ -30,8 +34,12 @@ describe('courseIds derivation helpers', () => {
     );
 
     const lIds = new Set<string>();
-    expect(deriveLessonId('CS201', 'Dynamic Arrays', lIds)).toBe('cs201-dynamic-arrays');
-    expect(deriveLessonId('CS201', 'Dynamic Arrays', lIds)).toBe('cs201-dynamic-arrays-2');
+    expect(deriveLessonId('CS201', 1, 2, 'Dynamic Arrays', lIds)).toBe(
+      'cs201-ch1-l2-dynamic-arrays'
+    );
+    expect(deriveLessonId('CS201', 1, 2, 'Dynamic Arrays', lIds)).toBe(
+      'cs201-ch1-l2-dynamic-arrays-2'
+    );
   });
 
   it('derives random 8-hex file IDs prefixed by course code', () => {
@@ -99,7 +107,7 @@ describe('courseIds derivation helpers', () => {
           id: 'old-ch-2',
           order: 2,
           title: '2. Capstone Project',
-          description: 'Standalone chapter depending on ch1 and lesson 1',
+          description: 'Direct milestone chapter depending on ch1 and lesson 1',
           prerequisites: ['old-ch-1', 'old-l1', 'missing-ref'],
           lessons: [],
         },
@@ -108,21 +116,21 @@ describe('courseIds derivation helpers', () => {
 
     const { course: rekeyed, idMap } = rekeyCourseContentIdsWithMap(draft);
     expect(rekeyed.chapters[0].id).toBe('math201-ch1-vectors');
-    expect(rekeyed.chapters[0].lessons[0].id).toBe('math201-dot-products');
-    expect(rekeyed.chapters[0].lessons[1].id).toBe('math201-orthogonality');
+    expect(rekeyed.chapters[0].lessons[0].id).toBe('math201-ch1-l1-dot-products');
+    expect(rekeyed.chapters[0].lessons[1].id).toBe('math201-ch1-l2-orthogonality');
     expect(rekeyed.chapters[1].id).toBe('math201-ch2-capstone-project');
 
     expect(idMap.get('old-ch-1')).toBe('math201-ch1-vectors');
     expect(idMap.get('old-ch-2')).toBe('math201-ch2-capstone-project');
-    expect(idMap.get('old-l1')).toBe('math201-dot-products');
-    expect(idMap.get('old-l2')).toBe('math201-orthogonality');
+    expect(idMap.get('old-l1')).toBe('math201-ch1-l1-dot-products');
+    expect(idMap.get('old-l2')).toBe('math201-ch1-l2-orthogonality');
 
     // Self-refs and dangling refs dropped; valid chapter & lesson prereqs remapped
     expect(rekeyed.chapters[0].prerequisites).toBeUndefined();
-    expect(rekeyed.chapters[0].lessons[1].prerequisites).toEqual(['math201-dot-products']);
+    expect(rekeyed.chapters[0].lessons[1].prerequisites).toEqual(['math201-ch1-l1-dot-products']);
     expect(rekeyed.chapters[1].prerequisites).toEqual([
       'math201-ch1-vectors',
-      'math201-dot-products',
+      'math201-ch1-l1-dot-products',
     ]);
 
     // File IDs are never modified
