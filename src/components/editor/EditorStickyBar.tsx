@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { AlertCircle, ChevronsUp, Plus, Save, X } from 'lucide-react';
 import { formatLessonPositionTag } from '@/lib/courseIds';
 
@@ -18,6 +19,7 @@ interface EditorStickyBarProps {
   hasExpandedLessons: boolean;
   errorMsg?: string | null;
   onDismissError?: () => void;
+  onHeightChange?: (heightPx: number) => void;
   onAddChapter: () => void;
   onCollapseAll: () => void;
   onSave: () => void;
@@ -30,14 +32,35 @@ export function EditorStickyBar({
   hasExpandedLessons,
   errorMsg,
   onDismissError,
+  onHeightChange,
   onAddChapter,
   onCollapseAll,
   onSave,
 }: EditorStickyBarProps) {
   const displayCode = courseCode.trim() || 'COURSE';
+  const barRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = barRef.current;
+    if (!el || !onHeightChange) return;
+
+    const reportHeight = () => {
+      const measured = el.offsetHeight;
+      onHeightChange(measured > 0 ? measured : errorMsg ? 92 : 56);
+    };
+
+    reportHeight();
+
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(reportHeight);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+  }, [errorMsg, focusedChapter, focusedLesson, onHeightChange]);
 
   return (
     <div
+      ref={barRef}
       data-testid="editor-sticky-bar"
       className="sticky top-16 z-30 min-h-14 border-b border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]"
     >
@@ -65,7 +88,7 @@ export function EditorStickyBar({
                     ›
                   </span>
                   {focusedLesson.order !== undefined && (
-                    <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-300 dark:bg-[#1b2436] dark:text-blue-400">
+                    <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-800 dark:bg-blue-400/15 dark:text-blue-300">
                       {formatLessonPositionTag(focusedChapter.order, focusedLesson.order)}
                     </span>
                   )}

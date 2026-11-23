@@ -206,23 +206,47 @@ describe('CourseEditorPage & editor components', () => {
     ) as HTMLElement;
     const ch2PrereqScope = within(ch2PrereqPicker);
 
-    // Chapter 2's PrerequisitePicker excludes itself ("Ch 2: 2. New Chapter") and its own lesson ("Topic 2.1")
+    // Chapter 2's PrerequisitePicker excludes itself ("Ch2: 2. New Chapter") and its own lesson ("Topic 2.1")
     expect(
-      ch2PrereqScope.queryByRole('button', { name: /Ch 2: 2\. New Chapter/i })
+      ch2PrereqScope.queryByRole('button', { name: /Ch2\s+2\. New Chapter/i })
     ).not.toBeInTheDocument();
-    expect(ch2PrereqScope.queryByRole('button', { name: 'Topic 2.1' })).not.toBeInTheDocument();
+    expect(ch2PrereqScope.queryByRole('button', { name: /Topic 2\.1/i })).not.toBeInTheDocument();
 
-    // Chapter 1 and its lesson are available in Chapter 2's PrerequisitePicker
+    // Group heading keeps "Ch1: 1. Foundations" format
+    expect(ch2PrereqScope.getByText('Ch1: 1. Foundations')).toBeInTheDocument();
+
+    // Chapter 1 and its lesson are available in Chapter 2's PrerequisitePicker with Ch1 and Ch1 / L1 tags
     const ch1PrereqBtn = ch2PrereqScope.getByRole('button', {
-      name: /Ch 1: 1\. Foundations/i,
+      name: /Ch1\s+1\. Foundations/i,
     });
+    const ch1Tag = within(ch1PrereqBtn).getByTestId('prereq-tag-chapter');
+    expect(ch1Tag).toHaveTextContent('Ch1');
+    expect(ch1Tag.className).toContain('bg-amber-100');
+    expect(ch1Tag.className).toContain('text-amber-800');
     expect(ch1PrereqBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Selecting chapter prerequisite applies amber fill
     fireEvent.click(ch1PrereqBtn);
     expect(ch1PrereqBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(ch1PrereqBtn.className).toContain('bg-amber-400');
 
     // Toggle back off
     fireEvent.click(ch1PrereqBtn);
     expect(ch1PrereqBtn).toHaveAttribute('aria-pressed', 'false');
+
+    // Selecting lesson prerequisite shows Ch1 / L1 light-blue tag and applies blue fill on selection
+    const l1PrereqBtn = ch2PrereqScope.getByRole('button', {
+      name: /Ch1 \/ L1\s+Course Introduction/i,
+    });
+    const l1Tag = within(l1PrereqBtn).getByTestId('prereq-tag-lesson');
+    expect(l1Tag).toHaveTextContent('Ch1 / L1');
+    expect(l1Tag.className).toContain('bg-blue-100');
+    expect(l1Tag.className).toContain('text-blue-800');
+    fireEvent.click(l1PrereqBtn);
+    expect(l1PrereqBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(l1PrereqBtn.className).toContain('bg-blue-600');
+    fireEvent.click(l1PrereqBtn);
+    expect(l1PrereqBtn).toHaveAttribute('aria-pressed', 'false');
 
     // Delete Chapter 2's only lesson -> becomes 0-lesson chapter with hint
     const ch2Scope = within(chapter2Card);
@@ -380,20 +404,20 @@ describe('CourseEditorPage & editor components', () => {
     ) as HTMLElement;
     const lessonPrereqScope = within(lessonPrereqPicker);
 
-    // Excludes self ("Course Introduction") and own parent chapter ("Ch 1: 1. Foundations")
+    // Excludes self ("Course Introduction") and own parent chapter ("Ch1 1. Foundations")
     expect(
-      lessonPrereqScope.queryByRole('button', { name: 'Course Introduction' })
+      lessonPrereqScope.queryByRole('button', { name: /Course Introduction/i })
     ).not.toBeInTheDocument();
     expect(
-      lessonPrereqScope.queryByRole('button', { name: /Ch 1: 1\. Foundations/i })
+      lessonPrereqScope.queryByRole('button', { name: /Ch1\s+1\. Foundations/i })
     ).not.toBeInTheDocument();
 
-    // Allows sibling lesson ("New Sub-Lesson 2") and Chapter 2 ("Ch 2: 2. New Chapter")
+    // Allows sibling lesson ("Ch1 / L2 New Sub-Lesson 2") and Chapter 2 ("Ch2 2. New Chapter")
     expect(
-      lessonPrereqScope.getByRole('button', { name: 'New Sub-Lesson 2' })
+      lessonPrereqScope.getByRole('button', { name: /Ch1 \/ L2\s+New Sub-Lesson 2/i })
     ).toBeInTheDocument();
     expect(
-      lessonPrereqScope.getByRole('button', { name: /Ch 2: 2\. New Chapter/i })
+      lessonPrereqScope.getByRole('button', { name: /Ch2\s+2\. New Chapter/i })
     ).toBeInTheDocument();
 
     // Collapse all collapses expanded lessons and chapters, and chapters can be manually toggled
@@ -519,10 +543,11 @@ describe('CourseEditorPage & editor components', () => {
     expect(expandedClasses).not.toContain('#ffe599');
 
     const lessonPosBadge = within(headerRow).getByText('Ch1 / L1');
-    expect(lessonPosBadge.className).toContain('text-blue-300');
-    expect(lessonPosBadge.className).toContain('dark:bg-[#0d131f]');
-    expect(lessonPosBadge.className).toContain('dark:text-blue-400');
-    expect(lessonPosBadge.className).not.toContain('dark:bg-slate-950');
+    expect(lessonPosBadge.className).toContain('bg-blue-100');
+    expect(lessonPosBadge.className).toContain('text-blue-800');
+    expect(lessonPosBadge.className).toContain('dark:bg-blue-400/15');
+    expect(lessonPosBadge.className).toContain('dark:text-blue-300');
+    expect(lessonPosBadge.className).not.toContain('bg-slate-900');
 
     fireEvent.click(toggleBtn);
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
@@ -984,5 +1009,89 @@ describe('CourseEditorPage & editor components', () => {
     expect(chapterResTag.className).toContain('text-amber-800');
     expect(chapterResTag.className).toContain('dark:bg-amber-400/15');
     expect(chapterResTag.className).toContain('dark:text-amber-300');
+  });
+
+  it('removes the duplicate page-top error banner, offsets sticky headers below EditorStickyBar when error banner is visible, and strips top rounded corners when stuck', () => {
+    renderEditor('/editor/new');
+    expandChapter1AndLesson1();
+
+    const mainEl = document.querySelector('main') as HTMLElement;
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    const chapterHeader = document.querySelector('[data-sticky-header="chapter"]') as HTMLElement;
+    const lessonHeader = document.querySelector('[data-sticky-header="lesson"]') as HTMLElement;
+
+    // Before validation error: sticky bar height is 56px, chapter top offset is calc(64px + 56px)
+    expect(mainEl.style.getPropertyValue('--editor-sticky-bar-height')).toBe('56px');
+    expect(mainEl.style.getPropertyValue('--editor-chapter-sticky-top')).toBe('calc(64px + 56px)');
+    expect(chapterHeader.className).toContain('top-[var(--editor-chapter-sticky-top,120px)]');
+    expect(lessonHeader.className).toContain('top-[var(--editor-lesson-sticky-top,168px)]');
+
+    // Trigger validation error by clearing Course Title
+    fireEvent.change(screen.getByLabelText(/Course Title/i), { target: { value: '' } });
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
+
+    // Only 1 top-level banner alert exists (inside EditorStickyBar) — no duplicate summary banner at top of page
+    const bannerAlerts = screen.getAllByText(/Course Metadata: Please enter a Course Title\./i);
+    expect(bannerAlerts).toHaveLength(1);
+    expect(stickyBar).toContainElement(bannerAlerts[0]);
+
+    // When sticky error banner is visible, --editor-sticky-bar-height increases to push sticky headers down
+    expect(mainEl.style.getPropertyValue('--editor-sticky-bar-height')).toBe('92px');
+    expect(mainEl.style.getPropertyValue('--editor-chapter-sticky-top')).toBe('calc(64px + 92px)');
+
+    // Initially unstuck -> top rounded corners are present
+    expect(chapterHeader).toHaveAttribute('data-stuck', 'false');
+    expect(chapterHeader.className).toContain('rounded-t-lg');
+    expect(lessonHeader).toHaveAttribute('data-stuck', 'false');
+    expect(lessonHeader.className).toContain('rounded-t-md');
+
+    // Simulate scrolling so chapter and lesson headers reach their sticky top threshold
+    const originalScrollY = window.scrollY;
+    Object.defineProperty(window, 'scrollY', { configurable: true, writable: true, value: 300 });
+    vi.spyOn(chapterHeader, 'getBoundingClientRect').mockReturnValue({
+      top: 120,
+      bottom: 168,
+      left: 0,
+      right: 800,
+      width: 800,
+      height: 48,
+      x: 0,
+      y: 120,
+      toJSON: () => ({}),
+    });
+    vi.spyOn(lessonHeader, 'getBoundingClientRect').mockReturnValue({
+      top: 168,
+      bottom: 210,
+      left: 0,
+      right: 800,
+      width: 800,
+      height: 42,
+      x: 0,
+      y: 168,
+      toJSON: () => ({}),
+    });
+
+    fireEvent.scroll(window);
+
+    expect(chapterHeader).toHaveAttribute('data-stuck', 'true');
+    expect(chapterHeader.className).toContain('rounded-t-none');
+    expect(chapterHeader.className).not.toContain('rounded-t-lg');
+
+    expect(lessonHeader).toHaveAttribute('data-stuck', 'true');
+    expect(lessonHeader.className).toContain('rounded-t-none');
+    expect(lessonHeader.className).not.toContain('rounded-t-md');
+
+    // Unstick when scrolled back to top -> restores top rounded corners
+    Object.defineProperty(window, 'scrollY', {
+      configurable: true,
+      writable: true,
+      value: originalScrollY,
+    });
+    fireEvent.scroll(window);
+
+    expect(chapterHeader).toHaveAttribute('data-stuck', 'false');
+    expect(chapterHeader.className).toContain('rounded-t-lg');
+    expect(lessonHeader).toHaveAttribute('data-stuck', 'false');
+    expect(lessonHeader.className).toContain('rounded-t-md');
   });
 });

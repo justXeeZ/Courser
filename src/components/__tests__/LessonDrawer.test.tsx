@@ -32,7 +32,13 @@ describe('LessonDrawer', () => {
     expect(screen.getByRole('dialog', { name: lesson.title })).toBeInTheDocument();
     const lessonTag = screen.getByTestId('lesson-position-tag');
     expect(lessonTag).toHaveTextContent('Ch1 / L2');
-    expect(lessonTag).toHaveClass('ml-auto');
+    expect(lessonTag).toHaveClass(
+      'ml-auto',
+      'bg-blue-100',
+      'text-blue-800',
+      'dark:bg-blue-400/15',
+      'dark:text-blue-300'
+    );
     expect(screen.getByText(lesson.summary)).toBeInTheDocument();
     expect(screen.getByText('Document')).toBeInTheDocument();
     expect(screen.getByText('Official')).toBeInTheDocument();

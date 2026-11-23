@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
@@ -45,14 +46,47 @@ export function LessonEditorCard({
   const summaryErrorKey = errorPrefix ? `${errorPrefix}.summary` : undefined;
   const titleError = titleErrorKey ? fieldErrors?.[titleErrorKey] : undefined;
   const summaryError = summaryErrorKey ? fieldErrors?.[summaryErrorKey] : undefined;
+  const [isStuck, setIsStuck] = useState<boolean>(false);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!isExpanded) {
+      setIsStuck(false);
+      return;
+    }
+
+    const updateStuck = () => {
+      const el = headerRef.current;
+      if (!el) return;
+      const computedTop = parseFloat(window.getComputedStyle(el).top);
+      const targetTop = Number.isFinite(computedTop) ? computedTop : 168;
+      const rect = el.getBoundingClientRect();
+      setIsStuck(window.scrollY > 0 && Math.abs(rect.top - targetTop) <= 1.5);
+    };
+
+    updateStuck();
+    window.addEventListener('scroll', updateStuck, { passive: true });
+    window.addEventListener('resize', updateStuck);
+    return () => {
+      window.removeEventListener('scroll', updateStuck);
+      window.removeEventListener('resize', updateStuck);
+    };
+  }, [isExpanded]);
+
+  const headerCornerClass = isExpanded
+    ? isStuck
+      ? 'sticky top-[var(--editor-lesson-sticky-top,168px)] z-10 rounded-t-none'
+      : 'sticky top-[var(--editor-lesson-sticky-top,168px)] z-10 rounded-t-md'
+    : 'rounded-md';
 
   return (
     <div data-edit-lesson={lesson.id} className="py-2.5 first:pt-0 last:pb-0">
       {/* Lesson Header Row — sticky below chapter header when expanded; identical colors in collapsed & expanded states */}
       <div
-        className={`flex flex-wrap items-center justify-between gap-2 border border-slate-200 border-l-4 border-l-blue-500 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:border-l-blue-400 dark:bg-[#1b2436] ${
-          isExpanded ? 'sticky top-[168px] z-10 rounded-t-md' : 'rounded-md'
-        }`}
+        ref={headerRef}
+        data-sticky-header="lesson"
+        data-stuck={isStuck ? 'true' : 'false'}
+        className={`flex flex-wrap items-center justify-between gap-2 border border-slate-200 border-l-4 border-l-blue-500 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:border-l-blue-400 dark:bg-[#1b2436] ${headerCornerClass}`}
       >
         <button
           type="button"
@@ -65,7 +99,7 @@ export function LessonEditorCard({
           ) : (
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
           )}
-          <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-300 dark:bg-[#0d131f] dark:text-blue-400">
+          <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-800 dark:bg-blue-400/15 dark:text-blue-300">
             {formatLessonPositionTag(chapterOrder, lessonIndex + 1)}
           </span>
           <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">

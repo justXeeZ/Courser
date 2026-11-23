@@ -1,4 +1,4 @@
-import { Ban, BookOpen, CheckCircle2, ChevronRight, Circle } from 'lucide-react';
+import { Ban, BookOpen, CheckCircle2, Circle } from 'lucide-react';
 import { isLeafChapter } from '@/lib/courseItems';
 import type { Chapter, CourseTree, LessonStatus } from '@/types/course';
 import { computeChapterStats } from '@/store/useProgressStore';
@@ -134,20 +134,9 @@ export function ChecklistView({
                   </span>
                 )}
                 {isLeaf ? (
-                  <>
-                    <span className="hidden rounded border border-slate-200 bg-white px-2 py-0.5 text-slate-600 sm:inline dark:border-slate-700 dark:bg-[#121926] dark:text-slate-300">
-                      {formatMaterialCount((chapter.resources ?? []).length)}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => onSelectChapter?.(chapter)}
-                      aria-label={`Open ${chapter.title}`}
-                      className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      Open
-                      <ChevronRight className="h-3.5 w-3.5" />
-                    </button>
-                  </>
+                  <span className="hidden rounded border border-slate-200 bg-white px-2 py-0.5 text-slate-600 sm:inline dark:border-slate-700 dark:bg-[#121926] dark:text-slate-300">
+                    {formatMaterialCount((chapter.resources ?? []).length)}
+                  </span>
                 ) : (
                   <>
                     {stats.skipped > 0 && (
@@ -223,14 +212,6 @@ export function ChecklistView({
                           <span className="hidden rounded bg-slate-100 px-2 py-0.5 text-xs text-slate-600 sm:inline dark:bg-[#1b2436] dark:text-slate-300">
                             {formatMaterialCount(lesson.resources.length)}
                           </span>
-                          <button
-                            type="button"
-                            onClick={() => onSelectLesson(lesson.id)}
-                            className="inline-flex items-center gap-0.5 text-xs font-medium text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
-                          >
-                            Open
-                            <ChevronRight className="h-3.5 w-3.5" />
-                          </button>
                         </div>
                       </li>
                     );

@@ -31,7 +31,13 @@ describe('ChapterDrawer', () => {
     expect(screen.getByRole('dialog', { name: ch1.title })).toBeInTheDocument();
     const chapterTag = screen.getByTestId('chapter-position-tag');
     expect(chapterTag).toHaveTextContent('Ch1');
-    expect(chapterTag).toHaveClass('ml-auto');
+    expect(chapterTag).toHaveClass(
+      'ml-auto',
+      'bg-amber-100',
+      'text-amber-800',
+      'dark:bg-amber-400/15',
+      'dark:text-amber-300'
+    );
     expect(screen.getByText('Week 1-3')).toBeInTheDocument();
     expect(screen.getByText(ch1.description)).toBeInTheDocument();
     expect(screen.getByText('0/3')).toBeInTheDocument();

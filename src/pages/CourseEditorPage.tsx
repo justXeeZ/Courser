@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
-  AlertCircle,
   AlertTriangle,
   ArrowLeft,
   FileEdit,
@@ -293,6 +292,7 @@ export function CourseEditorPage() {
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [importBanner, setImportBanner] = useState<{ warnings: string[] } | null>(null);
+  const [stickyBarHeight, setStickyBarHeight] = useState<number>(56);
 
   const editorRegionRef = useRef<HTMLDivElement | null>(null);
   const prevRouteSlugRef = useRef<string | undefined>(slug);
@@ -737,12 +737,22 @@ export function CourseEditorPage() {
 
   const hasExpandedLessons = Object.values(expandedLessons).some(Boolean);
   const hasExpandedChapters = draft.chapters.some((ch) => !collapsedChapters[ch.id]);
+  const effectiveStickyBarHeight =
+    stickyBarHeight > 56 ? stickyBarHeight : errorMsg ? 92 : 56;
 
   const inputClass =
     'w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500';
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-slate-50 pb-16 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
+    <main
+      style={
+        {
+          '--editor-sticky-bar-height': `${effectiveStickyBarHeight}px`,
+          '--editor-chapter-sticky-top': `calc(64px + ${effectiveStickyBarHeight}px)`,
+        } as React.CSSProperties
+      }
+      className="min-h-[calc(100vh-64px)] bg-slate-50 pb-16 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100"
+    >
       {/* Header Bar */}
       <section className="border-b border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]">
         <div className="mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-7">
@@ -868,6 +878,7 @@ export function CourseEditorPage() {
           hasExpandedLessons={hasExpandedLessons || hasExpandedChapters}
           errorMsg={errorMsg}
           onDismissError={() => setErrorMsg(null)}
+          onHeightChange={setStickyBarHeight}
           onAddChapter={addChapter}
           onCollapseAll={() => {
             setExpandedLessons({});
@@ -914,16 +925,6 @@ export function CourseEditorPage() {
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
-          </div>
-        )}
-
-        {errorMsg && (
-          <div
-            role="alert"
-            className="mb-5 flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
-          >
-            <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{errorMsg}</span>
           </div>
         )}
 

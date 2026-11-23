@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { LessonEditorCard } from '@/components/editor/LessonEditorCard';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
@@ -89,6 +89,48 @@ export function ChapterEditorCard({
 
   const [weekFrom, setWeekFrom] = useState<string>(() => parseWeekRangeBounds(chapter.weekRange).from);
   const [weekTo, setWeekTo] = useState<string>(() => parseWeekRangeBounds(chapter.weekRange).to);
+  const [chapterHeaderHeight, setChapterHeaderHeight] = useState<number>(48);
+  const [isStuck, setIsStuck] = useState<boolean>(false);
+  const headerRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const measureHeader = () => {
+      const h = el.offsetHeight;
+      if (h > 0) {
+        setChapterHeaderHeight(h);
+      }
+    };
+
+    measureHeader();
+
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(measureHeader);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+  }, [isExpanded, chapter.title, chapterResourceCount, chapter.lessons.length]);
+
+  useEffect(() => {
+    const updateStuck = () => {
+      const el = headerRef.current;
+      if (!el) return;
+      const computedTop = parseFloat(window.getComputedStyle(el).top);
+      const targetTop = Number.isFinite(computedTop) ? computedTop : 120;
+      const rect = el.getBoundingClientRect();
+      setIsStuck(window.scrollY > 0 && Math.abs(rect.top - targetTop) <= 1.5);
+    };
+
+    updateStuck();
+    window.addEventListener('scroll', updateStuck, { passive: true });
+    window.addEventListener('resize', updateStuck);
+    return () => {
+      window.removeEventListener('scroll', updateStuck);
+      window.removeEventListener('resize', updateStuck);
+    };
+  }, [isExpanded]);
 
   useEffect(() => {
     const parsed = parseWeekRangeBounds(chapter.weekRange);
@@ -104,16 +146,32 @@ export function ChapterEditorCard({
     });
   }, [chapter.id, chapter.weekRange]);
 
+  const headerCornerClass = isExpanded
+    ? isStuck
+      ? 'rounded-t-none border-b'
+      : 'rounded-t-lg border-b'
+    : isStuck
+      ? 'rounded-t-none rounded-b-lg'
+      : 'rounded-lg';
+
   return (
     <div
       data-edit-chapter={chapter.id}
+      style={
+        {
+          '--editor-chapter-header-height': `${chapterHeaderHeight}px`,
+          '--editor-lesson-sticky-top':
+            'calc(var(--editor-chapter-sticky-top, 120px) + var(--editor-chapter-header-height, 48px))',
+        } as React.CSSProperties
+      }
       className="scroll-mt-32 rounded-lg border border-slate-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
     >
       {/* Compact Sticky Chapter Header Row (NO overflow-hidden on outer container!) */}
       <div
-        className={`sticky top-[120px] z-20 flex min-h-12 flex-wrap items-center justify-between gap-2 border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-2 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436] ${
-          isExpanded ? 'rounded-t-lg border-b' : 'rounded-lg'
-        }`}
+        ref={headerRef}
+        data-sticky-header="chapter"
+        data-stuck={isStuck ? 'true' : 'false'}
+        className={`sticky top-[var(--editor-chapter-sticky-top,120px)] z-20 flex min-h-12 flex-wrap items-center justify-between gap-2 border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-2 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436] ${headerCornerClass}`}
       >
         <button
           type="button"
@@ -131,7 +189,7 @@ export function ChapterEditorCard({
           ) : (
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
           )}
-          <span className="shrink-0 rounded bg-slate-900 px-2 py-0.5 font-mono text-xs font-bold text-white dark:bg-[#0d131f] dark:text-amber-400">
+          <span className="shrink-0 rounded bg-amber-100 px-2 py-0.5 font-mono text-xs font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
             {formatChapterPositionTag(chapterOrder)}
           </span>
           <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">

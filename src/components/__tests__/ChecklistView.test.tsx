@@ -36,7 +36,7 @@ describe('ChecklistView', () => {
     expect(chapterTagGroups[0]).toHaveClass('flex-col', 'items-end', 'sm:flex-row');
   });
 
-  it('renders leaf chapters as checkable rows with Open button triggering ChapterDrawer', () => {
+  it('renders leaf chapters as checkable rows with clickable title triggering ChapterDrawer and no redundant Open link', () => {
     const onToggleDone = vi.fn();
     const onSelectChapter = vi.fn();
     const leafCh3 = demoCourse.chapters[2];
@@ -58,11 +58,13 @@ describe('ChecklistView', () => {
     fireEvent.click(toggleBtn);
     expect(onToggleDone).toHaveBeenCalledWith(leafCh3.id);
 
-    const openBtn = screen.getByRole('button', {
-      name: `Open ${leafCh3.title}`,
+    const titleBtn = screen.getByRole('button', {
+      name: leafCh3.title,
     });
-    fireEvent.click(openBtn);
+    fireEvent.click(titleBtn);
     expect(onSelectChapter).toHaveBeenCalledWith(leafCh3);
+
+    expect(screen.queryByRole('button', { name: /^Open\b/i })).not.toBeInTheDocument();
   });
 
   it('omits extra leaf badge and redundant child row, formats singular/plural materials, and uses neutral amber-accented chapter headers', () => {
