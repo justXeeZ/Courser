@@ -218,13 +218,17 @@ describe('CoursePage integration', () => {
       ) as SVGGElement;
       expect(lessonNode).not.toBeNull();
 
-      // Hovering sublesson opens QuickStatusPill attached flush to the top-right edge with flat bottom corners
+      // Hovering sublesson opens centered floating QuickStatusPill
       fireEvent.mouseEnter(lessonNode);
       const pill = screen.getByLabelText('Quick status menu');
       expect(pill).toBeInTheDocument();
-      expect(pill).toHaveClass('rounded-t-md', 'rounded-b-none', 'border-b-0');
-      const pillWrapper = screen.getByTestId('quick-status-pill');
-      expect(pillWrapper.style.transform).toBe('translate(-100%, -100%)');
+      expect(pill).toHaveClass('rounded-md');
+      expect(within(pill).queryByRole('menuitem', { name: /Reset to Todo/i })).not.toBeInTheDocument();
+
+      // Clicking Done keeps toolbar open and reveals Reset to Todo button
+      fireEvent.click(within(pill).getByRole('menuitem', { name: 'Done' }));
+      expect(screen.getByLabelText('Quick status menu')).toBeInTheDocument();
+      expect(within(pill).getByRole('menuitem', { name: /Reset to Todo/i })).toBeInTheDocument();
 
       // Leaving node and entering pill within grace delay keeps it open
       fireEvent.mouseLeave(lessonNode);

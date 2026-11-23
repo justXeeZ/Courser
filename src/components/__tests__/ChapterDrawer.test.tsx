@@ -222,7 +222,7 @@ describe('ChapterDrawer', () => {
     expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument();
     expect(screen.getByText('Week 1')).toBeInTheDocument();
-    expect(screen.queryByText('Chapter Materials')).not.toBeInTheDocument();
+    expect(screen.queryByText('Chapter Materials & Resources')).not.toBeInTheDocument();
     expect(screen.queryByText('No materials attached to this chapter yet.')).not.toBeInTheDocument();
 
     rerender(
@@ -239,7 +239,7 @@ describe('ChapterDrawer', () => {
 
     expect(screen.getByRole('tab', { name: 'Materials' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument();
-    expect(screen.getByText('Chapter Materials')).toBeInTheDocument();
+    expect(screen.getByText('Chapter Materials & Resources')).toBeInTheDocument();
     expect(screen.getByText('No materials attached to this chapter yet.')).toBeInTheDocument();
   });
 

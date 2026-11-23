@@ -597,14 +597,36 @@ describe('CourseEditorPage & editor components', () => {
     expect(unpinBtn).toHaveAttribute('aria-pressed', 'true');
     expect(unpinBtn.className).toContain('border-[var(--recommended-border)]');
 
-    // Pinned resources are grouped inside a single dotted purple Recommended container
+    // Pinned resources are grouped inside a single dashed purple Recommended container
     const recGroup = lessonScope.getByTestId('editor-recommended-group');
-    expect(recGroup).toHaveClass(
-      'border-dotted',
-      'border-[var(--recommended-border)]',
-      'bg-[var(--recommended-bg)]'
-    );
+    expect(recGroup).toHaveClass('recommended-group-box');
     expect(within(recGroup).getByRole('heading', { name: 'Recommended' })).toBeInTheDocument();
+
+    // Add a second material and verify reordering with Move material up / Move material down + delete button consistency
+    fireEvent.click(lessonScope.getByRole('button', { name: /Add Material/i }));
+    const titleInputs = lessonScope.getAllByLabelText(/Material title/i) as HTMLInputElement[];
+    fireEvent.change(titleInputs[1], { target: { value: 'Second Material' } });
+    fireEvent.change(lessonScope.getAllByLabelText(/Material URL/i)[1], {
+      target: { value: 'https://example.edu/second.pdf' },
+    });
+    // Pin second material too so both are in the same group and can be reordered
+    fireEvent.click(lessonScope.getByRole('button', { name: /Pin as recommended/i }));
+    const moveUpBtns = lessonScope.getAllByRole('button', { name: /Move material up/i });
+    const moveDownBtns = lessonScope.getAllByRole('button', { name: /Move material down/i });
+    expect(moveUpBtns[0]).toBeDisabled();
+    expect(moveDownBtns[1]).toBeDisabled();
+    fireEvent.click(moveUpBtns[1]);
+    expect(
+      (lessonScope.getAllByLabelText(/Material title/i)[0] as HTMLInputElement).value
+    ).toBe('Second Material');
+    // Move back so Core Syllabus PDF is first for the existing assertion below
+    fireEvent.click(lessonScope.getAllByRole('button', { name: /Move material down/i })[0]);
+    expect(
+      (lessonScope.getAllByLabelText(/Material title/i)[0] as HTMLInputElement).value
+    ).toBe('Core Syllabus PDF');
+    // Delete button matches chapter/sublesson delete button styling
+    const removeBtns = lessonScope.getAllByRole('button', { name: /Remove material/i });
+    expect(removeBtns[0]).toHaveClass('border', 'border-red-200');
 
     const stickyBar = screen.getByTestId('editor-sticky-bar');
     fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
@@ -859,6 +881,13 @@ describe('CourseEditorPage & editor components', () => {
 
     // Offending material row and URL input are highlighted
     expect(document.querySelectorAll('[data-field-error="true"]').length).toBeGreaterThanOrEqual(1);
+
+    // Resolving the invalid URL immediately clears both inline field error and sticky error banner
+    fireEvent.change(lessonScope.getByLabelText(/Material URL/i), {
+      target: { value: 'https://example.edu/lecture-1' },
+    });
+    expect(within(stickyBar).queryByRole('alert')).not.toBeInTheDocument();
+    expect(document.querySelectorAll('[data-field-error="true"]')).toHaveLength(0);
 
     // Clicking Back link while dirty opens the Unsaved changes confirmation dialog
     fireEvent.click(screen.getByRole('link', { name: /All Courses/i }));

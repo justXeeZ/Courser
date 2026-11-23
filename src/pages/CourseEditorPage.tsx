@@ -466,6 +466,55 @@ export function CourseEditorPage() {
     };
   }, [focusedChapterEntry, focusedLessonId]);
 
+  const YEAR_VALIDATION_ERROR = 'Year must be an integer from 1 to 10.';
+  const yearError = (() => {
+    const trimmed = yearInput.trim();
+    if (!trimmed) return null;
+    const parsed = Number(trimmed);
+    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) {
+      return YEAR_VALIDATION_ERROR;
+    }
+    return null;
+  })();
+
+  const hasFieldErrors = Object.keys(fieldErrors).length > 0;
+  useEffect(() => {
+    if (!hasFieldErrors && !errorMsg) return;
+
+    const liveValidation = validateCourseDraft(draft, yearError);
+
+    if (hasFieldErrors) {
+      setFieldErrors((prev) => {
+        let changed = false;
+        const next: Record<string, string> = {};
+        for (const [key, prevMsg] of Object.entries(prev)) {
+          const currentMsg = liveValidation.fieldErrors[key];
+          if (currentMsg) {
+            next[key] = currentMsg;
+            if (currentMsg !== prevMsg) changed = true;
+          } else {
+            changed = true;
+          }
+        }
+        return changed ? next : prev;
+      });
+    }
+
+    if (errorMsg) {
+      if (errorMsg === 'A course must have at least one chapter.') {
+        if (draft.chapters.length > 1) {
+          setErrorMsg(null);
+        }
+        return;
+      }
+
+      const liveMessages = Object.values(liveValidation.fieldErrors);
+      if (!liveMessages.includes(errorMsg)) {
+        setErrorMsg(liveValidation.firstErrorMsg);
+      }
+    }
+  }, [draft, yearError, hasFieldErrors, errorMsg]);
+
   if (isEditing && !existingCourse) {
     return (
       <main className="min-h-[calc(100vh-64px)] bg-slate-50 px-4 py-16 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
@@ -489,17 +538,6 @@ export function CourseEditorPage() {
 
   const coursePrefix = deriveCoursePrefix(draft.code);
   const existingSlugs = courses.map((c) => c.slug);
-
-  const YEAR_VALIDATION_ERROR = 'Year must be an integer from 1 to 10.';
-  const yearError = (() => {
-    const trimmed = yearInput.trim();
-    if (!trimmed) return null;
-    const parsed = Number(trimmed);
-    if (!Number.isInteger(parsed) || parsed < 1 || parsed > 10) {
-      return YEAR_VALIDATION_ERROR;
-    }
-    return null;
-  })();
 
   const updateMeta = (patch: Partial<CourseTree>) => {
     setDraft((prev) => {

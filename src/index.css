@@ -72,6 +72,16 @@
   border-radius: 0.75rem;
 }
 
+.dashed-box {
+  border-width: 1px;
+  border-style: dashed;
+}
+
+.recommended-group-box {
+  border: 1px dashed var(--recommended-border);
+  background-color: var(--recommended-bg);
+}
+
 /* roadmap.sh exact SVG node hover and completion states */
 .roadmap-svg g[data-node-kind="chapter"] {
   cursor: pointer;

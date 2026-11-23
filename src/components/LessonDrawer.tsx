@@ -5,6 +5,7 @@ import {
   ChevronLeft,
   ChevronRight,
   GitBranch,
+  Link2,
 } from 'lucide-react';
 import { findCourseItem, getTrackableItems, isLeafChapter } from '@/lib/courseItems';
 import { formatLessonPositionTag } from '@/lib/courseIds';
@@ -304,8 +305,9 @@ export function LessonDrawer({
 
       {activeTab === 'resources' ? (
         <div>
-          <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-            Course Materials &amp; Resources
+          <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+            <Link2 className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+            Lesson Materials &amp; Resources
           </h3>
           <MaterialList
             resources={lesson.resources}

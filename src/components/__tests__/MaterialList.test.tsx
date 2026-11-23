@@ -54,12 +54,9 @@ describe('ResourceBadge & MaterialList', () => {
 
     const { container } = render(<MaterialList resources={resources} />);
     const recBox = screen.getByTestId('recommended-resources-container');
-    expect(recBox).toHaveClass(
-      'border-dotted',
-      'border-[var(--recommended-border)]',
-      'bg-[var(--recommended-bg)]'
-    );
+    expect(recBox).toHaveClass('recommended-group-box');
     expect(within(recBox).getByRole('heading', { name: 'Recommended' })).toBeInTheDocument();
+    expect(screen.getByTestId('materials-card')).toContainElement(recBox);
 
     const recItems = Array.from(recBox.querySelectorAll('li')).map((li) => li.textContent ?? '');
     expect(recItems).toHaveLength(2);
@@ -91,7 +88,7 @@ describe('ResourceBadge & MaterialList', () => {
     expect(onOpenMaterialViewer).not.toHaveBeenCalled();
   });
 
-  it('routes embeddable URLs, OneDrive fallback links, and files to onOpenMaterialViewer with sibling pop-out link, while external URLs open directly', async () => {
+  it('routes all external URLs and uploaded files to onOpenMaterialViewer, displays truncated URLs and inline file details with ExternalLink vs Eye icons', async () => {
     const onOpenMaterialViewer = vi.fn();
     const resources: LessonResource[] = [
       {
@@ -128,21 +125,30 @@ describe('ResourceBadge & MaterialList', () => {
       />
     );
 
-    fireEvent.click(screen.getByRole('button', { name: /Lecture Video/i }));
+    const ytBtn = screen.getByRole('button', { name: /Lecture Video/i });
+    fireEvent.click(ytBtn);
     expect(onOpenMaterialViewer).toHaveBeenCalledWith(resources[0]);
-
-    const ytPopout = screen.getByRole('link', { name: 'Open Lecture Video in new tab' });
-    expect(ytPopout).toHaveAttribute('target', '_blank');
-    expect(ytPopout).toHaveAttribute('rel', 'noopener noreferrer');
+    expect(within(ytBtn).getByTestId('external-resource-url')).toHaveTextContent(
+      'youtube.com/watch?v=dQw4w9WgXcQ'
+    );
+    expect(within(ytBtn).getByTestId('external-resource-url')).toHaveAttribute(
+      'title',
+      'https://www.youtube.com/watch?v=dQw4w9WgXcQ'
+    );
+    expect(within(ytBtn).getByTestId('external-resource-icon')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: /OneDrive Share/i }));
     expect(onOpenMaterialViewer).toHaveBeenCalledWith(resources[1]);
 
-    const notionLink = screen.getByRole('link', { name: /Notion Notes/i });
-    expect(notionLink).toHaveAttribute('target', '_blank');
-    expect(notionLink).toHaveAttribute('rel', 'noopener noreferrer');
+    // External webpage URLs also open in the in-app viewer when onOpenMaterialViewer is provided
+    fireEvent.click(screen.getByRole('button', { name: /Notion Notes/i }));
+    expect(onOpenMaterialViewer).toHaveBeenCalledWith(resources[2]);
 
-    fireEvent.click(screen.getByRole('button', { name: /Uploaded PDF/i }));
+    const pdfBtn = screen.getByRole('button', { name: /Uploaded PDF/i });
+    expect(within(pdfBtn).getByTestId('uploaded-file-details')).toHaveTextContent('notes.pdf');
+    expect(within(pdfBtn).getByTestId('uploaded-viewer-icon')).toBeInTheDocument();
+    expect(within(pdfBtn).queryByText('Viewer')).not.toBeInTheDocument();
+    fireEvent.click(pdfBtn);
     expect(onOpenMaterialViewer).toHaveBeenCalledWith(resources[3]);
   });
 

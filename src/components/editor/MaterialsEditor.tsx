@@ -2,6 +2,8 @@ import { useEffect, useRef, useState, type DragEvent } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
+  ArrowDown,
+  ArrowUp,
   ClipboardList,
   Download,
   FileUp,
@@ -181,6 +183,29 @@ export function MaterialsEditor({
 
   const updateRow = (index: number, patch: Partial<LessonResource>) => {
     onChange(resources.map((r, idx) => (idx === index ? { ...r, ...patch } : r)));
+  };
+
+  const handleSwapMaterials = (indexA: number, indexB: number) => {
+    if (
+      indexA < 0 ||
+      indexB < 0 ||
+      indexA >= resources.length ||
+      indexB >= resources.length ||
+      indexA === indexB
+    ) {
+      return;
+    }
+    setRowKeys((prev) => {
+      const next = [...resolvedRowKeys];
+      [next[indexA], next[indexB]] = [next[indexB], next[indexA]];
+      return next.length === prev.length ? next : next;
+    });
+    const nextResources = [...resources];
+    [nextResources[indexA], nextResources[indexB]] = [
+      nextResources[indexB],
+      nextResources[indexA],
+    ];
+    onChange(nextResources);
   };
 
   const handleSwitchMode = (index: number, key: string, nextMode: ResourceMode) => {
@@ -473,8 +498,16 @@ export function MaterialsEditor({
     .map((res, rIdx) => ({ res, rIdx }))
     .filter(({ res }) => !res.recommended);
 
-  const renderMaterialRow = (res: LessonResource, rIdx: number) => {
+  const renderMaterialRow = (
+    res: LessonResource,
+    rIdx: number,
+    groupEntries: Array<{ res: LessonResource; rIdx: number }>,
+    posInGroup: number
+  ) => {
     const rowKey = resolvedRowKeys[rIdx] ?? `row-fallback-${rIdx}`;
+    const prevEntry = posInGroup > 0 ? groupEntries[posInGroup - 1] : undefined;
+    const nextEntry =
+      posInGroup < groupEntries.length - 1 ? groupEntries[posInGroup + 1] : undefined;
     const mode = getMode(rowKey, res);
     const feedback = feedbackByRow[rowKey] ?? {};
     const expectedHint = getExpectedExtensionsHint(res.kind);
@@ -606,11 +639,34 @@ export function MaterialsEditor({
 
                       <button
                         type="button"
-                        onClick={() => handleRemoveMaterial(rIdx)}
-                        aria-label="Remove material"
-                        className="rounded p-1 text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40"
+                        disabled={!prevEntry}
+                        onClick={() => prevEntry && handleSwapMaterials(rIdx, prevEntry.rIdx)}
+                        title="Move material up"
+                        aria-label="Move material up"
+                        className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
                       >
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <ArrowUp className="h-3 w-3" />
+                      </button>
+
+                      <button
+                        type="button"
+                        disabled={!nextEntry}
+                        onClick={() => nextEntry && handleSwapMaterials(rIdx, nextEntry.rIdx)}
+                        title="Move material down"
+                        aria-label="Move material down"
+                        className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
+                      >
+                        <ArrowDown className="h-3 w-3" />
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveMaterial(rIdx)}
+                        title="Delete material"
+                        aria-label="Remove material"
+                        className="rounded border border-red-200 bg-white p-1 text-red-600 hover:bg-red-50 dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
+                      >
+                        <Trash2 className="h-3 w-3" />
                       </button>
                     </div>
                   </div>
@@ -972,17 +1028,21 @@ export function MaterialsEditor({
           {pinnedEntries.length > 0 && (
             <div
               data-testid="editor-recommended-group"
-              className="space-y-2 rounded-lg border-2 border-dotted border-[var(--recommended-border)] bg-[var(--recommended-bg)] p-2.5"
+              className="recommended-group-box space-y-2 rounded-lg p-2.5"
             >
               <h4 className="text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
                 Recommended
               </h4>
               <div className="space-y-2">
-                {pinnedEntries.map(({ res, rIdx }) => renderMaterialRow(res, rIdx))}
+                {pinnedEntries.map(({ res, rIdx }, pos) =>
+                  renderMaterialRow(res, rIdx, pinnedEntries, pos)
+                )}
               </div>
             </div>
           )}
-          {regularEntries.map(({ res, rIdx }) => renderMaterialRow(res, rIdx))}
+          {regularEntries.map(({ res, rIdx }, pos) =>
+            renderMaterialRow(res, rIdx, regularEntries, pos)
+          )}
         </div>
       )}
 

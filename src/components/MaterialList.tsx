@@ -6,8 +6,8 @@ import {
   ExternalLink,
   Eye,
   FileText,
+  Star,
 } from 'lucide-react';
-import { resolveEmbedUrl } from '@/lib/embedResolver';
 import { openStoredFile } from '@/lib/fileStore';
 import { formatBytes } from '@/lib/materialValidation';
 import type { AssessmentScoreRecord } from '@/lib/storage/types';
@@ -48,6 +48,10 @@ function isSafeHttpUrl(rawUrl?: string): string | null {
   }
 }
 
+function formatDisplayUrl(rawUrl: string): string {
+  return rawUrl.replace(/^https?:\/\/(www\.)?/i, '').replace(/\/+$/, '');
+}
+
 export function MaterialList({
   resources,
   emptyText = 'No materials linked yet.',
@@ -78,7 +82,7 @@ export function MaterialList({
 
   if (resources.length === 0) {
     return (
-      <p className="rounded-lg border border-dashed border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
+      <p className="dashed-box rounded-lg border-slate-300 p-4 text-sm text-slate-500 dark:border-slate-700 dark:text-slate-400">
         {emptyText}
       </p>
     );
@@ -95,8 +99,8 @@ export function MaterialList({
     return undefined;
   };
 
-  const rowHoverClass =
-    'border-transparent hover:border-slate-200 hover:bg-slate-50 dark:hover:border-slate-700 dark:hover:bg-[#1b2436]/80';
+  const rowBaseClass =
+    'group flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/60';
 
   const renderResourceItem = (res: LessonResource, idx: number) => {
     if (res.assessment) {
@@ -116,7 +120,7 @@ export function MaterialList({
                 ? `Start ${modeLabel}: ${res.title}`
                 : 'Open from course view to launch interactive assessment'
             }
-            className={`group flex w-full items-start gap-2.5 rounded-md border p-2 text-left transition-colors ${rowHoverClass} ${
+            className={`${rowBaseClass} items-start ${
               !onOpenAssessment ? 'cursor-not-allowed opacity-70' : ''
             }`}
           >
@@ -124,7 +128,7 @@ export function MaterialList({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`text-sm font-medium text-slate-900 dark:text-slate-100 ${
+                  className={`truncate text-sm font-medium text-slate-900 dark:text-slate-100 ${
                     onOpenAssessment
                       ? 'underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400'
                       : ''
@@ -135,7 +139,7 @@ export function MaterialList({
               </div>
 
               <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-[#1b2436] dark:text-slate-200">
+                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-[#121926] dark:text-slate-200">
                   <ClipboardCheck className="h-3 w-3" />
                   {modeLabel}
                 </span>
@@ -143,7 +147,7 @@ export function MaterialList({
                   {qCount} {qCount === 1 ? 'question' : 'questions'}
                 </span>
                 {assessment.timeLimitMinutes && (
-                  <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-[#1b2436] dark:text-slate-300">
+                  <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-[#121926] dark:text-slate-300">
                     <Clock className="h-3 w-3" />
                     {assessment.timeLimitMinutes} min
                   </span>
@@ -187,32 +191,34 @@ export function MaterialList({
                 void handleOpenFile(file);
               }
             }}
-            className={`group flex w-full items-start gap-2.5 rounded-md border p-2 text-left transition-colors disabled:opacity-60 ${rowHoverClass}`}
+            className={`${rowBaseClass} disabled:opacity-60`}
           >
             <ResourceBadge kind={res.kind} />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
-                  {res.title}
-                </span>
-              </div>
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
+                {res.title}
+              </span>
+              <div
+                data-testid="uploaded-file-details"
+                className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+              >
+                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-[#121926] dark:text-slate-300">
                   <FileText className="h-3 w-3" />
                   File
                 </span>
-                <span className="truncate">{file.name}</span>
-                <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-[#1b2436] dark:text-slate-300">
+                <span className="max-w-[120px] truncate" title={file.name}>
+                  {file.name}
+                </span>
+                <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-[#121926] dark:text-slate-300">
                   {formatBytes(file.sizeBytes)}
                 </span>
-                {onOpenMaterialViewer && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-blue-600 dark:text-blue-400">
-                    <Eye className="h-3 w-3" />
-                    Viewer
-                  </span>
-                )}
               </div>
             </div>
+            <Eye
+              aria-hidden="true"
+              data-testid="uploaded-viewer-icon"
+              className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400"
+            />
           </button>
         </li>
       );
@@ -222,14 +228,12 @@ export function MaterialList({
     if (!safeUrl) {
       return (
         <li key={`invalid-${res.title}-${idx}`}>
-          <div className="flex items-start gap-2.5 rounded-md border border-red-200 bg-red-50/60 p-2 text-left dark:border-red-900/60 dark:bg-red-950/30">
+          <div className="flex items-start gap-2.5 bg-red-50/60 px-3 py-2.5 text-left dark:bg-red-950/30">
             <ResourceBadge kind={res.kind} />
             <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                  {res.title}
-                </span>
-              </div>
+              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                {res.title}
+              </span>
               <div className="mt-1 flex items-center gap-1 text-xs text-red-700 dark:text-red-300">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 <span>Invalid or unsupported URL</span>
@@ -240,44 +244,35 @@ export function MaterialList({
       );
     }
 
-    const resolved = resolveEmbedUrl(safeUrl);
-    if (onOpenMaterialViewer && resolved.kind !== 'external') {
+    const displayUrl = formatDisplayUrl(safeUrl);
+
+    if (onOpenMaterialViewer) {
       return (
         <li key={`${safeUrl}-${idx}`}>
-          <div
-            className={`flex items-start gap-2 rounded-md border p-2 transition-colors ${rowHoverClass}`}
+          <button
+            type="button"
+            onClick={() => onOpenMaterialViewer(res)}
+            className={rowBaseClass}
           >
-            <button
-              type="button"
-              onClick={() => onOpenMaterialViewer(res)}
-              className="group flex min-w-0 flex-1 items-start gap-2.5 text-left"
-            >
-              <ResourceBadge kind={res.kind} />
-              <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
-                    {res.title}
-                  </span>
-                </div>
-                <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
-                  <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-[#1b2436] dark:text-slate-200">
-                    <Eye className="h-3 w-3" />
-                    {resolved.providerLabel}
-                  </span>
-                </div>
-              </div>
-            </button>
-            <a
-              href={safeUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Open ${res.title} in new tab`}
-              title="Open in new tab"
-              className="mt-0.5 shrink-0 rounded p-1 text-slate-400 transition-colors hover:bg-slate-200 hover:text-blue-600 dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-blue-400"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-            </a>
-          </div>
+            <ResourceBadge kind={res.kind} />
+            <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
+                {res.title}
+              </span>
+              <span
+                title={safeUrl}
+                data-testid="external-resource-url"
+                className="max-w-[140px] shrink-0 truncate font-mono text-[11px] text-slate-500 sm:max-w-[200px] dark:text-slate-400"
+              >
+                {displayUrl}
+              </span>
+            </div>
+            <ExternalLink
+              aria-hidden="true"
+              data-testid="external-resource-icon"
+              className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400"
+            />
+          </button>
         </li>
       );
     }
@@ -288,17 +283,26 @@ export function MaterialList({
           href={safeUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className={`group flex items-start gap-2.5 rounded-md border p-2 transition-colors ${rowHoverClass}`}
+          className={rowBaseClass}
         >
           <ResourceBadge kind={res.kind} />
-          <div className="min-w-0 flex-1">
-            <div className="flex flex-wrap items-center gap-1.5">
-              <span className="text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
-                {res.title}
-              </span>
-            </div>
+          <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
+              {res.title}
+            </span>
+            <span
+              title={safeUrl}
+              data-testid="external-resource-url"
+              className="max-w-[140px] shrink-0 truncate font-mono text-[11px] text-slate-500 sm:max-w-[200px] dark:text-slate-400"
+            >
+              {displayUrl}
+            </span>
           </div>
-          <ExternalLink className="mt-0.5 h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600 dark:text-slate-500 dark:group-hover:text-blue-400" />
+          <ExternalLink
+            aria-hidden="true"
+            data-testid="external-resource-icon"
+            className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400"
+          />
         </a>
       </li>
     );
@@ -316,25 +320,39 @@ export function MaterialList({
         </div>
       )}
 
-      {recommendedResources.length > 0 && (
-        <div
-          data-testid="recommended-resources-container"
-          className="rounded-lg border-2 border-dotted border-[var(--recommended-border)] bg-[var(--recommended-bg)] p-3"
-        >
-          <h4 className="mb-2 text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
-            Recommended
-          </h4>
-          <ul className="space-y-1.5">
-            {recommendedResources.map((res, idx) => renderResourceItem(res, idx))}
-          </ul>
-        </div>
-      )}
+      <div
+        data-testid="materials-card"
+        className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#1b2436]"
+      >
+        {recommendedResources.length > 0 && (
+          <div
+            data-testid="recommended-resources-container"
+            className="recommended-group-box m-2 overflow-hidden rounded-md"
+          >
+            <div className="flex items-center gap-1.5 border-b border-[var(--recommended-border)]/40 px-3 py-1.5">
+              <Star className="h-3.5 w-3.5 shrink-0 fill-current text-[var(--recommended-accent)]" />
+              <h4 className="text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
+                Recommended
+              </h4>
+            </div>
+            <ul className="divide-y divide-slate-200/80 dark:divide-slate-700/80">
+              {recommendedResources.map((res, idx) => renderResourceItem(res, idx))}
+            </ul>
+          </div>
+        )}
 
-      {regularResources.length > 0 && (
-        <ul className="space-y-2">
-          {regularResources.map((res, idx) => renderResourceItem(res, idx))}
-        </ul>
-      )}
+        {regularResources.length > 0 && (
+          <ul
+            className={`divide-y divide-slate-200 dark:divide-slate-700/80 ${
+              recommendedResources.length > 0
+                ? 'border-t border-slate-200 dark:border-slate-700/80'
+                : ''
+            }`}
+          >
+            {regularResources.map((res, idx) => renderResourceItem(res, idx))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 }

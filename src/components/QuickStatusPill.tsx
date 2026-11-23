@@ -28,46 +28,48 @@ export function QuickStatusPill({
         onClose();
       }
     };
+    const handleFocusIn = (e: FocusEvent) => {
+      if (pillRef.current && !pillRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         onClose();
       }
     };
     window.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('focusin', handleFocusIn);
     window.addEventListener('keydown', handleKeyDown);
     return () => {
       window.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('focusin', handleFocusIn);
       window.removeEventListener('keydown', handleKeyDown);
     };
   }, [onClose]);
 
-  const rightEdge = anchor.left + anchor.width;
-  const maxRight = typeof window !== 'undefined' ? window.innerWidth - 12 : rightEdge;
-  const clampedRight = Math.max(12, Math.min(rightEdge, maxRight));
-  const top = Math.max(40, anchor.top + 1);
+  const pillWidth = 276;
+  const centerX = anchor.left + anchor.width / 2;
+  const maxLeft = typeof window !== 'undefined' ? window.innerWidth - pillWidth - 12 : centerX;
+  const left = Math.max(12, Math.min(centerX - pillWidth / 2, maxLeft));
+  const top = Math.max(12, anchor.top - 46);
 
   return (
     <div
       ref={pillRef}
       data-testid="quick-status-pill"
-      style={{
-        left: `${clampedRight}px`,
-        top: `${top}px`,
-        transform: 'translate(-100%, -100%)',
-      }}
+      style={{ left: `${left}px`, top: `${top}px` }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-50"
+      className="fixed z-50 pb-3"
     >
-      <div className="rounded-t-md shadow-md">
+      <div className="rounded-md shadow-lg">
         <StatusSegmentedControl
           status={currentStatus}
           onChange={(next) => {
             onSelectStatus(next);
-            onClose();
           }}
           showReset
-          attachedToNode
           itemRole="menuitem"
           ariaLabel="Quick status menu"
         />

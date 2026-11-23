@@ -7,6 +7,8 @@ import {
   ChevronRight,
   Circle,
   GitBranch,
+  Layers,
+  Link2,
 } from 'lucide-react';
 import {
   findCourseItem,
@@ -354,8 +356,9 @@ export function ChapterDrawer({
       {activeTab === 'materials' ? (
         (isLeaf || resources.length > 0) && (
           <div className="mb-6">
-            <h3 className="mb-3 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              Chapter Materials
+            <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+              <Link2 className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+              Chapter Materials &amp; Resources
             </h3>
             <MaterialList
               resources={resources}
@@ -387,7 +390,8 @@ export function ChapterDrawer({
       {/* Sub-lessons List (for chapters with sub-lessons) */}
       {!isLeaf && (
         <div>
-          <h3 className="mb-2.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+          <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
+            <Layers className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
             Sub-Lessons ({chapter.lessons.length})
           </h3>
           <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white dark:divide-slate-700/80 dark:border-slate-700/80 dark:bg-[#1b2436]">

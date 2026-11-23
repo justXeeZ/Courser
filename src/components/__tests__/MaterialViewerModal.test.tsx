@@ -465,7 +465,7 @@ describe('MaterialViewerModal', () => {
     const openLinks = screen.getAllByRole('link', { name: /Open in new tab/i });
     expect(openLinks[0]).toHaveAttribute('rel', 'noopener noreferrer');
 
-    // Non-embeddable Notion link
+    // General external webpage renders inside a sandboxed iframe with visible fallback notice
     rerender(
       <MaterialViewerModal
         isOpen
@@ -477,7 +477,15 @@ describe('MaterialViewerModal', () => {
         onClose={vi.fn()}
       />
     );
-    expect(document.querySelector('iframe')).toBeNull();
+    const extIframe = document.querySelector('iframe');
+    expect(extIframe).not.toBeNull();
+    expect(extIframe).toHaveAttribute('src', 'https://www.notion.so/course-notes-123');
+    expect(extIframe).toHaveAttribute(
+      'sandbox',
+      'allow-scripts allow-same-origin allow-forms allow-popups'
+    );
+    expect(extIframe).toHaveAttribute('referrerpolicy', 'no-referrer');
+    expect(screen.getByTestId('external-embed-fallback-banner')).toBeInTheDocument();
 
     // Unsafe javascript: URL
     rerender(

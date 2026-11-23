@@ -7,7 +7,6 @@ interface StatusSegmentedControlProps {
   showReset?: boolean;
   itemRole?: 'button' | 'menuitem';
   ariaLabel?: string;
-  attachedToNode?: boolean;
 }
 
 export function StatusSegmentedControl({
@@ -16,7 +15,6 @@ export function StatusSegmentedControl({
   showReset = false,
   itemRole = 'button',
   ariaLabel = 'Item progress status',
-  attachedToNode = false,
 }: StatusSegmentedControlProps) {
   const toggleStatus = (target: Exclude<LessonStatus, 'todo'>) => {
     onChange(status === target ? 'todo' : target);
@@ -31,9 +29,7 @@ export function StatusSegmentedControl({
     <div
       role={itemRole === 'menuitem' ? 'menu' : 'group'}
       aria-label={ariaLabel}
-      className={`inline-flex h-8 items-center overflow-hidden border border-gray-300 bg-white dark:border-slate-700 dark:bg-slate-900 ${
-        attachedToNode ? 'rounded-t-md rounded-b-none border-b-0' : 'rounded-md'
-      }`}
+      className="inline-flex h-8 items-center overflow-hidden rounded-md border border-gray-300 bg-white dark:border-slate-700 dark:bg-slate-900"
     >
       <button
         type="button"

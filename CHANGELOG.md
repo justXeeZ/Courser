@@ -6,10 +6,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Course edit mode: added Move material up and Move material down arrow buttons on material rows to reorder materials with persisted order.
+- Chapter and lesson overviews: added the Link2 icon before materials headings and a Layers icon before the Sub-Lessons heading in Chapter Overview.
+- Material rows: external links now display a truncated URL with full-URL tooltip on the right alongside the external-link icon; uploaded files display File badge, filename, and size inline on the right with an Eye icon at the far right end.
+- In-app Material Viewer: clicking any external URL resource now opens inside the native viewer (native preview for supported types, or a sandboxed embedded webpage with a visible "Open in new tab" fallback notice for general webpages).
+
 ### Changed
-- Chapter and lesson overviews: changed the recommended materials container to a dotted purple outline with a mild purple background and a plain "Recommended" section title instead of a left-accented border and pin tag.
-- Course edit mode: pinned resources now use purple pin styling and are grouped together inside a single dotted purple "Recommended" container with a mild purple background instead of individual amber-tinted cards.
-- Tree view: attached the Done / Learning / Skip status toolbar flush to the top edge of tree entry nodes, right-aligned with the entry's right boundary, with flat bottom corners so it connects seamlessly without floating.
+- Chapter and lesson overviews: renamed headings to **CHAPTER MATERIALS & RESOURCES** and **LESSON MATERIALS & RESOURCES**, and unified materials into a single bordered divider-row card with recommended materials grouped inside the card under a purple star **RECOMMENDED** subtitle with a shared dashed purple outline and mild purple tint.
+- Course edit mode: pinned resources use purple pin styling and are grouped inside a single shared dashed purple "Recommended" container; material delete buttons now match chapter and sub-lesson delete buttons.
+- Tree view: restored the centered floating Done / Learning / Skip status toolbar (keeping hover + right-click triggers and conditional Reset to Todo button) and kept it open after selecting a status until pointer-leave (hover) or click/focus-out (right-click).
+
+### Fixed
+- Course edit mode: validation errors (both inline field errors and the sticky error banner) now clear automatically as soon as the offending field becomes valid.
 
 ## [0.8.0]
 

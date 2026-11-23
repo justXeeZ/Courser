@@ -233,6 +233,7 @@ export function MaterialViewerModal({
   const [wordWrap, setWordWrap] = useState(true);
   const [copied, setCopied] = useState(false);
   const [iframeLoaded, setIframeLoaded] = useState(false);
+  const [iframeError, setIframeError] = useState(false);
 
   const fileId = resource?.file?.id;
   const fileName = resource?.file?.name;
@@ -250,6 +251,7 @@ export function MaterialViewerModal({
     setImageZoom({ mode: 'fit', zoom: 1 });
     setCopied(false);
     setIframeLoaded(false);
+    setIframeError(false);
   }, [isOpen, fileId, resourceUrl]);
 
   // Load IndexedDB file + manage Blob object URL lifecycle safely
@@ -830,7 +832,53 @@ export function MaterialViewerModal({
       );
     }
 
-    // Fallback card for non-embeddable links (OneDrive/SharePoint share links, GDrive folders, external/Notion)
+    // Embedded webpage view for general external URLs (sandboxed with visible fallback banner)
+    if (resolvedUrl.kind === 'external' && !iframeError) {
+      return (
+        <div className="flex h-full flex-1 flex-col gap-2.5">
+          <div
+            data-testid="external-embed-fallback-banner"
+            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300"
+          >
+            <span>
+              Some websites block embedding. If this page appears blank or fails to load, open it
+              in a new tab.
+            </span>
+            <a
+              href={resolvedUrl.originalUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex shrink-0 items-center gap-1 rounded-md bg-yellow-400 px-2.5 py-1 text-xs font-semibold text-black hover:bg-yellow-500"
+            >
+              Open in new tab
+              <ExternalLink className="h-3 w-3" />
+            </a>
+          </div>
+          <div className="relative flex min-h-[60vh] flex-1 flex-col">
+            {!iframeLoaded && (
+              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-slate-50/80 text-xs font-medium text-slate-600 dark:bg-[#0d131f]/80 dark:text-slate-300">
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Loading webpage...
+              </div>
+            )}
+            <iframe
+              src={resolvedUrl.originalUrl}
+              title={resource.title}
+              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+              referrerPolicy="no-referrer"
+              onLoad={() => setIframeLoaded(true)}
+              onError={() => {
+                setIframeLoaded(true);
+                setIframeError(true);
+              }}
+              className="h-full min-h-[60vh] w-full flex-1 rounded-lg border border-slate-200 bg-white dark:border-slate-700"
+            />
+          </div>
+        </div>
+      );
+    }
+
+    // Fallback card for non-embeddable links (OneDrive/SharePoint share links, GDrive folders, or failed webpage embed)
     return (
       <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
         <div className="max-w-lg rounded-xl border border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-700 dark:bg-[#1b2436]">
