@@ -239,7 +239,7 @@ export function LessonDrawer({
         </div>
         <span
           data-testid="lesson-position-tag"
-          className="ml-auto shrink-0 rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-[#1b2436] dark:text-amber-400"
+          className="ml-auto shrink-0 rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-blue-300 dark:bg-[#1b2436] dark:text-blue-400"
         >
           {formatLessonPositionTag(chapter.order, lessonOrder)}
         </span>

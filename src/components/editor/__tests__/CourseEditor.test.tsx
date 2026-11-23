@@ -497,8 +497,9 @@ describe('CourseEditorPage & editor components', () => {
     expect(expandedClasses).not.toContain('#ffe599');
 
     const lessonPosBadge = within(headerRow).getByText('Ch1 / L1');
+    expect(lessonPosBadge.className).toContain('text-blue-300');
     expect(lessonPosBadge.className).toContain('dark:bg-[#0d131f]');
-    expect(lessonPosBadge.className).toContain('dark:text-amber-400');
+    expect(lessonPosBadge.className).toContain('dark:text-blue-400');
     expect(lessonPosBadge.className).not.toContain('dark:bg-slate-950');
 
     fireEvent.click(toggleBtn);

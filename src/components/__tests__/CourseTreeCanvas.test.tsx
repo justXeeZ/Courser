@@ -70,7 +70,7 @@ describe('CourseTreeCanvas', () => {
 
     const scrollEl = container.querySelector('[data-testid="tree-scroll-container"]') as HTMLElement;
     const zoomWrapper = container.querySelector('svg[role="img"]')?.parentElement as HTMLElement;
-    expect(scrollEl).toHaveClass('cursor-grab');
+    expect(scrollEl).toHaveClass('cursor-grab', 'touch-none');
     expect(zoomWrapper.style.transform).toBe('translate(0px, 0px)');
 
     fireEvent.mouseDown(scrollEl, { button: 0, clientX: 200, clientY: 200 });
@@ -90,6 +90,12 @@ describe('CourseTreeCanvas', () => {
     // Next normal click works as expected
     fireEvent.click(ch1Group);
     expect(onSelectChapter).toHaveBeenCalledWith(ch1);
+
+    // Touch swipe gestures also pan freely in 2D
+    fireEvent.touchStart(scrollEl, { touches: [{ clientX: 100, clientY: 100 }] });
+    fireEvent.touchMove(scrollEl, { touches: [{ clientX: 130, clientY: 145 }] });
+    expect(zoomWrapper.style.transform).toBe('translate(-10px, -5px)');
+    fireEvent.touchEnd(scrollEl);
 
     // Reset zoom button resets pan to (0, 0)
     fireEvent.click(screen.getByRole('button', { name: 'Reset zoom' }));

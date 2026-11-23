@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent, type RefObject } from 'react';
+import { useRef, useState, type MouseEvent, type RefObject, type TouchEvent } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { isLeafChapter } from '@/lib/courseItems';
 import { ROADMAP_COLORS } from '@/lib/theme';
@@ -135,12 +135,11 @@ export function CourseTreeCanvas({
     moved: false,
   });
 
-  const handleContainerMouseDown = (e: MouseEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
+  const startPanDrag = (clientX: number, clientY: number) => {
     dragStateRef.current = {
       active: true,
-      startX: e.clientX,
-      startY: e.clientY,
+      startX: clientX,
+      startY: clientY,
       startPanX: pan.x,
       startPanY: pan.y,
       moved: false,
@@ -148,16 +147,16 @@ export function CourseTreeCanvas({
     setIsDragging(true);
   };
 
-  const handleContainerMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+  const movePanDrag = (clientX: number, clientY: number, preventDefault?: () => void) => {
     const state = dragStateRef.current;
     if (!state.active) return;
-    const dx = e.clientX - state.startX;
-    const dy = e.clientY - state.startY;
+    const dx = clientX - state.startX;
+    const dy = clientY - state.startY;
     if (!state.moved && Math.hypot(dx, dy) > 5) {
       state.moved = true;
     }
     if (state.moved) {
-      e.preventDefault();
+      preventDefault?.();
       setPan({
         x: state.startPanX + dx,
         y: state.startPanY + dy,
@@ -169,6 +168,32 @@ export function CourseTreeCanvas({
     if (!dragStateRef.current.active) return;
     dragStateRef.current.active = false;
     setIsDragging(false);
+    if (dragStateRef.current.moved) {
+      window.setTimeout(() => {
+        dragStateRef.current.moved = false;
+      }, 50);
+    }
+  };
+
+  const handleContainerMouseDown = (e: MouseEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    startPanDrag(e.clientX, e.clientY);
+  };
+
+  const handleContainerMouseMove = (e: MouseEvent<HTMLDivElement>) => {
+    movePanDrag(e.clientX, e.clientY, () => e.preventDefault());
+  };
+
+  const handleContainerTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    startPanDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleContainerTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length !== 1) return;
+    const touch = e.touches[0];
+    movePanDrag(touch.clientX, touch.clientY);
   };
 
   const handleContainerClickCapture = (e: MouseEvent<HTMLDivElement>) => {
@@ -267,8 +292,12 @@ export function CourseTreeCanvas({
         onMouseMove={handleContainerMouseMove}
         onMouseUp={endContainerDrag}
         onMouseLeave={endContainerDrag}
+        onTouchStart={handleContainerTouchStart}
+        onTouchMove={handleContainerTouchMove}
+        onTouchEnd={endContainerDrag}
+        onTouchCancel={endContainerDrag}
         onClickCapture={handleContainerClickCapture}
-        className={`w-full overflow-hidden pb-8 ${
+        className={`w-full touch-none overflow-hidden pb-8 ${
           isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
         } ${framed ? 'roadmap-canvas-frame p-2 sm:p-4' : ''}`}
       >
