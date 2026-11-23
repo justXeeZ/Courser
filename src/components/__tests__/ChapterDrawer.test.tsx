@@ -33,10 +33,9 @@ describe('ChapterDrawer', () => {
     expect(chapterTag).toHaveTextContent('Ch1');
     expect(chapterTag).toHaveClass(
       'ml-auto',
-      'bg-amber-100',
-      'text-amber-800',
-      'dark:bg-amber-400/15',
-      'dark:text-amber-300'
+      'border-[var(--tag-amber-border)]',
+      'bg-[var(--tag-amber-bg)]',
+      'text-[var(--tag-amber-text)]'
     );
     expect(screen.getByText('Week 1-3')).toBeInTheDocument();
     expect(screen.getByText(ch1.description)).toBeInTheDocument();

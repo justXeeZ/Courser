@@ -46,7 +46,7 @@ export function ProgressStrip({ stats, statusFilter, onChangeFilter }: ProgressS
               onClick={() => onChangeFilter(opt.id)}
               className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
                 statusFilter === opt.id
-                  ? 'bg-slate-900 text-white dark:bg-[#1b2436] dark:text-white'
+                  ? 'bg-[var(--solid-bg)] font-semibold text-[var(--solid-text)]'
                   : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
               }`}
             >

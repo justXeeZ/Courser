@@ -31,7 +31,7 @@ export function CourseCard({
       >
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
-            <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-amber-800 dark:bg-[#1b2436] dark:text-amber-400">
+            <span className="rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-1.5 py-0.5 font-mono text-[11px] font-semibold text-[var(--tag-amber-text)]">
               {course.code}
             </span>
             {termLabel && (

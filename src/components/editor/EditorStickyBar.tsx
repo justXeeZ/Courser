@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 import { AlertCircle, ChevronsUp, Plus, Save, X } from 'lucide-react';
-import { formatLessonPositionTag } from '@/lib/courseIds';
+import { formatChapterPositionTag, formatLessonPositionTag } from '@/lib/courseIds';
 
 export interface FocusedChapterContext {
   order: number;
@@ -69,7 +69,7 @@ export function EditorStickyBar({
           aria-label="Editing context"
           className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto text-xs sm:text-sm"
         >
-          <span className="shrink-0 rounded bg-slate-900 px-2 py-0.5 font-mono text-xs font-semibold text-white dark:bg-[#1b2436] dark:text-amber-400">
+          <span className="shrink-0 rounded bg-[var(--solid-bg)] px-2 py-0.5 font-mono text-xs font-semibold text-[var(--solid-text)]">
             {displayCode}
           </span>
 
@@ -78,8 +78,11 @@ export function EditorStickyBar({
               <span className="shrink-0 text-slate-400 dark:text-slate-500" aria-hidden="true">
                 ›
               </span>
+              <span className="shrink-0 rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-amber-text)]">
+                {formatChapterPositionTag(focusedChapter.order)}
+              </span>
               <span className="truncate font-medium text-slate-800 dark:text-slate-200">
-                Ch {focusedChapter.order}: {focusedChapter.title || 'Untitled Chapter'}
+                {focusedChapter.title || 'Untitled Chapter'}
               </span>
 
               {focusedLesson && (
@@ -88,7 +91,7 @@ export function EditorStickyBar({
                     ›
                   </span>
                   {focusedLesson.order !== undefined && (
-                    <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-800 dark:bg-blue-400/15 dark:text-blue-300">
+                    <span className="shrink-0 rounded border border-[var(--tag-blue-border)] bg-[var(--tag-blue-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-blue-text)]">
                       {formatLessonPositionTag(focusedChapter.order, focusedLesson.order)}
                     </span>
                   )}
@@ -114,7 +117,7 @@ export function EditorStickyBar({
           <button
             type="button"
             onClick={onAddChapter}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-slate-900 px-2.5 text-xs font-medium text-white transition-colors hover:bg-slate-800 dark:bg-slate-700 dark:text-white dark:hover:bg-slate-600"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--solid-bg)] px-2.5 text-xs font-semibold text-[var(--solid-text)] transition-colors hover:bg-[var(--solid-bg-hover)]"
           >
             <Plus className="h-3.5 w-3.5" />
             Add Chapter

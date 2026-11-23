@@ -8,6 +8,8 @@ interface QuickStatusPillProps {
   currentStatus: LessonStatus;
   onSelectStatus: (status: LessonStatus) => void;
   onClose: () => void;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
 export function QuickStatusPill({
@@ -15,6 +17,8 @@ export function QuickStatusPill({
   currentStatus,
   onSelectStatus,
   onClose,
+  onMouseEnter,
+  onMouseLeave,
 }: QuickStatusPillProps) {
   const pillRef = useRef<HTMLDivElement>(null);
 
@@ -47,18 +51,22 @@ export function QuickStatusPill({
     <div
       ref={pillRef}
       style={{ left: `${left}px`, top: `${top}px` }}
-      className="fixed z-50 rounded-md shadow-lg"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+      className="fixed z-50 pb-3"
     >
-      <StatusSegmentedControl
-        status={currentStatus}
-        onChange={(next) => {
-          onSelectStatus(next);
-          onClose();
-        }}
-        showReset
-        itemRole="menuitem"
-        ariaLabel="Quick status menu"
-      />
+      <div className="rounded-md shadow-lg">
+        <StatusSegmentedControl
+          status={currentStatus}
+          onChange={(next) => {
+            onSelectStatus(next);
+            onClose();
+          }}
+          showReset
+          itemRole="menuitem"
+          ariaLabel="Quick status menu"
+        />
+      </div>
     </div>
   );
 }

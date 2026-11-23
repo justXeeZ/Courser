@@ -48,7 +48,32 @@ export function CoursePage() {
   const [contextMenu, setContextMenu] = useState<{
     itemId: string;
     anchor: NodeAnchorRect;
+    trigger: 'hover' | 'contextmenu';
   } | null>(null);
+  const hoverCloseTimerRef = useRef<number | null>(null);
+
+  const clearHoverCloseTimer = () => {
+    if (hoverCloseTimerRef.current !== null) {
+      window.clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  };
+
+  const scheduleHoverClose = (expectedItemId?: string) => {
+    clearHoverCloseTimer();
+    hoverCloseTimerRef.current = window.setTimeout(() => {
+      setContextMenu((prev) => {
+        if (!prev || prev.trigger !== 'hover') return prev;
+        if (expectedItemId && prev.itemId !== expectedItemId) return prev;
+        return null;
+      });
+      hoverCloseTimerRef.current = null;
+    }, 220);
+  };
+
+  useEffect(() => {
+    return () => clearHoverCloseTimer();
+  }, []);
   const [backupModalOpen, setBackupModalOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
@@ -104,7 +129,7 @@ export function CoursePage() {
           </p>
           <Link
             to="/"
-            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
+            className="inline-flex items-center rounded-md bg-[var(--solid-bg)] px-4 py-2 text-sm font-semibold text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)]"
           >
             Back to All Courses
           </Link>
@@ -233,7 +258,22 @@ export function CoursePage() {
             onSelectLesson={openItem}
             onSelectChapter={handleSelectChapter}
             onQuickToggleDone={(itemId) => toggleDone(course.slug, itemId)}
-            onContextMenuLesson={(itemId, anchor) => setContextMenu({ itemId, anchor })}
+            onContextMenuLesson={(itemId, anchor) => {
+              clearHoverCloseTimer();
+              setContextMenu({ itemId, anchor, trigger: 'contextmenu' });
+            }}
+            onHoverLesson={(itemId, anchor) => {
+              clearHoverCloseTimer();
+              setContextMenu((prev) => {
+                if (prev?.trigger === 'contextmenu' && prev.itemId === itemId) {
+                  return prev;
+                }
+                return { itemId, anchor, trigger: 'hover' };
+              });
+            }}
+            onLeaveLesson={(itemId) => {
+              scheduleHoverClose(itemId);
+            }}
           />
         ) : (
           <ChecklistView
@@ -247,13 +287,22 @@ export function CoursePage() {
         )}
       </div>
 
-      {/* Right-click Quick Status Pill */}
+      {/* Right-click / Hover Quick Status Pill */}
       {contextMenu && (
         <QuickStatusPill
           anchor={contextMenu.anchor}
           currentStatus={getLessonStatus(course.slug, contextMenu.itemId)}
           onSelectStatus={(next) => setLessonStatus(course.slug, contextMenu.itemId, next)}
-          onClose={() => setContextMenu(null)}
+          onMouseEnter={clearHoverCloseTimer}
+          onMouseLeave={() => {
+            if (contextMenu.trigger === 'hover') {
+              scheduleHoverClose(contextMenu.itemId);
+            }
+          }}
+          onClose={() => {
+            clearHoverCloseTimer();
+            setContextMenu(null);
+          }}
         />
       )}
 
@@ -409,7 +458,7 @@ export function CoursePage() {
                 type="button"
                 onClick={handleImportSubmit}
                 disabled={!importText.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-slate-900 px-3 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-40 dark:bg-slate-700 dark:hover:bg-slate-600"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--solid-bg)] px-3 py-2 text-sm font-semibold text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)] disabled:opacity-40"
               >
                 <Upload className="h-4 w-4" />
                 Restore Progress

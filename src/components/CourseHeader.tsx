@@ -160,7 +160,7 @@ export function CourseHeader({
         {/* Course Title & Metadata */}
         <div className="mb-5">
           <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
-            <span className="rounded bg-slate-900 px-2 py-0.5 font-mono text-white dark:bg-[#1b2436] dark:text-amber-400">
+            <span className="rounded bg-[var(--solid-bg)] px-2 py-0.5 font-mono font-semibold text-[var(--solid-text)]">
               {course.code}
             </span>
             <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-700 dark:bg-[#1b2436] dark:text-slate-300">

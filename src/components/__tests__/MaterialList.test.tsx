@@ -44,7 +44,7 @@ describe('ResourceBadge & MaterialList', () => {
     expect(screen.getByText('Assignment')).toHaveClass('bg-indigo-600');
   });
 
-  it('sorts recommended materials to the top while preserving relative order and renders Recommended pin badge', () => {
+  it('groups recommended materials inside a purple-accented container labeled Recommended while preserving order', () => {
     const resources: LessonResource[] = [
       { title: 'Normal One', kind: 'document', url: 'https://example.com/1' },
       { title: 'Pinned First', kind: 'slides', recommended: true, url: 'https://example.com/2' },
@@ -53,14 +53,22 @@ describe('ResourceBadge & MaterialList', () => {
     ];
 
     const { container } = render(<MaterialList resources={resources} />);
-    const items = Array.from(container.querySelectorAll('li')).map((li) => li.textContent ?? '');
+    const recBox = screen.getByTestId('recommended-resources-container');
+    expect(recBox).toHaveClass(
+      'border-[var(--recommended-border)]',
+      'bg-[var(--recommended-bg)]'
+    );
+    expect(within(recBox).getByText('Recommended')).toBeInTheDocument();
 
-    expect(items[0]).toContain('Pinned First');
-    expect(items[0]).toContain('Recommended');
-    expect(items[1]).toContain('Pinned Second');
-    expect(items[1]).toContain('Recommended');
-    expect(items[2]).toContain('Normal One');
-    expect(items[3]).toContain('Normal Two');
+    const recItems = Array.from(recBox.querySelectorAll('li')).map((li) => li.textContent ?? '');
+    expect(recItems).toHaveLength(2);
+    expect(recItems[0]).toContain('Pinned First');
+    expect(recItems[0]).not.toContain('Recommended');
+    expect(recItems[1]).toContain('Pinned Second');
+
+    const allItems = Array.from(container.querySelectorAll('li')).map((li) => li.textContent ?? '');
+    expect(allItems[2]).toContain('Normal One');
+    expect(allItems[3]).toContain('Normal Two');
   });
 
   it('blocks unsafe javascript: and data: URLs from rendering links or opening the viewer', () => {

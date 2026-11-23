@@ -144,7 +144,7 @@ export function ChecklistView({
                         {stats.skipped} skipped
                       </span>
                     )}
-                    <span className="rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-[#0d131f] dark:text-slate-100">
+                    <span className="rounded bg-[var(--solid-bg)] px-2 py-0.5 font-mono font-semibold text-[var(--solid-text)]">
                       {stats.done}/{stats.required}
                     </span>
                   </>

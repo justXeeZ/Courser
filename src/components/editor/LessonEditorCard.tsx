@@ -86,7 +86,14 @@ export function LessonEditorCard({
         ref={headerRef}
         data-sticky-header="lesson"
         data-stuck={isStuck ? 'true' : 'false'}
-        className={`flex flex-wrap items-center justify-between gap-2 border border-slate-200 border-l-4 border-l-blue-500 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:border-l-blue-400 dark:bg-[#1b2436] ${headerCornerClass}`}
+        onClick={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest('button, a, input, select, textarea, [data-no-row-toggle]')) {
+            return;
+          }
+          onToggleExpand();
+        }}
+        className={`flex cursor-pointer flex-wrap items-center justify-between gap-2 border border-slate-200 border-l-4 border-l-blue-500 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:border-l-blue-400 dark:bg-[#1b2436] ${headerCornerClass}`}
       >
         <button
           type="button"
@@ -99,7 +106,7 @@ export function LessonEditorCard({
           ) : (
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
           )}
-          <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 font-mono text-[11px] font-bold text-blue-800 dark:bg-blue-400/15 dark:text-blue-300">
+          <span className="shrink-0 rounded border border-[var(--tag-blue-border)] bg-[var(--tag-blue-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-blue-text)]">
             {formatLessonPositionTag(chapterOrder, lessonIndex + 1)}
           </span>
           <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -110,7 +117,7 @@ export function LessonEditorCard({
           </span>
           <span
             data-testid="lesson-resource-count-tag"
-            className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-800 dark:bg-blue-400/15 dark:text-blue-300"
+            className="shrink-0 rounded border border-[var(--tag-blue-border)] bg-[var(--tag-blue-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-blue-text)]"
           >
             {lesson.resources.length} {lesson.resources.length === 1 ? 'resource' : 'resources'}
           </span>

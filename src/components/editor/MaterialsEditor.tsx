@@ -553,7 +553,7 @@ export function MaterialsEditor({
                         aria-pressed={mode === 'link'}
                         className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                           mode === 'link'
-                            ? 'bg-slate-900 text-white dark:bg-slate-700'
+                            ? 'bg-[var(--solid-bg)] text-[var(--solid-text)]'
                             : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                         }`}
                       >
@@ -566,7 +566,7 @@ export function MaterialsEditor({
                         aria-pressed={mode === 'upload'}
                         className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                           mode === 'upload'
-                            ? 'bg-slate-900 text-white dark:bg-slate-700'
+                            ? 'bg-[var(--solid-bg)] text-[var(--solid-text)]'
                             : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                         }`}
                       >
@@ -580,7 +580,7 @@ export function MaterialsEditor({
                           aria-pressed={mode === 'interactive'}
                           className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-medium transition-colors ${
                             mode === 'interactive'
-                              ? 'bg-slate-900 text-white dark:bg-slate-700'
+                              ? 'bg-[var(--solid-bg)] text-[var(--solid-text)]'
                               : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
                           }`}
                         >
@@ -773,7 +773,7 @@ export function MaterialsEditor({
                     {res.assessment ? (
                       <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs dark:border-slate-600 dark:bg-[#0d131f]">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center gap-1 rounded bg-slate-900 px-2 py-0.5 font-medium text-white dark:bg-[#1b2436] dark:text-amber-300">
+                          <span className="inline-flex items-center gap-1 rounded bg-[var(--solid-bg)] px-2 py-0.5 font-medium text-[var(--solid-text)]">
                             {res.assessment.mode === 'exam' ? 'Exam' : 'Assignment'} ·{' '}
                             {res.assessment.questions.length}{' '}
                             {res.assessment.questions.length === 1 ? 'question' : 'questions'}
@@ -830,7 +830,7 @@ export function MaterialsEditor({
                           <button
                             type="button"
                             onClick={() => setBuilderRowIndex(rIdx)}
-                            className="inline-flex items-center gap-1 rounded bg-slate-900 px-2.5 py-1 text-[11px] font-medium text-white hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
+                            className="inline-flex items-center gap-1 rounded bg-[var(--solid-bg)] px-2.5 py-1 text-[11px] font-semibold text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)]"
                           >
                             <Wrench className="h-3 w-3" />
                             Build / Edit
@@ -921,7 +921,7 @@ export function MaterialsEditor({
                           <button
                             type="button"
                             onClick={() => void handleApplyAssessmentImport(rIdx, rowKey)}
-                            className="rounded bg-slate-900 px-3 py-1 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
+                            className="rounded bg-[var(--solid-bg)] px-3 py-1 text-xs font-semibold text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)]"
                           >
                             Apply Import
                           </button>

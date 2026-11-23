@@ -27,6 +27,8 @@ interface CourseTreeCanvasProps {
   onSelectChapter?: (chapter: Chapter) => void;
   onQuickToggleDone: (lessonId: string) => void;
   onContextMenuLesson: (lessonId: string, anchor: NodeAnchorRect) => void;
+  onHoverLesson?: (lessonId: string, anchor: NodeAnchorRect) => void;
+  onLeaveLesson?: (lessonId: string) => void;
 }
 
 function getStatusClass(status: LessonStatus): string {
@@ -113,6 +115,8 @@ export function CourseTreeCanvas({
   onSelectChapter,
   onQuickToggleDone,
   onContextMenuLesson,
+  onHoverLesson,
+  onLeaveLesson,
 }: CourseTreeCanvasProps) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -528,10 +532,22 @@ export function CourseTreeCanvas({
                     aria-label={`${node.lesson.title}, status ${status}`}
                     onClick={(e) => handleLessonClick(e, node.id)}
                     onContextMenu={(e) => openNodeContextMenu(e, node.id)}
-                    onMouseEnter={() => setHoveredItemId(node.id)}
-                    onMouseLeave={() =>
-                      setHoveredItemId((prev) => (prev === node.id ? null : prev))
-                    }
+                    onMouseEnter={(e) => {
+                      setHoveredItemId(node.id);
+                      if (!dragStateRef.current.active && onHoverLesson) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        onHoverLesson(node.id, {
+                          left: rect.left,
+                          top: rect.top,
+                          width: rect.width,
+                          height: rect.height,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredItemId((prev) => (prev === node.id ? null : prev));
+                      onLeaveLesson?.(node.id);
+                    }}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();

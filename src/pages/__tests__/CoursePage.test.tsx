@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within, act } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { BRAND } from '@/config/brand';
 import { CoursePage } from '@/pages/CoursePage';
@@ -206,5 +206,49 @@ describe('CoursePage integration', () => {
     const { container } = renderCoursePage('/course/non-existent-course');
     expect(screen.getByRole('heading', { name: 'Course Not Found' })).toBeInTheDocument();
     expect(container.querySelector('main')?.className).toContain('dark:bg-[#0b0f17]');
+  });
+
+  it('shows QuickStatusPill on sublesson hover with grace delay, stays open while hovering pill, and keeps right-click working', () => {
+    vi.useFakeTimers();
+    try {
+      renderCoursePage('/course/demo201-feature-showcase');
+
+      const lessonNode = document.querySelector(
+        'g[data-node-id="demo201-ch1-l1-course-overview-tree-structure"]'
+      ) as SVGGElement;
+      expect(lessonNode).not.toBeNull();
+
+      // Hovering sublesson opens QuickStatusPill
+      fireEvent.mouseEnter(lessonNode);
+      const pill = screen.getByLabelText('Quick status menu');
+      expect(pill).toBeInTheDocument();
+
+      // Leaving node and entering pill within grace delay keeps it open
+      fireEvent.mouseLeave(lessonNode);
+      act(() => {
+        vi.advanceTimersByTime(100);
+      });
+      fireEvent.mouseEnter(pill.parentElement!.parentElement!);
+      act(() => {
+        vi.advanceTimersByTime(300);
+      });
+      expect(screen.getByLabelText('Quick status menu')).toBeInTheDocument();
+
+      // Leaving pill closes it after grace delay
+      fireEvent.mouseLeave(pill.parentElement!.parentElement!);
+      act(() => {
+        vi.advanceTimersByTime(250);
+      });
+      expect(screen.queryByLabelText('Quick status menu')).not.toBeInTheDocument();
+
+      // Right-click still opens QuickStatusPill and keeps it open without hover timeout
+      fireEvent.contextMenu(lessonNode);
+      act(() => {
+        vi.advanceTimersByTime(500);
+      });
+      expect(screen.getByLabelText('Quick status menu')).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

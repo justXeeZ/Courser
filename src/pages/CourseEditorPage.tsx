@@ -297,6 +297,11 @@ export function CourseEditorPage() {
   const editorRegionRef = useRef<HTMLDivElement | null>(null);
   const prevRouteSlugRef = useRef<string | undefined>(slug);
   const pendingScrollChapterIdRef = useRef<string | null>(null);
+  const pendingPreviewJumpRef = useRef<
+    | { kind: 'chapter'; chapterId: string }
+    | { kind: 'lesson'; chapterId: string; lessonId: string }
+    | null
+  >(null);
 
   const isDirty = useMemo(
     () => JSON.stringify(draft) !== baselineJson,
@@ -374,6 +379,42 @@ export function CourseEditorPage() {
     }
   }, [draft.chapters]);
 
+  useEffect(() => {
+    if (activeTab !== 'editor') return;
+    const jump = pendingPreviewJumpRef.current;
+    if (!jump) return;
+
+    const targetEl =
+      jump.kind === 'lesson'
+        ? Array.from(document.querySelectorAll('[data-edit-lesson]')).find(
+            (node) => node.getAttribute('data-edit-lesson') === jump.lessonId
+          )
+        : Array.from(document.querySelectorAll('[data-edit-chapter]')).find(
+            (node) => node.getAttribute('data-edit-chapter') === jump.chapterId
+          );
+
+    if (!targetEl) return;
+    pendingPreviewJumpRef.current = null;
+
+    if (typeof targetEl.scrollIntoView === 'function') {
+      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    const firstInput =
+      jump.kind === 'lesson'
+        ? targetEl.querySelector<HTMLElement>('input[aria-label="Sub-Lesson Title"], input, textarea')
+        : targetEl.querySelector<HTMLElement>(
+            'input[aria-label^="Chapter "][aria-label$=" title"], input, textarea'
+          );
+    if (firstInput && typeof firstInput.focus === 'function') {
+      try {
+        firstInput.focus({ preventScroll: true });
+      } catch {
+        firstInput.focus();
+      }
+    }
+  }, [activeTab, collapsedChapters, expandedLessons]);
+
   const updateFocusContextFromTarget = (target: EventTarget | null) => {
     if (!(target instanceof Element)) return;
     if (target.closest('[data-testid="editor-sticky-bar"]')) return;
@@ -437,7 +478,7 @@ export function CourseEditorPage() {
           </p>
           <Link
             to="/"
-            className="inline-flex items-center rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 dark:bg-[#1b2436] dark:hover:bg-slate-700"
+            className="inline-flex items-center rounded-md bg-[var(--solid-bg)] px-4 py-2 text-sm font-medium text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)]"
           >
             Back to All Courses
           </Link>
@@ -735,6 +776,47 @@ export function CourseEditorPage() {
     setImportBanner({ warnings });
   };
 
+  const handlePreviewSelectChapter = (clickedChapter: Chapter) => {
+    const chIdx = normalizedPreviewCourse.chapters.findIndex((c) => c.id === clickedChapter.id);
+    const targetChapter = draft.chapters[chIdx] ?? draft.chapters.find((c) => c.id === clickedChapter.id);
+    if (!targetChapter) return;
+
+    pendingPreviewJumpRef.current = { kind: 'chapter', chapterId: targetChapter.id };
+    setCollapsedChapters((prev) => ({ ...prev, [targetChapter.id]: false }));
+    setFocusedChapterId(targetChapter.id);
+    setFocusedLessonId(null);
+    setActiveTab('editor');
+  };
+
+  const handlePreviewSelectLesson = (clickedLessonId: string) => {
+    let targetChapter: Chapter | undefined;
+    let targetLesson: SubLesson | undefined;
+
+    for (let cIdx = 0; cIdx < normalizedPreviewCourse.chapters.length; cIdx++) {
+      const lIdx = normalizedPreviewCourse.chapters[cIdx].lessons.findIndex(
+        (l) => l.id === clickedLessonId
+      );
+      if (lIdx !== -1) {
+        targetChapter = draft.chapters[cIdx];
+        targetLesson = targetChapter?.lessons[lIdx];
+        break;
+      }
+    }
+
+    if (!targetChapter || !targetLesson) return;
+
+    pendingPreviewJumpRef.current = {
+      kind: 'lesson',
+      chapterId: targetChapter.id,
+      lessonId: targetLesson.id,
+    };
+    setCollapsedChapters((prev) => ({ ...prev, [targetChapter.id]: false }));
+    setExpandedLessons((prev) => ({ ...prev, [targetLesson.id]: true }));
+    setFocusedChapterId(targetChapter.id);
+    setFocusedLessonId(targetLesson.id);
+    setActiveTab('editor');
+  };
+
   const hasExpandedLessons = Object.values(expandedLessons).some(Boolean);
   const hasExpandedChapters = draft.chapters.some((ch) => !collapsedChapters[ch.id]);
   const effectiveStickyBarHeight =
@@ -808,7 +890,7 @@ export function CourseEditorPage() {
 
           <div className="mb-5">
             <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-[#1b2436] dark:text-amber-400">
+              <span className="rounded bg-[var(--solid-bg)] px-2 py-0.5 font-mono font-semibold text-[var(--solid-text)]">
                 {isEditing ? 'EDIT COURSE' : 'NEW COURSE'}
               </span>
               <span className="rounded bg-slate-100 px-2 py-0.5 font-mono text-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
@@ -947,7 +1029,8 @@ export function CourseEditorPage() {
               layout={previewLayout}
               statuses={{}}
               framed={false}
-              onSelectLesson={() => {}}
+              onSelectLesson={handlePreviewSelectLesson}
+              onSelectChapter={handlePreviewSelectChapter}
               onQuickToggleDone={() => {}}
               onContextMenuLesson={() => {}}
             />

@@ -34,10 +34,9 @@ describe('LessonDrawer', () => {
     expect(lessonTag).toHaveTextContent('Ch1 / L2');
     expect(lessonTag).toHaveClass(
       'ml-auto',
-      'bg-blue-100',
-      'text-blue-800',
-      'dark:bg-blue-400/15',
-      'dark:text-blue-300'
+      'border-[var(--tag-blue-border)]',
+      'bg-[var(--tag-blue-bg)]',
+      'text-[var(--tag-blue-text)]'
     );
     expect(screen.getByText(lesson.summary)).toBeInTheDocument();
     expect(screen.getByText('Document')).toBeInTheDocument();

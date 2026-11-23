@@ -171,7 +171,14 @@ export function ChapterEditorCard({
         ref={headerRef}
         data-sticky-header="chapter"
         data-stuck={isStuck ? 'true' : 'false'}
-        className={`sticky top-[var(--editor-chapter-sticky-top,120px)] z-20 flex min-h-12 flex-wrap items-center justify-between gap-2 border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-2 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436] ${headerCornerClass}`}
+        onClick={(e) => {
+          const target = e.target as HTMLElement | null;
+          if (target?.closest('button, a, input, select, textarea, [data-no-row-toggle]')) {
+            return;
+          }
+          onToggleChapterExpand?.();
+        }}
+        className={`sticky top-[var(--editor-chapter-sticky-top,120px)] z-20 flex min-h-12 cursor-pointer flex-wrap items-center justify-between gap-2 border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-2 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436] ${headerCornerClass}`}
       >
         <button
           type="button"
@@ -189,7 +196,7 @@ export function ChapterEditorCard({
           ) : (
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
           )}
-          <span className="shrink-0 rounded bg-amber-100 px-2 py-0.5 font-mono text-xs font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+          <span className="shrink-0 rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-2 py-0.5 font-mono text-xs font-bold text-[var(--tag-amber-text)]">
             {formatChapterPositionTag(chapterOrder)}
           </span>
           <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
@@ -201,7 +208,7 @@ export function ChapterEditorCard({
           >
             {derivedChapterId}
           </span>
-          <span className="hidden rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 md:inline dark:bg-amber-400/15 dark:text-amber-300">
+          <span className="hidden rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-amber-text)] md:inline">
             {isLeafChapter
               ? '0 lessons'
               : `${chapter.lessons.length} ${chapter.lessons.length === 1 ? 'lesson' : 'lessons'}`}
@@ -209,7 +216,7 @@ export function ChapterEditorCard({
           {chapterResourceCount > 0 && (
             <span
               data-testid="chapter-resource-count-tag"
-              className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-400/15 dark:text-amber-300"
+              className="shrink-0 rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-amber-text)]"
             >
               {chapterResourceCount} {chapterResourceCount === 1 ? 'resource' : 'resources'}
             </span>
@@ -422,8 +429,8 @@ export function ChapterEditorCard({
         {/* Sub-Lessons List */}
         <div className="border-t border-slate-200 pt-3 dark:border-slate-700/80">
           {isLeafChapter ? (
-            <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-400/10 dark:text-amber-200">
-              No sub-lessons — students can check off this chapter directly.
+            <div className="rounded-md border border-dashed border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-500/40 dark:bg-amber-400/10 dark:text-amber-200">
+              No sub-lessons are added yet
             </div>
           ) : (
             <div className="divide-y divide-slate-200 dark:divide-slate-700/80">

@@ -196,7 +196,11 @@ describe('CatalogPage & CourseCard', () => {
     );
 
     const codeBadge = screen.getByText('GUIDE101');
-    expect(codeBadge).toHaveClass('text-amber-800', 'dark:text-amber-400');
+    expect(codeBadge).toHaveClass(
+      'border-[var(--tag-amber-border)]',
+      'bg-[var(--tag-amber-bg)]',
+      'text-[var(--tag-amber-text)]'
+    );
 
     const guideCardLink = codeBadge.closest('a') as HTMLElement;
     expect(guideCardLink).toHaveClass('bg-white', 'dark:bg-[#121926]');

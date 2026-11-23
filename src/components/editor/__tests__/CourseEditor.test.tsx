@@ -206,6 +206,17 @@ describe('CourseEditorPage & editor components', () => {
     ) as HTMLElement;
     const ch2PrereqScope = within(ch2PrereqPicker);
 
+    // Prerequisites section starts collapsed by default
+    const ch2PrereqToggle = ch2PrereqScope.getByRole('button', {
+      name: /Prerequisites \(click to toggle\)/i,
+    });
+    expect(ch2PrereqToggle).toHaveAttribute('aria-expanded', 'false');
+    expect(ch2PrereqScope.queryByText('Ch1: 1. Foundations')).not.toBeInTheDocument();
+
+    // Expand Prerequisites section
+    fireEvent.click(ch2PrereqToggle);
+    expect(ch2PrereqToggle).toHaveAttribute('aria-expanded', 'true');
+
     // Chapter 2's PrerequisitePicker excludes itself ("Ch2: 2. New Chapter") and its own lesson ("Topic 2.1")
     expect(
       ch2PrereqScope.queryByRole('button', { name: /Ch2\s+2\. New Chapter/i })
@@ -221,8 +232,8 @@ describe('CourseEditorPage & editor components', () => {
     });
     const ch1Tag = within(ch1PrereqBtn).getByTestId('prereq-tag-chapter');
     expect(ch1Tag).toHaveTextContent('Ch1');
-    expect(ch1Tag.className).toContain('bg-amber-100');
-    expect(ch1Tag.className).toContain('text-amber-800');
+    expect(ch1Tag.className).toContain('bg-[var(--tag-amber-bg)]');
+    expect(ch1Tag.className).toContain('text-[var(--tag-amber-text)]');
     expect(ch1PrereqBtn).toHaveAttribute('aria-pressed', 'false');
 
     // Selecting chapter prerequisite applies amber fill
@@ -240,20 +251,18 @@ describe('CourseEditorPage & editor components', () => {
     });
     const l1Tag = within(l1PrereqBtn).getByTestId('prereq-tag-lesson');
     expect(l1Tag).toHaveTextContent('Ch1 / L1');
-    expect(l1Tag.className).toContain('bg-blue-100');
-    expect(l1Tag.className).toContain('text-blue-800');
+    expect(l1Tag.className).toContain('bg-[var(--tag-blue-bg)]');
+    expect(l1Tag.className).toContain('text-[var(--tag-blue-text)]');
     fireEvent.click(l1PrereqBtn);
     expect(l1PrereqBtn).toHaveAttribute('aria-pressed', 'true');
     expect(l1PrereqBtn.className).toContain('bg-blue-600');
     fireEvent.click(l1PrereqBtn);
     expect(l1PrereqBtn).toHaveAttribute('aria-pressed', 'false');
 
-    // Delete Chapter 2's only lesson -> becomes 0-lesson chapter with hint
+    // Delete Chapter 2's only lesson -> becomes 0-lesson chapter with updated empty message
     const ch2Scope = within(chapter2Card);
     fireEvent.click(ch2Scope.getByRole('button', { name: /Delete Topic 2\.1/i }));
-    expect(
-      ch2Scope.getByText('No sub-lessons — students can check off this chapter directly.')
-    ).toBeInTheDocument();
+    expect(ch2Scope.getByText('No sub-lessons are added yet')).toBeInTheDocument();
   });
 
   it('updates the sticky bar breadcrumb when focusing chapter or lesson fields and falls back on metadata focus', () => {
@@ -265,15 +274,17 @@ describe('CourseEditorPage & editor components', () => {
 
     expandChapter1AndLesson1();
 
-    // Focus chapter title input inside Chapter 1
+    // Focus chapter title input inside Chapter 1 -> shows amber Ch1 tag + chapter title
     const ch1TitleInput = screen.getByLabelText('Chapter 1 title');
     fireEvent.focus(ch1TitleInput);
-    expect(within(stickyBar).getByText('Ch 1: 1. Foundations')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('Ch1')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('1. Foundations')).toBeInTheDocument();
 
-    // Focus lesson title input inside Lesson 1 -> shows Ch1 / L1 position tag and lesson title
+    // Focus lesson title input inside Lesson 1 -> shows Ch1 tag, chapter title, Ch1 / L1 tag, and lesson title
     const lessonTitleInput = screen.getByLabelText('Sub-Lesson Title');
     fireEvent.focus(lessonTitleInput);
-    expect(within(stickyBar).getByText('Ch 1: 1. Foundations')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('Ch1')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('1. Foundations')).toBeInTheDocument();
     expect(within(stickyBar).getByText('Ch1 / L1')).toBeInTheDocument();
     expect(within(stickyBar).getByText('Course Introduction')).toBeInTheDocument();
 
@@ -403,6 +414,11 @@ describe('CourseEditorPage & editor components', () => {
       `[data-prereq-for="${firstLessonId}"]`
     ) as HTMLElement;
     const lessonPrereqScope = within(lessonPrereqPicker);
+
+    // Expand Prerequisites section (collapsed by default)
+    fireEvent.click(
+      lessonPrereqScope.getByRole('button', { name: /Prerequisites \(click to toggle\)/i })
+    );
 
     // Excludes self ("Course Introduction") and own parent chapter ("Ch1 1. Foundations")
     expect(
@@ -543,10 +559,9 @@ describe('CourseEditorPage & editor components', () => {
     expect(expandedClasses).not.toContain('#ffe599');
 
     const lessonPosBadge = within(headerRow).getByText('Ch1 / L1');
-    expect(lessonPosBadge.className).toContain('bg-blue-100');
-    expect(lessonPosBadge.className).toContain('text-blue-800');
-    expect(lessonPosBadge.className).toContain('dark:bg-blue-400/15');
-    expect(lessonPosBadge.className).toContain('dark:text-blue-300');
+    expect(lessonPosBadge.className).toContain('bg-[var(--tag-blue-bg)]');
+    expect(lessonPosBadge.className).toContain('text-[var(--tag-blue-text)]');
+    expect(lessonPosBadge.className).toContain('border-[var(--tag-blue-border)]');
     expect(lessonPosBadge.className).not.toContain('bg-slate-900');
 
     fireEvent.click(toggleBtn);
@@ -989,10 +1004,9 @@ describe('CourseEditorPage & editor components', () => {
     // Sublesson starts with 0 resources -> lesson-resource-count-tag is rendered in light blue right after derived ID
     const lessonTag = ch1Scope.getByTestId('lesson-resource-count-tag');
     expect(lessonTag).toHaveTextContent('0 resources');
-    expect(lessonTag.className).toContain('bg-blue-100');
-    expect(lessonTag.className).toContain('text-blue-800');
-    expect(lessonTag.className).toContain('dark:bg-blue-400/15');
-    expect(lessonTag.className).toContain('dark:text-blue-300');
+    expect(lessonTag.className).toContain('bg-[var(--tag-blue-bg)]');
+    expect(lessonTag.className).toContain('text-[var(--tag-blue-text)]');
+    expect(lessonTag.className).toContain('border-[var(--tag-blue-border)]');
     expect(lessonTag.previousElementSibling).toHaveTextContent('cs101-ch1-l1-course-introduction');
 
     // Add a resource to Lesson 1 -> updates live to "1 resource"
@@ -1005,10 +1019,9 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.click(chapterMaterialsBtn);
     const chapterResTag = ch1Scope.getByTestId('chapter-resource-count-tag');
     expect(chapterResTag).toHaveTextContent('1 resource');
-    expect(chapterResTag.className).toContain('bg-amber-100');
-    expect(chapterResTag.className).toContain('text-amber-800');
-    expect(chapterResTag.className).toContain('dark:bg-amber-400/15');
-    expect(chapterResTag.className).toContain('dark:text-amber-300');
+    expect(chapterResTag.className).toContain('bg-[var(--tag-amber-bg)]');
+    expect(chapterResTag.className).toContain('text-[var(--tag-amber-text)]');
+    expect(chapterResTag.className).toContain('border-[var(--tag-amber-border)]');
   });
 
   it('removes the duplicate page-top error banner, offsets sticky headers below EditorStickyBar when error banner is visible, and strips top rounded corners when stuck', () => {
@@ -1093,5 +1106,72 @@ describe('CourseEditorPage & editor components', () => {
     expect(chapterHeader.className).toContain('rounded-t-lg');
     expect(lessonHeader).toHaveAttribute('data-stuck', 'false');
     expect(lessonHeader.className).toContain('rounded-t-md');
+  });
+
+  it('switches from Live Tree Preview to editor, expands collapsed chapter/lesson, scrolls into view, and focuses title on node click', () => {
+    const scrollIntoViewMock = vi.fn();
+    Object.defineProperty(Element.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: scrollIntoViewMock,
+    });
+
+    renderEditor('/editor/new');
+
+    // Chapter 1 and Lesson 1 start collapsed
+    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
+
+    // Switch to Live Tree Preview and click Lesson 1 node
+    fireEvent.click(screen.getByRole('tab', { name: /Live Tree Preview/i }));
+    const lessonNode = document.querySelector(
+      'g[data-node-kind="lesson"]'
+    ) as SVGGElement;
+    expect(lessonNode).not.toBeNull();
+    fireEvent.click(lessonNode);
+
+    // Switches back to editor, expands Chapter 1 & Lesson 1, scrolls into view, and focuses Sub-Lesson Title
+    const lessonTitleInput = screen.getByLabelText('Sub-Lesson Title') as HTMLInputElement;
+    expect(lessonTitleInput).toBeInTheDocument();
+    expect(document.activeElement).toBe(lessonTitleInput);
+    expect(scrollIntoViewMock).toHaveBeenCalled();
+
+    // Collapse all, switch to Live Tree Preview, and click Chapter 1 node
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /Collapse all/i }));
+    fireEvent.click(screen.getByRole('tab', { name: /Live Tree Preview/i }));
+    const chapterNode = document.querySelector(
+      'g[data-node-kind="chapter"]'
+    ) as SVGGElement;
+    fireEvent.click(chapterNode);
+
+    const chapterTitleInput = screen.getByLabelText('Chapter 1 title') as HTMLInputElement;
+    expect(chapterTitleInput).toBeInTheDocument();
+    expect(document.activeElement).toBe(chapterTitleInput);
+  });
+
+  it('toggles chapter and sublesson expand/collapse when clicking the outer header row side area without intercepting action buttons', () => {
+    renderEditor('/editor/new');
+
+    const chapterHeader = document.querySelector('[data-sticky-header="chapter"]') as HTMLElement;
+    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
+
+    // Clicking the outer chapter header container expands Chapter 1
+    fireEvent.click(chapterHeader);
+    expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
+
+    // Clicking an interactive button inside the header (e.g. Move chapter down — disabled or Delete) does NOT collapse it
+    const moveDownBtn = within(chapterHeader).getByRole('button', { name: /Move chapter down/i });
+    fireEvent.click(moveDownBtn);
+    expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
+
+    // Clicking the outer sublesson header row expands Lesson 1
+    const lessonHeader = document.querySelector('[data-sticky-header="lesson"]') as HTMLElement;
+    expect(screen.queryByLabelText('Sub-Lesson Title')).not.toBeInTheDocument();
+    fireEvent.click(lessonHeader);
+    expect(screen.getByLabelText('Sub-Lesson Title')).toBeInTheDocument();
+
+    // Clicking the outer sublesson header row again collapses Lesson 1
+    fireEvent.click(lessonHeader);
+    expect(screen.queryByLabelText('Sub-Lesson Title')).not.toBeInTheDocument();
   });
 });

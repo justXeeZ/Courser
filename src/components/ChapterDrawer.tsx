@@ -252,7 +252,7 @@ export function ChapterDrawer({
         </div>
         <span
           data-testid="chapter-position-tag"
-          className="ml-auto shrink-0 rounded bg-amber-100 px-2 py-0.5 font-mono font-bold text-amber-800 dark:bg-amber-400/15 dark:text-amber-300"
+          className="ml-auto shrink-0 rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-2 py-0.5 font-mono font-bold text-[var(--tag-amber-text)]"
         >
           {formatChapterPositionTag(chapter.order)}
         </span>
