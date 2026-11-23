@@ -100,6 +100,20 @@ describe('CourseTreeCanvas', () => {
     // Reset zoom button resets pan to (0, 0)
     fireEvent.click(screen.getByRole('button', { name: 'Reset zoom' }));
     expect(zoomWrapper.style.transform).toBe('translate(0px, 0px)');
+
+    // Panning is clamped to container + tree boundaries (cannot pan endlessly off-screen)
+    Object.defineProperty(scrollEl, 'clientWidth', { configurable: true, value: 400 });
+    Object.defineProperty(scrollEl, 'clientHeight', { configurable: true, value: 500 });
+    Object.defineProperty(zoomWrapper, 'offsetWidth', { configurable: true, value: 800 });
+    Object.defineProperty(zoomWrapper, 'offsetHeight', { configurable: true, value: 700 });
+
+    fireEvent.mouseDown(scrollEl, { button: 0, clientX: 0, clientY: 0 });
+    fireEvent.mouseMove(scrollEl, { clientX: -5000, clientY: -5000 });
+    expect(zoomWrapper.style.transform).toBe('translate(-464px, -264px)');
+
+    fireEvent.mouseMove(scrollEl, { clientX: 5000, clientY: 5000 });
+    expect(zoomWrapper.style.transform).toBe('translate(64px, 64px)');
+    fireEvent.mouseUp(scrollEl);
   });
 
   it('dims multi-lesson chapters when statusFilter matches none of their lessons', () => {

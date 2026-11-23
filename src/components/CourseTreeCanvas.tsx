@@ -119,6 +119,43 @@ export function CourseTreeCanvas({
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const zoomWrapperRef = useRef<HTMLDivElement | null>(null);
+
+  const clampPan = (rawX: number, rawY: number, targetZoom = zoom) => {
+    const container = scrollContainerRef.current;
+    const content = zoomWrapperRef.current;
+    const cw = container?.clientWidth ?? 0;
+    const ch = container?.clientHeight ?? 0;
+
+    if (cw <= 0 || ch <= 0) {
+      const boundX = Math.round(layout.width * targetZoom);
+      const boundY = Math.round(layout.height * targetZoom);
+      return {
+        x: Math.max(-boundX, Math.min(boundX, rawX)),
+        y: Math.max(-boundY, Math.min(boundY, rawY)),
+      };
+    }
+
+    const sw = content?.offsetWidth || Math.round(layout.width * targetZoom);
+    const sh = content?.offsetHeight || Math.round(layout.height * targetZoom);
+    const slack = 64;
+
+    const minX = sw > cw ? -(sw - cw) - slack : -Math.round((cw - sw) / 2) - slack;
+    const maxX = sw > cw ? slack : Math.round((cw - sw) / 2) + slack;
+
+    const minY = sh > ch ? -(sh - ch) - slack : -slack;
+    const maxY = sh > ch ? slack : (ch - sh) + slack;
+
+    return {
+      x: Math.max(minX, Math.min(maxX, rawX)),
+      y: Math.max(minY, Math.min(maxY, rawY)),
+    };
+  };
+
+  const applyZoom = (nextZoom: number) => {
+    setZoom(nextZoom);
+    setPan((prev) => clampPan(prev.x, prev.y, nextZoom));
+  };
   const dragStateRef = useRef<{
     active: boolean;
     startX: number;
@@ -157,10 +194,7 @@ export function CourseTreeCanvas({
     }
     if (state.moved) {
       preventDefault?.();
-      setPan({
-        x: state.startPanX + dx,
-        y: state.startPanY + dy,
-      });
+      setPan(clampPan(state.startPanX + dx, state.startPanY + dy));
     }
   };
 
@@ -253,7 +287,7 @@ export function CourseTreeCanvas({
         <button
           type="button"
           disabled={zoom <= 0.5}
-          onClick={() => setZoom((z) => Math.max(0.5, Number((z - 0.1).toFixed(2))))}
+          onClick={() => applyZoom(Math.max(0.5, Number((zoom - 0.1).toFixed(2))))}
           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Zoom out"
           aria-label="Zoom out"
@@ -276,7 +310,7 @@ export function CourseTreeCanvas({
         <button
           type="button"
           disabled={zoom >= 2.5}
-          onClick={() => setZoom((z) => Math.min(2.5, Number((z + 0.1).toFixed(2))))}
+          onClick={() => applyZoom(Math.min(2.5, Number((zoom + 0.1).toFixed(2))))}
           className="inline-flex h-7 w-7 items-center justify-center rounded-md border border-slate-300 bg-white text-slate-700 transition-colors hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Zoom in"
           aria-label="Zoom in"
@@ -302,6 +336,7 @@ export function CourseTreeCanvas({
         } ${framed ? 'roadmap-canvas-frame p-2 sm:p-4' : ''}`}
       >
         <div
+          ref={zoomWrapperRef}
           className="mx-auto transition-[width,max-width,min-width] duration-200 ease-out"
           style={{
             width: `${Math.round(zoom * 100)}%`,
