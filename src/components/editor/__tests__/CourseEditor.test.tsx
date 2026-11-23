@@ -40,6 +40,22 @@ function renderEditor(initialEntry: string) {
   );
 }
 
+function expandChapter1AndLesson1() {
+  const expandCh1 = screen.queryByRole('button', { name: /Expand Chapter 1/i });
+  if (expandCh1) {
+    fireEvent.click(expandCh1);
+  }
+  const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement | null;
+  if (lessonCard) {
+    const toggleBtn = lessonCard.querySelector(
+      'button[aria-expanded="false"]'
+    ) as HTMLButtonElement | null;
+    if (toggleBtn) {
+      fireEvent.click(toggleBtn);
+    }
+  }
+}
+
 describe('CourseEditorPage & editor components', () => {
   beforeEach(async () => {
     window.localStorage.clear();
@@ -82,6 +98,7 @@ describe('CourseEditorPage & editor components', () => {
 
   it('validates uploads: rejects .exe, accepts .pdf into IndexedDB, allows large files with no size cap, warns without blocking mismatched kind, and auto-suggests kind', async () => {
     renderEditor('/editor/new');
+    expandChapter1AndLesson1();
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
     const lessonScope = within(lessonCard);
@@ -222,6 +239,8 @@ describe('CourseEditorPage & editor components', () => {
     expect(within(stickyBar).getByText('CS101')).toBeInTheDocument();
     expect(within(stickyBar).getByText('Course Overview')).toBeInTheDocument();
 
+    expandChapter1AndLesson1();
+
     // Focus chapter title input inside Chapter 1
     const ch1TitleInput = screen.getByLabelText('Chapter 1 title');
     fireEvent.focus(ch1TitleInput);
@@ -253,6 +272,7 @@ describe('CourseEditorPage & editor components', () => {
     });
 
     renderEditor('/course/guide101-quick-start/edit');
+    expandChapter1AndLesson1();
 
     // Change course code and slug so both slug and item IDs change
     const codeInput = screen.getByLabelText(/Course Code/i);
@@ -343,6 +363,7 @@ describe('CourseEditorPage & editor components', () => {
 
   it('lesson PrerequisitePicker excludes self and own parent chapter, and Collapse all collapses expanded lessons', () => {
     renderEditor('/editor/new');
+    expandChapter1AndLesson1();
 
     // Add a second lesson inside Chapter 1 and a second chapter
     fireEvent.click(screen.getByRole('button', { name: /Add Sub-Lesson to Chapter 1/i }));
@@ -480,6 +501,7 @@ describe('CourseEditorPage & editor components', () => {
 
   it('keeps LessonEditorCard header background and border classes identical across expand/collapse', () => {
     renderEditor('/editor/new');
+    expandChapter1AndLesson1();
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
     const toggleBtn = lessonCard.querySelector('button[aria-expanded]') as HTMLButtonElement;
@@ -515,6 +537,7 @@ describe('CourseEditorPage & editor components', () => {
 
   it('toggles Pin as Recommended on a material row and persists recommended: true on Save', () => {
     renderEditor('/editor/new');
+    expandChapter1AndLesson1();
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
     const lessonScope = within(lessonCard);
@@ -547,6 +570,7 @@ describe('CourseEditorPage & editor components', () => {
 
   it('supports Interactive material mode only when exam or assignment kind is chosen: 3-way XOR, Build / Edit modal, inline Import JSON, and Export JSON', async () => {
     renderEditor('/editor/new');
+    expandChapter1AndLesson1();
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
     const lessonScope = within(lessonCard);
@@ -712,6 +736,7 @@ describe('CourseEditorPage & editor components', () => {
 
   it('clears interactive assessment when switching back to Link mode or changing kind away from exam/assignment', () => {
     renderEditor('/editor/new');
+    expandChapter1AndLesson1();
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
     const lessonScope = within(lessonCard);
@@ -763,6 +788,7 @@ describe('CourseEditorPage & editor components', () => {
 
   it('surfaces human-clear validation errors in EditorStickyBar, highlights offending field, and prompts before leaving with unsaved edits', () => {
     renderEditor('/editor/new');
+    expandChapter1AndLesson1();
 
     const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
     const lessonScope = within(lessonCard);
@@ -823,5 +849,140 @@ describe('CourseEditorPage & editor components', () => {
     expect(within(dialog).getByLabelText(/^Course JSON$/i).className).toContain(
       'dark:bg-[#0d131f]'
     );
+  });
+
+  it('starts existing chapters and lessons collapsed, expands newly added chapters and lessons, and initializes optional/required fields properly', () => {
+    renderEditor('/editor/new');
+
+    // Optional fields start empty with placeholders
+    const yearInput = screen.getByLabelText(/Year/i) as HTMLInputElement;
+    const creditsInput = screen.getByLabelText(/Credits/i) as HTMLInputElement;
+    expect(yearInput.value).toBe('');
+    expect(yearInput.placeholder).toBe('e.g. 2');
+    expect(creditsInput.value).toBe('');
+    expect(creditsInput.placeholder).toBe('e.g. 3');
+
+    // Required fields start with default values AND placeholders
+    const codeInput = screen.getByLabelText(/Course Code/i) as HTMLInputElement;
+    const titleInput = screen.getByLabelText(/Course Title/i) as HTMLInputElement;
+    const slugInput = screen.getByLabelText(/URL Slug/i) as HTMLInputElement;
+    const descInput = screen.getByLabelText(/Description/i) as HTMLTextAreaElement;
+    expect(codeInput.value).toBe('CS101');
+    expect(codeInput.placeholder).toBe('e.g. MATH201');
+    expect(titleInput.value).toBe('New College Course');
+    expect(titleInput.placeholder).toBe('e.g. Linear Algebra');
+    expect(slugInput.value).toBe('cs101-new-college-course');
+    expect(slugInput.placeholder).toBe('e.g. cs101-new-college-course');
+    expect(descInput.value).toContain('Course overview');
+    expect(descInput.placeholder).toContain('Course overview');
+
+    // Existing Chapter 1 starts collapsed on initial load
+    expect(screen.getByRole('button', { name: /Expand Chapter 1/i })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
+
+    // Expand Chapter 1 -> its existing Lesson 1 also starts collapsed
+    fireEvent.click(screen.getByRole('button', { name: /Expand Chapter 1/i }));
+    expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
+    expect(screen.queryByLabelText('Sub-Lesson Title')).not.toBeInTheDocument();
+
+    // Adding a new Sub-Lesson to Chapter 1 opens it expanded immediately
+    fireEvent.click(screen.getByRole('button', { name: /Add Sub-Lesson to Chapter 1/i }));
+    const lessonTitleInputs = screen.getAllByLabelText('Sub-Lesson Title') as HTMLInputElement[];
+    expect(lessonTitleInputs).toHaveLength(1);
+    expect(lessonTitleInputs[0].value).toBe('New Sub-Lesson 2');
+    expect(lessonTitleInputs[0].placeholder).toBe('e.g. Course Introduction');
+    const lessonSummaryInput = screen.getByLabelText('Lesson Summary') as HTMLTextAreaElement;
+    expect(lessonSummaryInput.placeholder).toContain('Brief summary');
+
+    // Adding a new Chapter opens both the new chapter and its initial sub-lesson expanded
+    fireEvent.click(screen.getByRole('button', { name: /Add Chapter/i }));
+    expect(screen.getByLabelText('Chapter 2 title')).toBeInTheDocument();
+    expect(screen.getAllByLabelText('Sub-Lesson Title')).toHaveLength(2);
+  });
+
+  it('formats From and To week range inputs (empty, single week, equal From/To, multi-week) and disables To when From is empty', () => {
+    renderEditor('/editor/new');
+    expandChapter1AndLesson1();
+
+    const fromInput = screen.getByLabelText('Chapter 1 week from') as HTMLInputElement;
+    const toInput = screen.getByLabelText('Chapter 1 week to') as HTMLInputElement;
+
+    // Both start empty and To is disabled
+    expect(fromInput.value).toBe('');
+    expect(toInput.value).toBe('');
+    expect(toInput).toBeDisabled();
+    expect(
+      screen.queryByText(/Hidden on syllabus views since it duplicates/i)
+    ).not.toBeInTheDocument();
+
+    // Reject non-positive integer (0 or negative)
+    fireEvent.change(fromInput, { target: { value: '0' } });
+    expect(fromInput.value).toBe('');
+    expect(toInput).toBeDisabled();
+
+    // From = 1, To = empty -> enables To and saves as "Week 1"
+    fireEvent.change(fromInput, { target: { value: '1' } });
+    expect(fromInput.value).toBe('1');
+    expect(toInput).not.toBeDisabled();
+
+    // From = 1, To = 2 -> formats as "Week 1-2"
+    fireEvent.change(toInput, { target: { value: '2' } });
+    expect(toInput.value).toBe('2');
+
+    // Clearing From clears and disables To
+    fireEvent.change(fromInput, { target: { value: '' } });
+    expect(fromInput.value).toBe('');
+    expect(toInput.value).toBe('');
+    expect(toInput).toBeDisabled();
+
+    // Set From = 3, To = 3 -> saves as "Week 3"
+    fireEvent.change(fromInput, { target: { value: '3' } });
+    fireEvent.change(toInput, { target: { value: '3' } });
+
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
+    expect(screen.getByTestId('course-view-destination')).toBeInTheDocument();
+
+    const savedCourses = loadCoursesCatalog();
+    const created = savedCourses.find((c) => c.slug === 'cs101-new-college-course');
+    expect(created?.chapters[0]?.weekRange).toBe('Week 3');
+  });
+
+  it('displays live resource-count tags on sublessons (light blue after ID) and chapters (amber when > 0 resources)', () => {
+    renderEditor('/editor/new');
+    expandChapter1AndLesson1();
+
+    const chapter1Card = document.querySelectorAll('[data-edit-chapter]')[0] as HTMLElement;
+    const ch1Scope = within(chapter1Card);
+
+    // Chapter starts with 0 resources -> chapter-resource-count-tag is not rendered
+    expect(ch1Scope.queryByTestId('chapter-resource-count-tag')).not.toBeInTheDocument();
+
+    // Sublesson starts with 0 resources -> lesson-resource-count-tag is rendered in light blue right after derived ID
+    const lessonTag = ch1Scope.getByTestId('lesson-resource-count-tag');
+    expect(lessonTag).toHaveTextContent('0 resources');
+    expect(lessonTag.className).toContain('bg-blue-100');
+    expect(lessonTag.className).toContain('text-blue-800');
+    expect(lessonTag.className).toContain('dark:bg-blue-400/15');
+    expect(lessonTag.className).toContain('dark:text-blue-300');
+    expect(lessonTag.previousElementSibling).toHaveTextContent('cs101-ch1-l1-course-introduction');
+
+    // Add a resource to Lesson 1 -> updates live to "1 resource"
+    const lessonCard = chapter1Card.querySelector('[data-edit-lesson]') as HTMLElement;
+    fireEvent.click(within(lessonCard).getByRole('button', { name: /Add Material/i }));
+    expect(ch1Scope.getByTestId('lesson-resource-count-tag')).toHaveTextContent('1 resource');
+
+    // Add a resource to Chapter 1 -> chapter-resource-count-tag appears in amber with "1 resource"
+    const chapterMaterialsBtn = ch1Scope.getAllByRole('button', { name: /Add Material/i })[0];
+    fireEvent.click(chapterMaterialsBtn);
+    const chapterResTag = ch1Scope.getByTestId('chapter-resource-count-tag');
+    expect(chapterResTag).toHaveTextContent('1 resource');
+    expect(chapterResTag.className).toContain('bg-amber-100');
+    expect(chapterResTag.className).toContain('text-amber-800');
+    expect(chapterResTag.className).toContain('dark:bg-amber-400/15');
+    expect(chapterResTag.className).toContain('dark:text-amber-300');
   });
 });

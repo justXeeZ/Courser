@@ -29,6 +29,11 @@ describe('ChecklistView', () => {
 
     // Ensure no teal classes remain anywhere in checklist view
     expect(container.innerHTML).not.toContain('teal');
+
+    // Chapter tags container stacks vertically on mobile and lays out horizontally on sm+
+    const chapterTagGroups = screen.getAllByTestId('checklist-chapter-tags');
+    expect(chapterTagGroups.length).toBeGreaterThan(0);
+    expect(chapterTagGroups[0]).toHaveClass('flex-col', 'items-end', 'sm:flex-row');
   });
 
   it('renders leaf chapters as checkable rows with Open button triggering ChapterDrawer', () => {

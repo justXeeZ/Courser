@@ -63,7 +63,7 @@ export function ChecklistView({
             }`}
           >
             <div
-              className={`flex flex-wrap items-center justify-between gap-3 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-3 dark:border-l-amber-400 dark:bg-[#1b2436] ${
+              className={`flex items-start justify-between gap-3 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-3 sm:items-center dark:border-l-amber-400 dark:bg-[#1b2436] ${
                 !isLeaf ? 'border-b border-slate-200 dark:border-slate-700/80' : ''
               }`}
             >
@@ -124,7 +124,10 @@ export function ChecklistView({
                 </div>
               </div>
 
-              <div className="flex shrink-0 flex-wrap items-center gap-2 text-xs">
+              <div
+                data-testid="checklist-chapter-tags"
+                className="flex shrink-0 flex-col items-end gap-1.5 text-xs sm:flex-row sm:flex-wrap sm:items-center sm:gap-2"
+              >
                 {chapter.weekRange && (
                   <span className="rounded border border-slate-200 bg-white px-2 py-0.5 font-medium text-slate-700 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200">
                     {chapter.weekRange}

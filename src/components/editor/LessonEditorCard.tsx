@@ -74,12 +74,15 @@ export function LessonEditorCard({
           <span className="hidden rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-600 sm:inline dark:bg-[#0d131f] dark:text-slate-300">
             {derivedLessonId}
           </span>
+          <span
+            data-testid="lesson-resource-count-tag"
+            className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[11px] font-medium text-blue-800 dark:bg-blue-400/15 dark:text-blue-300"
+          >
+            {lesson.resources.length} {lesson.resources.length === 1 ? 'resource' : 'resources'}
+          </span>
         </button>
 
-        <div className="flex items-center gap-1">
-          <span className="rounded bg-white px-1.5 py-0.5 text-[11px] text-slate-600 dark:bg-[#0d131f] dark:text-slate-300">
-            {lesson.resources.length} res
-          </span>
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             disabled={lessonIndex === 0}
@@ -129,6 +132,7 @@ export function LessonEditorCard({
                     title: e.target.value,
                   }))
                 }
+                placeholder="e.g. Course Introduction"
                 aria-label="Sub-Lesson Title"
                 aria-invalid={Boolean(titleError)}
                 data-error-key={titleErrorKey}
@@ -184,6 +188,7 @@ export function LessonEditorCard({
                   summary: e.target.value,
                 }))
               }
+              placeholder="Brief summary of what students will learn..."
               aria-label="Lesson Summary"
               aria-invalid={Boolean(summaryError)}
               data-error-key={summaryErrorKey}

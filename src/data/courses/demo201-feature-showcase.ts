@@ -9,17 +9,17 @@ export const demo201FeatureShowcase: CourseTree = {
   semester: 1,
   credits: 4,
   description:
-    'A comprehensive sample course demonstrating all material kinds, recommended pinning, interactive LaTeX exams and assignments, left/right/auto branch placement, cross-chapter and lesson-to-chapter prerequisites, a six-lesson chapter, long titles, and direct milestone chapters.',
+    'Course A — A comprehensive feature overview that showcases the entire application: all 10 material kinds (including audio), recommended pinning, interactive LaTeX exams and assignments, From → To week ranges (Week 1-3, Week 11), top-right Ch1 and Ch2 / L1 drawer tags, bounded 2D tree panning with 50%–250% zoom, left/right/auto branch placement, cross-chapter prerequisites, a six-lesson chapter, long titles, and direct milestone chapters.',
   chapters: [
     {
       id: 'demo201-ch1-foundations-core-layouts',
       order: 1,
       title: '1. Foundations & Core Layouts',
-      weekRange: 'Weeks 1–3',
+      weekRange: 'Week 1-3',
       description:
-        'Demonstrates chapter-level notes, chapter-level textbook and course links, and explicit left, right, and auto-balanced sub-lesson placement.',
+        'Demonstrates From → To multi-week ranges (Week 1-3), top-right Ch1 drawer tagging, chapter-level Notes tab, textbook and course links, and explicit left, right, and auto-balanced sub-lesson placement.',
       notes:
-        'Chapter 1 illustrates how a chapter overview drawer surfaces chapter notes, materials, and sub-lesson status summaries in one place.',
+        'Chapter 1 illustrates how the Chapter Overview drawer displays its top-right Ch1 badge, week range pill (Week 1-3), Overview and Notes tabs, chapter materials, and interactive sub-lesson completion toggles in one place.',
       resources: [
         {
           title: 'MIT OCW Algorithms Course Homepage',
@@ -38,9 +38,9 @@ export const demo201FeatureShowcase: CourseTree = {
           id: 'demo201-ch1-l1-course-overview-tree-structure',
           title: 'Course Overview & Tree Structure',
           summary:
-            'Introduces the sample course layout with lecture slides and an introductory walkthrough video.',
+            'Introduces the feature showcase layout with lecture slides, a recommended walkthrough video, and an audio summary, plus the top-right Ch1 / L1 tag inside the Lesson Overview drawer.',
           notes:
-            'Notice how this opening lesson sits on the left branch and serves as the foundation for subsequent nodes.',
+            'Notice how this opening lesson sits on the left branch, displays a sky-blue Ch1 / L1 badge at the top right of its drawer, and includes an audio lecture summary alongside slides and video.',
           side: 'left',
           resources: [
             {
@@ -120,11 +120,11 @@ export const demo201FeatureShowcase: CourseTree = {
       id: 'demo201-ch2-six-lesson-deep-dive',
       order: 2,
       title: '2. Six-Lesson Deep Dive',
-      weekRange: 'Weeks 4–8',
+      weekRange: 'Week 4-8',
       description:
-        'A six-lesson chapter demonstrating sticky editor scrolling, a 40-character lesson title, cross-chapter links, and a lesson-to-chapter prerequisite.',
+        'A six-lesson chapter demonstrating default-collapsed editor cards, sticky editor scrolling with Ch2 / L1 context badges, a 40-character lesson title, cross-chapter links, and a lesson-to-chapter prerequisite.',
       notes:
-        'Open this chapter in the course editor to see the sticky chapter and lesson context bar follow your focus while scrolling across all six lessons.',
+        'Open this course in the editor to see all existing chapters and lessons load collapsed by default for a clean overview, then expand Chapter 2 to see the sticky context bar track your focus across all six sky-blue-accented sub-lessons.',
       prerequisites: ['demo201-ch1-foundations-core-layouts'],
       resources: [
         {
@@ -362,11 +362,11 @@ export const demo201FeatureShowcase: CourseTree = {
       id: 'demo201-ch3-capstone-lab-milestone',
       order: 3,
       title: '3. Capstone Lab Milestone',
-      weekRange: 'Weeks 9–10',
+      weekRange: 'Week 9-10',
       description:
-        'First direct milestone chapter (0 sub-lessons) showcasing chapter-level assignment and lab materials plus mixed chapter and lesson prerequisites.',
+        'First direct milestone chapter (0 sub-lessons) showcasing chapter-level assignment and lab materials, From → To week range (Week 9-10), and mixed chapter and lesson prerequisites.',
       notes:
-        'Chapters without sub-lessons appear directly on the spine and can be marked Learning, Done, or Skipped in both Tree View and Checklist View.',
+        'Chapters without sub-lessons appear directly on the spine and can be marked Learning, Done, or Skipped in both Tree View and Checklist View (where mobile chapter tags stack vertically to keep titles roomy).',
       prerequisites: [
         'demo201-ch2-six-lesson-deep-dive',
         'demo201-ch2-l2-implementing-lock-free-concurrent-queues',
@@ -391,7 +391,7 @@ export const demo201FeatureShowcase: CourseTree = {
       title: '4. Final Exam & Course Retrospective',
       weekRange: 'Week 11',
       description:
-        'Second direct milestone chapter wrapping up the showcase course with final exam materials, review slides, and a prerequisite on Chapter 3.',
+        'Second direct milestone chapter demonstrating a single-week From value (Week 11, where To is left empty or equal to From), final exam materials, review slides, and a prerequisite on Chapter 3.',
       notes:
         'Try exporting this course from the header Export button and importing it as a new draft to test slug conflict resolution and full schema round-tripping.',
       prerequisites: ['demo201-ch3-capstone-lab-milestone'],

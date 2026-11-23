@@ -32,7 +32,7 @@ describe('ChapterDrawer', () => {
     const chapterTag = screen.getByTestId('chapter-position-tag');
     expect(chapterTag).toHaveTextContent('Ch1');
     expect(chapterTag).toHaveClass('ml-auto');
-    expect(screen.getByText('Weeks 1–3')).toBeInTheDocument();
+    expect(screen.getByText('Week 1-3')).toBeInTheDocument();
     expect(screen.getByText(ch1.description)).toBeInTheDocument();
     expect(screen.getByText('0/3')).toBeInTheDocument();
     expect(screen.getByText('1 skipped')).toBeInTheDocument();
@@ -169,7 +169,7 @@ describe('ChapterDrawer', () => {
     expect(prereqChip.querySelector('svg')).toHaveClass('lucide-ban');
   });
 
-  it('hides Chapter Materials on multi-lesson chapters with empty resources, hides Notes tab when notes are empty, and suppresses redundant Part/Chapter weekRange tags', () => {
+  it('hides Chapter Materials on multi-lesson chapters with empty resources, hides Notes tab when notes are empty, and renders any non-empty weekRange directly', () => {
     const multiLessonNoResCourse: CourseTree = {
       slug: 'test104-empty-mat',
       code: 'TEST104',
@@ -181,8 +181,8 @@ describe('ChapterDrawer', () => {
           id: 'test104-ch1-multi',
           order: 1,
           title: '1. Multi-Lesson Chapter',
-          description: 'Has sub-lessons, no chapter materials, no notes, redundant Part 1 tag',
-          weekRange: 'Part 1',
+          description: 'Has sub-lessons, no chapter materials, no notes, Week 1 tag',
+          weekRange: 'Week 1',
           lessons: [
             {
               id: 'test104-ch1-l1-lesson-1',
@@ -216,7 +216,7 @@ describe('ChapterDrawer', () => {
 
     expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
     expect(screen.queryByRole('tab', { name: 'Notes' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Part 1')).not.toBeInTheDocument();
+    expect(screen.getByText('Week 1')).toBeInTheDocument();
     expect(screen.queryByText('Chapter Materials')).not.toBeInTheDocument();
     expect(screen.queryByText('No materials attached to this chapter yet.')).not.toBeInTheDocument();
 

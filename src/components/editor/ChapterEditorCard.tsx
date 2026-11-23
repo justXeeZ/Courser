@@ -1,9 +1,35 @@
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { LessonEditorCard } from '@/components/editor/LessonEditorCard';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
 import { formatChapterPositionTag } from '@/lib/courseIds';
 import type { Chapter, SubLesson } from '@/types/course';
+
+export function parseWeekRangeBounds(weekRange?: string): { from: string; to: string } {
+  if (!weekRange) return { from: '', to: '' };
+  const match = weekRange.trim().match(/^Weeks?\s+([1-9]\d*)(?:\s*[-–]\s*([1-9]\d*))?$/i);
+  if (!match) return { from: '', to: '' };
+  return {
+    from: match[1] ?? '',
+    to: match[2] ?? '',
+  };
+}
+
+export function formatWeekRangeBounds(fromStr: string, toStr: string): string | undefined {
+  const fromTrim = fromStr.trim();
+  if (!fromTrim || !/^[1-9]\d*$/.test(fromTrim)) return undefined;
+  const fromNum = Number(fromTrim);
+  const toTrim = toStr.trim();
+  if (!toTrim || !/^[1-9]\d*$/.test(toTrim)) {
+    return `Week ${fromNum}`;
+  }
+  const toNum = Number(toTrim);
+  if (toNum === fromNum) {
+    return `Week ${fromNum}`;
+  }
+  return `Week ${fromNum}-${toNum}`;
+}
 
 interface ChapterEditorCardProps {
   chapter: Chapter;
@@ -53,6 +79,7 @@ export function ChapterEditorCard({
   onToggleLessonPrerequisite,
 }: ChapterEditorCardProps) {
   const isLeafChapter = chapter.lessons.length === 0;
+  const chapterResourceCount = chapter.resources?.length ?? 0;
   const chapterOrder = chapterIndex + 1;
   const chapterPrefix = `chapters.${chapterIndex}`;
   const titleErrorKey = `${chapterPrefix}.title`;
@@ -60,13 +87,22 @@ export function ChapterEditorCard({
   const titleError = fieldErrors?.[titleErrorKey];
   const descriptionError = fieldErrors?.[descriptionErrorKey];
 
-  const isRedundantWeekRange = Boolean(
-    chapter.weekRange &&
-      new RegExp(
-        `^(?:ch(?:apter)?|part|unit|module|section)\\s*0*${chapterOrder}$`,
-        'i'
-      ).test(chapter.weekRange.trim())
-  );
+  const [weekFrom, setWeekFrom] = useState<string>(() => parseWeekRangeBounds(chapter.weekRange).from);
+  const [weekTo, setWeekTo] = useState<string>(() => parseWeekRangeBounds(chapter.weekRange).to);
+
+  useEffect(() => {
+    const parsed = parseWeekRangeBounds(chapter.weekRange);
+    setWeekFrom((prevFrom) => {
+      const currentFormatted = formatWeekRangeBounds(prevFrom, weekTo);
+      if (currentFormatted === chapter.weekRange) return prevFrom;
+      return parsed.from;
+    });
+    setWeekTo((prevTo) => {
+      const currentFormatted = formatWeekRangeBounds(weekFrom, prevTo);
+      if (currentFormatted === chapter.weekRange) return prevTo;
+      return parsed.to;
+    });
+  }, [chapter.id, chapter.weekRange]);
 
   return (
     <div
@@ -112,6 +148,14 @@ export function ChapterEditorCard({
               ? '0 lessons'
               : `${chapter.lessons.length} ${chapter.lessons.length === 1 ? 'lesson' : 'lessons'}`}
           </span>
+          {chapterResourceCount > 0 && (
+            <span
+              data-testid="chapter-resource-count-tag"
+              className="shrink-0 rounded bg-amber-100 px-1.5 py-0.5 text-[11px] font-medium text-amber-800 dark:bg-amber-400/15 dark:text-amber-300"
+            >
+              {chapterResourceCount} {chapterResourceCount === 1 ? 'resource' : 'resources'}
+            </span>
+          )}
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
@@ -180,27 +224,71 @@ export function ChapterEditorCard({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <span className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
               Week Range (optional)
-            </label>
-            <input
-              type="text"
-              value={chapter.weekRange ?? ''}
-              onChange={(e) =>
-                onUpdateChapter((ch) => ({
-                  ...ch,
-                  weekRange: e.target.value || undefined,
-                }))
-              }
-              placeholder="e.g. Weeks 1–3"
-              aria-label={`Chapter ${chapterOrder} week range`}
-              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
-            />
-            {isRedundantWeekRange && (
-              <p className="mt-1 text-[11px] text-slate-500 dark:text-slate-400">
-                Hidden on syllabus views since it duplicates Ch {chapterOrder}.
-              </p>
-            )}
+            </span>
+            <div className="flex items-center gap-1.5">
+              <div className="min-w-0 flex-1">
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={weekFrom}
+                  onChange={(e) => {
+                    const raw = e.target.value.trim();
+                    if (raw !== '' && !/^[1-9]\d*$/.test(raw)) {
+                      return;
+                    }
+                    setWeekFrom(raw);
+                    if (raw === '') {
+                      setWeekTo('');
+                      onUpdateChapter((ch) => ({
+                        ...ch,
+                        weekRange: undefined,
+                      }));
+                    } else {
+                      onUpdateChapter((ch) => ({
+                        ...ch,
+                        weekRange: formatWeekRangeBounds(raw, weekTo),
+                      }));
+                    }
+                  }}
+                  placeholder="From"
+                  aria-label={`Chapter ${chapterOrder} week from`}
+                  className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </div>
+              <ArrowRight
+                aria-hidden="true"
+                className="h-3.5 w-3.5 shrink-0 text-slate-400 dark:text-slate-500"
+              />
+              <div className="min-w-0 flex-1">
+                <input
+                  type="number"
+                  min={1}
+                  step={1}
+                  inputMode="numeric"
+                  value={weekTo}
+                  disabled={weekFrom === ''}
+                  onChange={(e) => {
+                    if (weekFrom === '') return;
+                    const raw = e.target.value.trim();
+                    if (raw !== '' && !/^[1-9]\d*$/.test(raw)) {
+                      return;
+                    }
+                    setWeekTo(raw);
+                    onUpdateChapter((ch) => ({
+                      ...ch,
+                      weekRange: formatWeekRangeBounds(weekFrom, raw),
+                    }));
+                  }}
+                  placeholder="To"
+                  aria-label={`Chapter ${chapterOrder} week to`}
+                  className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                />
+              </div>
+            </div>
           </div>
 
           <div className="sm:col-span-3">

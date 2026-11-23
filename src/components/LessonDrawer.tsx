@@ -14,15 +14,6 @@ import { DrawerShell } from '@/components/DrawerShell';
 import { MaterialList } from '@/components/MaterialList';
 import { StatusSegmentedControl } from '@/components/StatusSegmentedControl';
 
-function isRedundantWeekRange(weekRange: string | undefined, chapterOrder: number): boolean {
-  if (!weekRange) return true;
-  const trimmed = weekRange.trim();
-  if (!trimmed) return true;
-  return new RegExp(`^(?:ch(?:apter)?|part|unit|module|section)\\s*0*${chapterOrder}$`, 'i').test(
-    trimmed
-  );
-}
-
 interface LessonDrawerProps {
   course: CourseTree;
   chapter: Chapter;
@@ -231,7 +222,7 @@ export function LessonDrawer({
           >
             {chapter.title}
           </button>
-          {chapter.weekRange && !isRedundantWeekRange(chapter.weekRange, chapter.order) && (
+          {chapter.weekRange && (
             <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
               {chapter.weekRange}
             </span>

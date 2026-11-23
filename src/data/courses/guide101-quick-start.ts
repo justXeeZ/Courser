@@ -9,12 +9,13 @@ export const guide101QuickStart: CourseTree = {
   semester: 1,
   credits: 1,
   description:
-    'Learn how to browse the catalog, read interactive course trees, track your progress, author new courses, upload materials, and back up your data.',
+    'Course B — Step-by-step tutorial teaching you how to browse the catalog, pan and zoom interactive course trees, track your progress, author courses with From → To week ranges and collapsible editor cards, attach materials, and back up your data.',
   chapters: [
     {
       id: 'guide101-ch1-navigating-the-catalog',
       order: 1,
       title: '1. Navigating the Catalog',
+      weekRange: 'Week 1',
       description:
         'Browse courses grouped by department, bookmark favorites, and jump straight to any course, chapter, or lesson with instant search.',
       notes:
@@ -65,18 +66,19 @@ export const guide101QuickStart: CourseTree = {
       id: 'guide101-ch2-reading-a-course-tree',
       order: 2,
       title: '2. Reading a Course Tree',
+      weekRange: 'Week 2',
       description:
-        'Understand the central chapter spine, left/right sub-lesson branches, prerequisite links, and the Chapter Overview drawer.',
+        'Understand the central chapter spine, left/right sub-lesson branches, bounded 2D tree panning and zooming, prerequisite links, and the Chapter Overview drawer.',
       notes:
-        'Each course tree arranges chapters down the center spine with sub-lessons branching left and right, plus a List View tab for linear study.',
+        'Each course tree arranges chapters down the center spine with sub-lessons branching left and right, plus a Checklist View tab for linear study.',
       lessons: [
         {
           id: 'guide101-ch2-l1-chapters-vs-sub-lessons',
           title: 'Chapters vs Sub-Lessons',
           summary:
-            'Dark-bordered boxes down the center spine represent major chapters, while cream-colored branch nodes represent sub-lessons inside each chapter. You can switch between the visual Tree View and the linear Checklist View in the course header.',
+            'Dark-bordered boxes down the center spine represent major chapters, while cream-colored branch nodes represent sub-lessons inside each chapter. Drag with your mouse or swipe on touchscreens to freely pan the bounded 2D tree canvas in any direction, zoom from 50% up to 250%, or switch to the linear Checklist View.',
           notes:
-            'In Tree View, lessons can sit on the left branch, the right branch, or be auto-balanced along the chapter.\nChecklist View groups those same items into collapsible chapter sections for fast keyboard or mobile scanning.',
+            'In Tree View, lessons can sit on the left branch, the right branch, or be auto-balanced along the chapter, and panning is clamped to the tree bounds so the syllabus never gets lost off-screen.\nChecklist View groups those same items into collapsible chapter sections, stacking chapter tags vertically on smaller mobile screens so long chapter titles always have room.',
           side: 'left',
           resources: [
             {
@@ -108,9 +110,9 @@ export const guide101QuickStart: CourseTree = {
           id: 'guide101-ch2-l3-chapter-overview',
           title: 'Chapter Overview',
           summary:
-            'Clicking any chapter node on the spine opens the Chapter Overview drawer rather than jumping into its first lesson. Inside, you can review chapter progress, prerequisites, chapter-level materials, study notes, and the full list of sub-lessons.',
+            'Clicking any chapter node on the spine opens the Chapter Overview drawer with a top-right Ch1 badge rather than jumping into its first lesson. Inside, you can switch between Overview and Notes tabs, review prerequisites and chapter-level materials, and toggle sub-lesson completion directly.',
           notes:
-            'Multi-lesson chapters hide the empty Chapter Materials box automatically when no chapter-level materials are attached, while single-unit chapters and sub-lessons retain their empty-state prompt.\nThe URL updates to ?chapter=<id> when inspecting a chapter and ?lesson=<id> when inspecting a sub-lesson, making links shareable and refresh-safe.\nUse Prev/Next chapter buttons at the bottom of the drawer to step along the syllabus.',
+            'Lesson drawers display a matching sky-blue Ch2 / L1 badge in the top-right corner so you always know your exact syllabus position.\nMulti-lesson chapters hide the empty Chapter Materials box automatically when no chapter-level materials are attached, and the Notes tab appears only when study notes are present.\nThe URL updates to ?chapter=<id> or ?lesson=<id>, making links shareable and refresh-safe.',
           side: 'left',
           prerequisites: ['guide101-ch2-l1-chapters-vs-sub-lessons'],
           resources: [
@@ -127,6 +129,7 @@ export const guide101QuickStart: CourseTree = {
       id: 'guide101-ch3-tracking-progress',
       order: 3,
       title: '3. Tracking Progress',
+      weekRange: 'Week 3',
       description:
         'Mark lessons and single-unit chapters as Learning, Done, or Skip, and learn how skipping adjusts required completion totals.',
       notes:
@@ -188,18 +191,19 @@ export const guide101QuickStart: CourseTree = {
       id: 'guide101-ch4-creating-editing-courses',
       order: 4,
       title: '4. Creating & Editing Courses',
+      weekRange: 'Week 4-5',
       description:
-        'Build new courses from scratch, organize chapters and single-unit milestones, and attach URL links or uploaded study files.',
+        'Build new courses from scratch with clean default/placeholder fields, set From → To week ranges, collapse or expand chapters and sub-lessons, and attach URL links or uploaded study files.',
       notes:
-        'The sticky editor bar tracks whichever chapter or lesson you are currently editing as you scroll through long syllabi.',
+        'When you open the editor, existing chapters and lessons start collapsed by default for a clean bird’s-eye view, while any newly added chapter or sub-lesson opens expanded automatically.',
       lessons: [
         {
           id: 'guide101-ch4-l1-new-course-derived-ids',
           title: 'New Course & Derived IDs',
           summary:
-            'Click + New Course in the navbar to open the course editor, choose a Department (defaulting to Preparatory) and an optional Year (1–10) and Semester (1st or 2nd), and add chapters with the sticky + Add Chapter button. Chapter and lesson IDs are automatically derived from the course code, position (Ch X - L Y), and title, and saving a rename or code change automatically remaps your saved progress, bookmarks, and assessment scores.',
+            'Click + New Course in the navbar to open the course editor. Required fields start with a sensible default and a placeholder (shown if cleared), while optional fields (Year, Semester, Credits, From → To week range, and Notes) start completely empty with helpful placeholders. Chapter and lesson IDs are automatically derived from the course code, compact position tag (Ch2 / L1), and title.',
           notes:
-            'Because progress is remapped using an oldId-to-newId map on save, renaming a tracked lesson or changing a course code never orphans your Done/Learning/Skipped history or saved quiz scores.\nEstimated time fields have been completely removed so authoring stays focused on structure and materials.',
+            'Because progress is remapped using an oldId-to-newId map on save, renaming a tracked lesson or changing a course code never orphans your Done/Learning/Skipped history or saved quiz scores.\nIf a required field is left blank, clicking Save highlights the invalid fields in red and lists them in the sticky bottom bar.',
           side: 'left',
           resources: [
             {
@@ -213,9 +217,9 @@ export const guide101QuickStart: CourseTree = {
           id: 'guide101-ch4-l2-chapters-lessons-direct-milestones',
           title: 'Chapters, Lessons & Direct Milestones',
           summary:
-            'Chapters can hold multiple sub-lessons or zero sub-lessons. A chapter with 0 sub-lessons supports its own prerequisites, materials, and study notes and can be checked off directly in both Tree View and Checklist View.',
+            'Each chapter includes optional positive-integer From → To week fields: leave both empty for no label, fill From only (or equal From and To) for Week 1, or set a span for Week 1-2 (the To input stays disabled until From has a value). Chapters and sky-blue-accented sub-lesson cards can be collapsed individually or all at once via Collapse all.',
           notes:
-            'Use chapters without sub-lessons for midterms, capstone projects, reading weeks, or wrap-up milestones that do not need nested sub-lessons.\nThe editor shows a helpful hint whenever a chapter has 0 lessons.',
+            'Existing chapters and lessons start collapsed when loading the editor so you can scan or reorder large courses effortlessly, while clicking Add Chapter or Add Sub-Lesson expands the new card immediately.\nChapters with 0 sub-lessons act as direct milestones on the spine for midterms, capstones, or final exams.',
           side: 'right',
           prerequisites: ['guide101-ch4-l1-new-course-derived-ids'],
           resources: [
@@ -249,6 +253,7 @@ export const guide101QuickStart: CourseTree = {
       id: 'guide101-ch5-backup-import-export',
       order: 5,
       title: '5. Backup, Import & Export',
+      weekRange: 'Week 6',
       description:
         'Milestone chapter covering course export (.course.json), course import into new drafts, and per-user progress backup.',
       notes:

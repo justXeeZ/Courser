@@ -45,27 +45,30 @@ function createBlankCourse(): CourseTree {
     department: 'Preparatory',
     year: undefined,
     semester: undefined,
-    credits: 3,
+    credits: undefined,
     description: 'Course overview and learning outcomes.',
     chapters: [
       {
         id: deriveChapterId(code, 1, '1. Foundations'),
         order: 1,
         title: '1. Foundations',
-        weekRange: 'Weeks 1–3',
+        weekRange: undefined,
         description: 'Core introductory concepts for this course.',
         lessons: [
           {
             id: deriveLessonId(code, 1, 1, 'Course Introduction'),
             title: 'Course Introduction',
             summary: 'Key terminology, setup, and roadmap for the semester.',
-            side: 'left',
             resources: [],
           },
         ],
       },
     ],
   };
+}
+
+function buildCollapsedChaptersMap(course: CourseTree): Record<string, boolean> {
+  return Object.fromEntries(course.chapters.map((ch) => [ch.id, true]));
 }
 
 function isValidHttpUrlString(urlStr: string): boolean {
@@ -278,11 +281,10 @@ export function CourseEditorPage() {
   );
   const [slugTouched, setSlugTouched] = useState<boolean>(isEditing);
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
-  const [collapsedChapters, setCollapsedChapters] = useState<Record<string, boolean>>({});
-  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>(() => {
-    const firstLessonId = (existingCourse ?? createBlankCourse()).chapters[0]?.lessons[0]?.id;
-    return firstLessonId ? { [firstLessonId]: true } : {};
-  });
+  const [collapsedChapters, setCollapsedChapters] = useState<Record<string, boolean>>(() =>
+    buildCollapsedChaptersMap(existingCourse ?? createBlankCourse())
+  );
+  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({});
   const [focusedChapterId, setFocusedChapterId] = useState<string | null>(null);
   const [focusedLessonId, setFocusedLessonId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -311,9 +313,8 @@ export function CourseEditorPage() {
     setBaselineJson(JSON.stringify(nextDraft));
     setYearInput(nextDraft.year !== undefined ? String(nextDraft.year) : '');
     setSlugTouched(Boolean(slug));
-    const firstLessonId = nextDraft.chapters[0]?.lessons[0]?.id;
-    setCollapsedChapters({});
-    setExpandedLessons(firstLessonId ? { [firstLessonId]: true } : {});
+    setCollapsedChapters(buildCollapsedChaptersMap(nextDraft));
+    setExpandedLessons({});
     setFocusedChapterId(null);
     setFocusedLessonId(null);
     setErrorMsg(null);
@@ -488,7 +489,7 @@ export function CourseEditorPage() {
       id: newChapterId,
       order: nextOrder,
       title: newChapterTitle,
-      weekRange: '',
+      weekRange: undefined,
       description: 'Chapter overview.',
       lessons: [
         {
@@ -502,6 +503,7 @@ export function CourseEditorPage() {
 
     pendingScrollChapterIdRef.current = newChapterId;
     setDraft((prev) => ({ ...prev, chapters: [...prev.chapters, newChapter] }));
+    setCollapsedChapters((prev) => ({ ...prev, [newChapterId]: false }));
     setExpandedLessons((exp) => ({ ...exp, [newLessonId]: true }));
     setFocusedChapterId(newChapterId);
     setFocusedLessonId(newLessonId);
@@ -574,6 +576,10 @@ export function CourseEditorPage() {
         summary: 'Brief summary of what students will learn.',
         resources: [],
       };
+      const parentChapterId = prev.chapters[chapterIdx]?.id;
+      if (parentChapterId) {
+        setCollapsedChapters((col) => ({ ...col, [parentChapterId]: false }));
+      }
       setExpandedLessons((exp) => ({ ...exp, [newId]: true }));
       return {
         ...prev,
@@ -724,9 +730,8 @@ export function CourseEditorPage() {
     setFieldErrors({});
     setFocusedChapterId(null);
     setFocusedLessonId(null);
-    const firstLessonId = imported.chapters[0]?.lessons[0]?.id;
-    setCollapsedChapters({});
-    setExpandedLessons(firstLessonId ? { [firstLessonId]: true } : {});
+    setCollapsedChapters(buildCollapsedChaptersMap(imported));
+    setExpandedLessons({});
     setImportBanner({ warnings });
   };
 
@@ -1159,7 +1164,7 @@ export function CourseEditorPage() {
                         credits: Number.isFinite(val) && val > 0 ? val : undefined,
                       });
                     }}
-                    placeholder="3"
+                    placeholder="e.g. 3"
                     className={inputClass}
                   />
                 </div>
@@ -1181,6 +1186,7 @@ export function CourseEditorPage() {
                         slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
                       });
                     }}
+                    placeholder="e.g. cs101-new-college-course"
                     aria-invalid={Boolean(fieldErrors.slug)}
                     data-error-key="slug"
                     data-field-error={fieldErrors.slug ? 'true' : undefined}
@@ -1204,6 +1210,7 @@ export function CourseEditorPage() {
                     rows={2}
                     value={draft.description}
                     onChange={(e) => updateMeta({ description: e.target.value })}
+                    placeholder="Course overview and learning outcomes..."
                     aria-invalid={Boolean(fieldErrors.description)}
                     data-error-key="description"
                     data-field-error={fieldErrors.description ? 'true' : undefined}
