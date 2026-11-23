@@ -1249,7 +1249,7 @@ export function CourseEditorPage() {
                         value="1"
                         checked={draft.semester === 1}
                         onChange={() => updateMeta({ semester: 1 })}
-                        className="accent-slate-900 dark:accent-yellow-400"
+                        className="accent-amber-500 dark:accent-amber-400"
                       />
                       1st
                     </label>
@@ -1260,7 +1260,7 @@ export function CourseEditorPage() {
                         value="2"
                         checked={draft.semester === 2}
                         onChange={() => updateMeta({ semester: 2 })}
-                        className="accent-slate-900 dark:accent-yellow-400"
+                        className="accent-amber-500 dark:accent-amber-400"
                       />
                       2nd
                     </label>

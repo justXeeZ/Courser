@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   AlertCircle,
+  AlertTriangle,
   Check,
   Copy,
   Download,
@@ -832,48 +833,28 @@ export function MaterialViewerModal({
       );
     }
 
-    // Embedded webpage view for general external URLs (sandboxed with visible fallback banner)
+    // Embedded webpage view for general external URLs (sandboxed; warning sits inline in the main header)
     if (resolvedUrl.kind === 'external' && !iframeError) {
       return (
-        <div className="flex h-full flex-1 flex-col gap-2.5">
-          <div
-            data-testid="external-embed-fallback-banner"
-            className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300"
-          >
-            <span>
-              Some websites block embedding. If this page appears blank or fails to load, open it
-              in a new tab.
-            </span>
-            <a
-              href={resolvedUrl.originalUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex shrink-0 items-center gap-1 rounded-md bg-yellow-400 px-2.5 py-1 text-xs font-semibold text-black hover:bg-yellow-500"
-            >
-              Open in new tab
-              <ExternalLink className="h-3 w-3" />
-            </a>
-          </div>
-          <div className="relative flex min-h-[60vh] flex-1 flex-col">
-            {!iframeLoaded && (
-              <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-slate-50/80 text-xs font-medium text-slate-600 dark:bg-[#0d131f]/80 dark:text-slate-300">
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Loading webpage...
-              </div>
-            )}
-            <iframe
-              src={resolvedUrl.originalUrl}
-              title={resource.title}
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-              referrerPolicy="no-referrer"
-              onLoad={() => setIframeLoaded(true)}
-              onError={() => {
-                setIframeLoaded(true);
-                setIframeError(true);
-              }}
-              className="h-full min-h-[60vh] w-full flex-1 rounded-lg border border-slate-200 bg-white dark:border-slate-700"
-            />
-          </div>
+        <div className="relative flex min-h-[60vh] flex-1 flex-col">
+          {!iframeLoaded && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-slate-50/80 text-xs font-medium text-slate-600 dark:bg-[#0d131f]/80 dark:text-slate-300">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Loading webpage...
+            </div>
+          )}
+          <iframe
+            src={resolvedUrl.originalUrl}
+            title={resource.title}
+            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            referrerPolicy="no-referrer"
+            onLoad={() => setIframeLoaded(true)}
+            onError={() => {
+              setIframeLoaded(true);
+              setIframeError(true);
+            }}
+            className="h-full min-h-[60vh] w-full flex-1 rounded-lg border border-slate-200 bg-white dark:border-slate-700"
+          />
         </div>
       );
     }
@@ -935,9 +916,21 @@ export function MaterialViewerModal({
                 {resource.title}
               </h2>
             </div>
-            <p className="mt-0.5 truncate text-xs text-slate-500 dark:text-slate-400">
-              {metadataLine}
-            </p>
+            <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
+              <p className="truncate">{metadataLine}</p>
+              {resolvedUrl?.kind === 'external' && !iframeError && (
+                <span
+                  data-testid="external-embed-header-warning"
+                  className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300"
+                >
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Some websites block embedding. If this page appears blank or fails to load, open
+                    it in a new tab.
+                  </span>
+                </span>
+              )}
+            </div>
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">

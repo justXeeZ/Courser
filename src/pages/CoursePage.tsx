@@ -240,7 +240,7 @@ export function CoursePage() {
         onChangeTab={setActiveTab}
       />
 
-      <div className="mx-auto max-w-6xl px-4 py-5 sm:px-6">
+      <div className="mx-auto max-w-5xl px-4 py-5 sm:px-6">
         <ProgressStrip
           stats={stats}
           statusFilter={statusFilter}

@@ -1,4 +1,4 @@
-import { useRef, useState, type MouseEvent, type RefObject, type TouchEvent } from 'react';
+import { useEffect, useRef, useState, type MouseEvent, type RefObject, type TouchEvent } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
 import { isLeafChapter } from '@/lib/courseItems';
 import { ROADMAP_COLORS } from '@/lib/theme';
@@ -124,6 +124,30 @@ export function CourseTreeCanvas({
   const [isDragging, setIsDragging] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const zoomWrapperRef = useRef<HTMLDivElement | null>(null);
+  const pinchStateRef = useRef<{
+    active: boolean;
+    startDist: number;
+    startZoom: number;
+  }>({
+    active: false,
+    startDist: 0,
+    startZoom: 1,
+  });
+
+  const getCenteredPanX = (targetZoom = 1) => {
+    const cw = scrollContainerRef.current?.clientWidth ?? 0;
+    const sw =
+      zoomWrapperRef.current?.offsetWidth ||
+      Math.round(Math.min(layout.width, 640) * targetZoom);
+    if (cw > 0 && sw > cw) {
+      return -Math.round((sw - cw) / 2);
+    }
+    return 0;
+  };
+
+  useEffect(() => {
+    setPan({ x: getCenteredPanX(1), y: 0 });
+  }, [layout.width]);
 
   const clampPan = (rawX: number, rawY: number, targetZoom = zoom) => {
     const container = scrollContainerRef.current;
@@ -223,15 +247,54 @@ export function CourseTreeCanvas({
   };
 
   const handleContainerTouchStart = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2) {
+      dragStateRef.current.active = false;
+      setIsDragging(false);
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      if (dist > 0) {
+        pinchStateRef.current = {
+          active: true,
+          startDist: dist,
+          startZoom: zoom,
+        };
+      }
+      return;
+    }
     if (e.touches.length !== 1) return;
+    pinchStateRef.current.active = false;
     const touch = e.touches[0];
     startPanDrag(touch.clientX, touch.clientY);
   };
 
   const handleContainerTouchMove = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length === 2 && pinchStateRef.current.active) {
+      const t1 = e.touches[0];
+      const t2 = e.touches[1];
+      const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+      if (pinchStateRef.current.startDist > 0 && dist > 0) {
+        const ratio = dist / pinchStateRef.current.startDist;
+        const nextZoom = Math.max(
+          0.5,
+          Math.min(2.5, Number((pinchStateRef.current.startZoom * ratio).toFixed(2)))
+        );
+        applyZoom(nextZoom);
+      }
+      return;
+    }
     if (e.touches.length !== 1) return;
     const touch = e.touches[0];
     movePanDrag(touch.clientX, touch.clientY);
+  };
+
+  const handleContainerTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
+    if (e.touches.length < 2) {
+      pinchStateRef.current.active = false;
+    }
+    if (e.touches.length === 0) {
+      endContainerDrag();
+    }
   };
 
   const handleContainerClickCapture = (e: MouseEvent<HTMLDivElement>) => {
@@ -302,7 +365,7 @@ export function CourseTreeCanvas({
           type="button"
           onClick={() => {
             setZoom(1);
-            setPan({ x: 0, y: 0 });
+            setPan({ x: getCenteredPanX(1), y: 0 });
           }}
           className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Reset zoom"
@@ -332,8 +395,8 @@ export function CourseTreeCanvas({
         onMouseLeave={endContainerDrag}
         onTouchStart={handleContainerTouchStart}
         onTouchMove={handleContainerTouchMove}
-        onTouchEnd={endContainerDrag}
-        onTouchCancel={endContainerDrag}
+        onTouchEnd={handleContainerTouchEnd}
+        onTouchCancel={handleContainerTouchEnd}
         onClickCapture={handleContainerClickCapture}
         className={`w-full touch-none overflow-hidden pb-8 ${
           isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'

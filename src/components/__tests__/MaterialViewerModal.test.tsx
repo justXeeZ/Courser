@@ -485,7 +485,10 @@ describe('MaterialViewerModal', () => {
       'allow-scripts allow-same-origin allow-forms allow-popups'
     );
     expect(extIframe).toHaveAttribute('referrerpolicy', 'no-referrer');
-    expect(screen.getByTestId('external-embed-fallback-banner')).toBeInTheDocument();
+    expect(screen.queryByTestId('external-embed-fallback-banner')).not.toBeInTheDocument();
+    expect(screen.getByTestId('external-embed-header-warning')).toHaveTextContent(
+      /Some websites block embedding/i
+    );
 
     // Unsafe javascript: URL
     rerender(

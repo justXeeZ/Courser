@@ -17,8 +17,8 @@ const FILTER_OPTIONS: { id: StatusFilter; label: string }[] = [
 
 export function ProgressStrip({ stats, statusFilter, onChangeFilter }: ProgressStripProps) {
   return (
-    <div className="mx-auto mb-5 max-w-5xl rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 shadow-xs sm:flex sm:items-center sm:justify-between sm:gap-4 dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-200">
-      <div className="flex flex-wrap items-center gap-2.5">
+    <div className="mx-auto mb-5 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 shadow-xs sm:flex sm:items-center sm:justify-between sm:gap-4 dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-200">
+      <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
         <span className="inline-flex items-center rounded bg-yellow-400 px-2 py-0.5 font-mono text-xs font-bold text-black">
           {stats.percentDone}% DONE
         </span>
@@ -37,7 +37,7 @@ export function ProgressStrip({ stats, statusFilter, onChangeFilter }: ProgressS
         )}
       </div>
 
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-3 sm:mt-0">
+      <div className="mt-2 flex flex-wrap items-center justify-center gap-3 sm:mt-0 sm:justify-end">
         <div className="inline-flex items-center rounded border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-700 dark:bg-[#0d131f]">
           {FILTER_OPTIONS.map((opt) => (
             <button

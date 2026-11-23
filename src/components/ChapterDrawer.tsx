@@ -141,7 +141,7 @@ export function ChapterDrawer({
         onClick={() => setActiveTab('materials')}
         className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
           activeTab === 'materials'
-            ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+            ? 'border-[var(--solid-bg)] bg-[var(--solid-bg)] text-[var(--solid-text)]'
             : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
@@ -155,7 +155,7 @@ export function ChapterDrawer({
           onClick={() => setActiveTab('notes')}
           className={`rounded-md border px-2.5 py-1 text-sm font-medium transition-colors ${
             activeTab === 'notes'
-              ? 'border-slate-900 bg-slate-900 text-white dark:border-yellow-400 dark:bg-yellow-400 dark:text-black'
+              ? 'border-[var(--solid-bg)] bg-[var(--solid-bg)] text-[var(--solid-text)]'
               : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
           }`}
         >

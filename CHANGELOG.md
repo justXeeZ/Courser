@@ -10,17 +10,18 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Course edit mode: added Move material up and Move material down arrow buttons on material rows to reorder materials with persisted order.
 - Chapter and lesson overviews: added the Link2 icon before materials headings and a Layers icon before the Sub-Lessons heading in Chapter Overview.
 - Material rows: external links now display a truncated URL with full-URL tooltip on the right alongside the external-link icon; uploaded files display File badge, filename, and size inline on the right with an Eye icon at the far right end.
-- In-app Material Viewer: clicking any external URL resource now opens inside the native viewer (native preview for supported types, or a sandboxed embedded webpage with a visible "Open in new tab" fallback notice for general webpages).
+- In-app Material Viewer: clicking any external URL resource now opens inside the native viewer (native preview for supported types, or a sandboxed embedded webpage with an inline warning beside the header URL).
+- Tree view: added two-finger pinch-to-zoom support on touchscreens alongside the zoom buttons.
 
 ### Changed
-- Chapter and lesson overviews: renamed headings to **CHAPTER MATERIALS & RESOURCES** and **LESSON MATERIALS & RESOURCES**, unified materials into a single bordered divider-row card with recommended materials grouped inside under a purple star **RECOMMENDED** subtitle with a shared dashed purple outline and mild purple tint, and matched the uploaded-file Eye icon's default and hover colors to the external-link icon.
-- Course edit mode: removed divider lines between sub-lesson cards, grouped added materials inside a single bordered container (with pinned resources grouped inside the shared dashed purple "Recommended" container), and matched material delete buttons to chapter and sub-lesson delete buttons.
-- Course page: aligned the Syllabus Checklist container width to match the Progress Strip and Tree View container width.
+- Chapter and lesson overviews: renamed headings to **CHAPTER MATERIALS & RESOURCES** and **LESSON MATERIALS & RESOURCES**, unified materials into a single bordered divider-row card with recommended materials grouped inside under a purple star **RECOMMENDED** subtitle with a shared dashed purple outline and mild purple tint, matched the uploaded-file Eye icon's default and hover colors to the external-link icon, and updated active overview/notes tabs to use the shared `--solid-bg`/`--solid-text` tokens in both Light and Dark modes.
+- Course edit mode: removed divider lines between sub-lesson cards, grouped added materials inside a single bordered container (with pinned resources grouped inside the shared dashed purple "Recommended" container with a purple star icon), matched material delete buttons to chapter and sub-lesson delete buttons, and styled Semester radio buttons in amber in both Light and Dark modes.
+- Course page: aligned the Tree View and Syllabus Checklist container max widths (`max-w-5xl`) to match the Progress Strip, and centered Progress Strip stats and filters on mobile screens.
 - Tree view: restored the centered floating Done / Learning / Skip status toolbar (keeping hover + right-click triggers and conditional Reset to Todo button) and kept it open after selecting a status until pointer-leave (hover) or click/focus-out (right-click).
 
 ### Fixed
 - Course edit mode: validation errors (both inline field errors and the sticky error banner) now clear automatically as soon as the offending field becomes valid.
-- Tree view: centered the floating Done / Learning / Skip toolbar accurately over its node, kept it synchronized with the node while scrolling, and prevented hovering other nodes from dismissing or replacing a right-click-opened toolbar.
+- Tree view: centered the tree spine by default on smaller/mobile screens, centered the floating Done / Learning / Skip toolbar accurately over its node, kept it synchronized with the node while scrolling, and prevented hovering other nodes from dismissing or replacing a right-click-opened toolbar.
 
 ## [0.8.0]
 

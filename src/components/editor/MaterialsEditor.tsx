@@ -11,6 +11,7 @@ import {
   Pin,
   Plus,
   Sparkles,
+  Star,
   Trash2,
   Upload,
   Wrench,
@@ -1033,9 +1034,12 @@ export function MaterialsEditor({
               data-testid="editor-recommended-group"
               className="recommended-group-box m-2 overflow-hidden rounded-md"
             >
-              <h4 className="border-b border-[var(--recommended-border)]/40 px-2.5 py-1.5 text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
-                Recommended
-              </h4>
+              <div className="flex items-center gap-1.5 border-b border-[var(--recommended-border)]/40 px-2.5 py-1.5">
+                <Star className="h-3.5 w-3.5 shrink-0 fill-current text-[var(--recommended-accent)]" />
+                <h4 className="text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
+                  Recommended
+                </h4>
+              </div>
               <div className="divide-y divide-slate-200/80 dark:divide-slate-700/80">
                 {pinnedEntries.map(({ res, rIdx }, pos) =>
                   renderMaterialRow(res, rIdx, pinnedEntries, pos)
