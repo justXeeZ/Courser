@@ -53,7 +53,7 @@ describe('CourseTreeCanvas', () => {
     expect(zoomWrapper.style.width).toBe('90%');
   });
 
-  it('supports click-and-drag panning on the scroll container and suppresses accidental node click after drag', () => {
+  it('supports free 2D click-and-drag panning (both sideways and up/down), resets pan on Reset zoom, and suppresses accidental node click after drag', () => {
     const onSelectChapter = vi.fn();
     const ch1 = demoCourse.chapters[0];
 
@@ -69,17 +69,15 @@ describe('CourseTreeCanvas', () => {
     );
 
     const scrollEl = container.querySelector('[data-testid="tree-scroll-container"]') as HTMLElement;
+    const zoomWrapper = container.querySelector('svg[role="img"]')?.parentElement as HTMLElement;
     expect(scrollEl).toHaveClass('cursor-grab');
-
-    scrollEl.scrollLeft = 50;
-    scrollEl.scrollTop = 50;
+    expect(zoomWrapper.style.transform).toBe('translate(0px, 0px)');
 
     fireEvent.mouseDown(scrollEl, { button: 0, clientX: 200, clientY: 200 });
     expect(scrollEl).toHaveClass('cursor-grabbing');
 
     fireEvent.mouseMove(scrollEl, { clientX: 160, clientY: 150 });
-    expect(scrollEl.scrollLeft).toBe(90);
-    expect(scrollEl.scrollTop).toBe(100);
+    expect(zoomWrapper.style.transform).toBe('translate(-40px, -50px)');
 
     fireEvent.mouseUp(scrollEl);
     expect(scrollEl).toHaveClass('cursor-grab');
@@ -92,6 +90,10 @@ describe('CourseTreeCanvas', () => {
     // Next normal click works as expected
     fireEvent.click(ch1Group);
     expect(onSelectChapter).toHaveBeenCalledWith(ch1);
+
+    // Reset zoom button resets pan to (0, 0)
+    fireEvent.click(screen.getByRole('button', { name: 'Reset zoom' }));
+    expect(zoomWrapper.style.transform).toBe('translate(0px, 0px)');
   });
 
   it('dims multi-lesson chapters when statusFilter matches none of their lessons', () => {

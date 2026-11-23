@@ -227,11 +227,11 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.focus(ch1TitleInput);
     expect(within(stickyBar).getByText('Ch 1: 1. Foundations')).toBeInTheDocument();
 
-    // Focus lesson title input inside Lesson 1 -> shows Ch 1 - L 1 position tag and lesson title
+    // Focus lesson title input inside Lesson 1 -> shows Ch1 / L1 position tag and lesson title
     const lessonTitleInput = screen.getByLabelText('Sub-Lesson Title');
     fireEvent.focus(lessonTitleInput);
     expect(within(stickyBar).getByText('Ch 1: 1. Foundations')).toBeInTheDocument();
-    expect(within(stickyBar).getByText('Ch 1 - L 1')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('Ch1 / L1')).toBeInTheDocument();
     expect(within(stickyBar).getByText('Course Introduction')).toBeInTheDocument();
 
     // Focus metadata input -> falls back cleanly to Course Overview
@@ -375,11 +375,21 @@ describe('CourseEditorPage & editor components', () => {
       lessonPrereqScope.getByRole('button', { name: /Ch 2: 2\. New Chapter/i })
     ).toBeInTheDocument();
 
-    // Collapse all collapses expanded lessons
+    // Collapse all collapses expanded lessons and chapters, and chapters can be manually toggled
     const stickyBar = screen.getByTestId('editor-sticky-bar');
     expect(screen.getAllByLabelText('Sub-Lesson Title').length).toBeGreaterThan(0);
+    expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
+
+    // Manually collapse and expand Chapter 1
+    fireEvent.click(screen.getByRole('button', { name: /Collapse Chapter 1/i }));
+    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Expand Chapter 1/i }));
+    expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
+
+    // Collapse all collapses all chapters and lessons
     fireEvent.click(within(stickyBar).getByRole('button', { name: /Collapse all/i }));
     expect(screen.queryByLabelText('Sub-Lesson Title')).not.toBeInTheDocument();
+    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
   });
 
   it('forgets progress and bookmarks when deleting an existing course', () => {
@@ -481,7 +491,15 @@ describe('CourseEditorPage & editor components', () => {
     expect(expandedClasses).toContain('dark:bg-[#1b2436]');
     expect(expandedClasses).toContain('border-slate-200');
     expect(expandedClasses).toContain('dark:border-slate-700');
+    expect(expandedClasses).toContain('border-l-4');
+    expect(expandedClasses).toContain('border-l-blue-500');
+    expect(expandedClasses).toContain('dark:border-l-blue-400');
     expect(expandedClasses).not.toContain('#ffe599');
+
+    const lessonPosBadge = within(headerRow).getByText('Ch1 / L1');
+    expect(lessonPosBadge.className).toContain('dark:bg-[#0d131f]');
+    expect(lessonPosBadge.className).toContain('dark:text-amber-400');
+    expect(lessonPosBadge.className).not.toContain('dark:bg-slate-950');
 
     fireEvent.click(toggleBtn);
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
@@ -757,10 +775,10 @@ describe('CourseEditorPage & editor components', () => {
     const stickyBar = screen.getByTestId('editor-sticky-bar');
     fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
 
-    // Save is blocked, error is shown inside sticky bar with clear Ch 1 - L 1 and Material #1 context
+    // Save is blocked, error is shown inside sticky bar with clear Ch1 / L1 and Material #1 context
     expect(screen.queryByTestId('course-view-destination')).not.toBeInTheDocument();
     expect(within(stickyBar).getByRole('alert')).toHaveTextContent(
-      /Ch 1 - L 1 \("Course Introduction"\), Material #1 \("Incomplete Lecture Link"\): Please enter a valid URL/i
+      /Ch1 \/ L1 \("Course Introduction"\), Material #1 \("Incomplete Lecture Link"\): Please enter a valid URL/i
     );
 
     // Offending material row and URL input are highlighted

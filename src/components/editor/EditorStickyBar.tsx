@@ -65,7 +65,7 @@ export function EditorStickyBar({
                     ›
                   </span>
                   {focusedLesson.order !== undefined && (
-                    <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-white dark:bg-slate-950">
+                    <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-white dark:bg-[#1b2436] dark:text-amber-400">
                       {formatLessonPositionTag(focusedChapter.order, focusedLesson.order)}
                     </span>
                   )}

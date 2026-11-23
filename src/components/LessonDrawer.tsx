@@ -7,6 +7,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { findCourseItem, getTrackableItems, isLeafChapter } from '@/lib/courseItems';
+import { formatLessonPositionTag } from '@/lib/courseIds';
 import { computeChapterStats } from '@/store/useProgressStore';
 import type { Chapter, CourseTree, LessonResource, LessonStatus, SubLesson } from '@/types/course';
 import { DrawerShell } from '@/components/DrawerShell';
@@ -207,6 +208,9 @@ export function LessonDrawer({
     </>
   );
 
+  const lessonIndex = chapter.lessons.findIndex((l) => l.id === lesson.id);
+  const lessonOrder = lessonIndex >= 0 ? lessonIndex + 1 : 1;
+
   return (
     <DrawerShell
       title={lesson.title}
@@ -216,21 +220,29 @@ export function LessonDrawer({
       headerRight={headerRight}
       footer={footer}
     >
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
-        <span className="font-semibold text-gray-700 dark:text-slate-200">{course.code}</span>
-        <span>/</span>
-        <button
-          type="button"
-          onClick={() => navigateToItem?.(chapter.id)}
-          className="hover:text-blue-600 hover:underline dark:hover:text-blue-400"
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-gray-700 dark:text-slate-200">{course.code}</span>
+          <span>/</span>
+          <button
+            type="button"
+            onClick={() => navigateToItem?.(chapter.id)}
+            className="hover:text-blue-600 hover:underline dark:hover:text-blue-400"
+          >
+            {chapter.title}
+          </button>
+          {chapter.weekRange && !isRedundantWeekRange(chapter.weekRange, chapter.order) && (
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+              {chapter.weekRange}
+            </span>
+          )}
+        </div>
+        <span
+          data-testid="lesson-position-tag"
+          className="ml-auto shrink-0 rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-[#1b2436] dark:text-amber-400"
         >
-          {chapter.title}
-        </button>
-        {chapter.weekRange && !isRedundantWeekRange(chapter.weekRange, chapter.order) && (
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
-            {chapter.weekRange}
-          </span>
-        )}
+          {formatLessonPositionTag(chapter.order, lessonOrder)}
+        </span>
       </div>
 
       <h2 className="mb-3 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-slate-100">

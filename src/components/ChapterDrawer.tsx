@@ -13,6 +13,7 @@ import {
   getTrackableItems,
   isLeafChapter,
 } from '@/lib/courseItems';
+import { formatChapterPositionTag } from '@/lib/courseIds';
 import { computeChapterStats } from '@/store/useProgressStore';
 import type { Chapter, CourseTree, LessonResource, LessonStatus } from '@/types/course';
 import { DrawerShell } from '@/components/DrawerShell';
@@ -248,17 +249,22 @@ export function ChapterDrawer({
       headerRight={headerRight}
       footer={footer}
     >
-      {/* Chapter Badges */}
-      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-slate-400">
-        <span className="rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-slate-700">
-          Ch {chapter.order}
+      {/* Chapter Badges — Course code & schedule on left, Chapter position tag on top right */}
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500 dark:text-slate-400">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="font-semibold text-gray-700 dark:text-slate-200">{course.code}</span>
+          {chapter.weekRange && !isRedundantWeekRange(chapter.weekRange, chapter.order) && (
+            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+              {chapter.weekRange}
+            </span>
+          )}
+        </div>
+        <span
+          data-testid="chapter-position-tag"
+          className="ml-auto shrink-0 rounded bg-slate-900 px-2 py-0.5 font-mono font-semibold text-white dark:bg-[#1b2436] dark:text-amber-400"
+        >
+          {formatChapterPositionTag(chapter.order)}
         </span>
-        <span className="font-semibold text-gray-700 dark:text-slate-200">{course.code}</span>
-        {chapter.weekRange && !isRedundantWeekRange(chapter.weekRange, chapter.order) && (
-          <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
-            {chapter.weekRange}
-          </span>
-        )}
       </div>
 
       <h2 className="mb-3 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-slate-100">

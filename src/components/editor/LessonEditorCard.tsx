@@ -50,7 +50,7 @@ export function LessonEditorCard({
     <div data-edit-lesson={lesson.id} className="py-2.5 first:pt-0 last:pb-0">
       {/* Lesson Header Row — sticky below chapter header when expanded; identical colors in collapsed & expanded states */}
       <div
-        className={`flex flex-wrap items-center justify-between gap-2 border border-slate-200 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:bg-[#1b2436] ${
+        className={`flex flex-wrap items-center justify-between gap-2 border border-slate-200 border-l-4 border-l-blue-500 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:border-l-blue-400 dark:bg-[#1b2436] ${
           isExpanded ? 'sticky top-[168px] z-10 rounded-t-md' : 'rounded-md'
         }`}
       >
@@ -65,7 +65,7 @@ export function LessonEditorCard({
           ) : (
             <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
           )}
-          <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-white dark:bg-slate-950">
+          <span className="shrink-0 rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] font-bold text-white dark:bg-[#0d131f] dark:text-amber-400">
             {formatLessonPositionTag(chapterOrder, lessonIndex + 1)}
           </span>
           <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">

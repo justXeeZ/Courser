@@ -41,11 +41,11 @@ function makeUniqueId(base: string, existingIds?: Set<string>): string {
 }
 
 export function formatChapterPositionTag(chapterOrder: number): string {
-  return `Ch ${chapterOrder}`;
+  return `Ch${chapterOrder}`;
 }
 
 export function formatLessonPositionTag(chapterOrder: number, lessonOrder: number): string {
-  return `Ch ${chapterOrder} - L ${lessonOrder}`;
+  return `Ch${chapterOrder} / L${lessonOrder}`;
 }
 
 export function deriveChapterId(

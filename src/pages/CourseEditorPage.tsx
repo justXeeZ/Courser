@@ -80,6 +80,7 @@ function isValidHttpUrlString(urlStr: string): boolean {
 interface ValidationResult {
   fieldErrors: Record<string, string>;
   firstErrorMsg: string | null;
+  chaptersToExpand: string[];
   lessonsToExpand: string[];
 }
 
@@ -88,15 +89,24 @@ function validateCourseDraft(
   yearError: string | null
 ): ValidationResult {
   const fieldErrors: Record<string, string> = {};
+  const chaptersToExpand: string[] = [];
   const lessonsToExpand: string[] = [];
   let firstErrorMsg: string | null = null;
 
-  const recordError = (key: string, msg: string, expandLessonId?: string) => {
+  const recordError = (
+    key: string,
+    msg: string,
+    expandLessonId?: string,
+    expandChapterId?: string
+  ) => {
     if (!fieldErrors[key]) {
       fieldErrors[key] = msg;
     }
     if (!firstErrorMsg) {
       firstErrorMsg = msg;
+    }
+    if (expandChapterId && !chaptersToExpand.includes(expandChapterId)) {
+      chaptersToExpand.push(expandChapterId);
     }
     if (expandLessonId && !lessonsToExpand.includes(expandLessonId)) {
       lessonsToExpand.push(expandLessonId);
@@ -127,7 +137,8 @@ function validateCourseDraft(
     rIdx: number,
     locationLabel: string,
     keyPrefix: string,
-    expandLessonId?: string
+    expandLessonId?: string,
+    expandChapterId?: string
   ) => {
     const matNum = rIdx + 1;
     const matTitle = res.title.trim();
@@ -140,7 +151,8 @@ function validateCourseDraft(
       recordError(
         errKey,
         `${locationLabel}, Material #${matNum}: Please enter a title for this material.`,
-        expandLessonId
+        expandLessonId,
+        expandChapterId
       );
       return;
     }
@@ -155,7 +167,12 @@ function validateCourseDraft(
         res.kind === 'exam' || res.kind === 'assignment'
           ? 'Please enter a valid URL (https://...), upload a file, or configure an interactive assessment.'
           : 'Please enter a valid URL (https://...) or upload a file.';
-      recordError(errKey, `${locationLabel}, ${matLabel}: ${hint}`, expandLessonId);
+      recordError(
+        errKey,
+        `${locationLabel}, ${matLabel}: ${hint}`,
+        expandLessonId,
+        expandChapterId
+      );
       return;
     }
 
@@ -163,7 +180,8 @@ function validateCourseDraft(
       recordError(
         errKey,
         `${locationLabel}, ${matLabel}: Please enter a valid URL starting with http:// or https://.`,
-        expandLessonId
+        expandLessonId,
+        expandChapterId
       );
       return;
     }
@@ -172,7 +190,8 @@ function validateCourseDraft(
       recordError(
         errKey,
         `${locationLabel}, ${matLabel}: Interactive assessment must contain at least one question.`,
-        expandLessonId
+        expandLessonId,
+        expandChapterId
       );
     }
   };
@@ -185,17 +204,24 @@ function validateCourseDraft(
     const chPrefix = `chapters.${cIdx}`;
 
     if (!chTitle) {
-      recordError(`${chPrefix}.title`, `${chTag}: Please enter a Chapter Title.`);
+      recordError(
+        `${chPrefix}.title`,
+        `${chTag}: Please enter a Chapter Title.`,
+        undefined,
+        chapter.id
+      );
     }
     if (!chapter.description.trim()) {
       recordError(
         `${chPrefix}.description`,
-        `${chLabel}: Please enter a Chapter Description.`
+        `${chLabel}: Please enter a Chapter Description.`,
+        undefined,
+        chapter.id
       );
     }
 
     (chapter.resources ?? []).forEach((res, rIdx) => {
-      validateResource(res, rIdx, chLabel, `${chPrefix}.resources`);
+      validateResource(res, rIdx, chLabel, `${chPrefix}.resources`, undefined, chapter.id);
     });
 
     chapter.lessons.forEach((lesson, lIdx) => {
@@ -209,24 +235,26 @@ function validateCourseDraft(
         recordError(
           `${lPrefix}.title`,
           `${lTag}: Please enter a Sub-Lesson Title.`,
-          lesson.id
+          lesson.id,
+          chapter.id
         );
       }
       if (!lesson.summary.trim()) {
         recordError(
           `${lPrefix}.summary`,
           `${lLabel}: Please enter a Sub-Lesson Summary.`,
-          lesson.id
+          lesson.id,
+          chapter.id
         );
       }
 
       lesson.resources.forEach((res, rIdx) => {
-        validateResource(res, rIdx, lLabel, `${lPrefix}.resources`, lesson.id);
+        validateResource(res, rIdx, lLabel, `${lPrefix}.resources`, lesson.id, chapter.id);
       });
     });
   });
 
-  return { fieldErrors, firstErrorMsg, lessonsToExpand };
+  return { fieldErrors, firstErrorMsg, chaptersToExpand, lessonsToExpand };
 }
 
 export function CourseEditorPage() {
@@ -250,6 +278,7 @@ export function CourseEditorPage() {
   );
   const [slugTouched, setSlugTouched] = useState<boolean>(isEditing);
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
+  const [collapsedChapters, setCollapsedChapters] = useState<Record<string, boolean>>({});
   const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>(() => {
     const firstLessonId = (existingCourse ?? createBlankCourse()).chapters[0]?.lessons[0]?.id;
     return firstLessonId ? { [firstLessonId]: true } : {};
@@ -283,6 +312,7 @@ export function CourseEditorPage() {
     setYearInput(nextDraft.year !== undefined ? String(nextDraft.year) : '');
     setSlugTouched(Boolean(slug));
     const firstLessonId = nextDraft.chapters[0]?.lessons[0]?.id;
+    setCollapsedChapters({});
     setExpandedLessons(firstLessonId ? { [firstLessonId]: true } : {});
     setFocusedChapterId(null);
     setFocusedLessonId(null);
@@ -629,6 +659,15 @@ export function CourseEditorPage() {
       setActiveTab('editor');
       setFieldErrors(validation.fieldErrors);
       setErrorMsg(validation.firstErrorMsg);
+      if (validation.chaptersToExpand.length > 0) {
+        setCollapsedChapters((prev) => {
+          const next = { ...prev };
+          for (const cid of validation.chaptersToExpand) {
+            delete next[cid];
+          }
+          return next;
+        });
+      }
       if (validation.lessonsToExpand.length > 0) {
         setExpandedLessons((prev) => {
           const next = { ...prev };
@@ -686,11 +725,13 @@ export function CourseEditorPage() {
     setFocusedChapterId(null);
     setFocusedLessonId(null);
     const firstLessonId = imported.chapters[0]?.lessons[0]?.id;
+    setCollapsedChapters({});
     setExpandedLessons(firstLessonId ? { [firstLessonId]: true } : {});
     setImportBanner({ warnings });
   };
 
   const hasExpandedLessons = Object.values(expandedLessons).some(Boolean);
+  const hasExpandedChapters = draft.chapters.some((ch) => !collapsedChapters[ch.id]);
 
   const inputClass =
     'w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500';
@@ -819,12 +860,15 @@ export function CourseEditorPage() {
                 }
               : null
           }
-          hasExpandedLessons={hasExpandedLessons}
+          hasExpandedLessons={hasExpandedLessons || hasExpandedChapters}
           errorMsg={errorMsg}
           onDismissError={() => setErrorMsg(null)}
           onAddChapter={addChapter}
           onCollapseAll={() => {
             setExpandedLessons({});
+            setCollapsedChapters(
+              Object.fromEntries(draft.chapters.map((ch) => [ch.id, true]))
+            );
             setFocusedLessonId(null);
           }}
           onSave={() => handleSave()}
@@ -1198,8 +1242,15 @@ export function CourseEditorPage() {
                     derivedLessonIds={derivedLessonIds}
                     courseCode={draft.code}
                     allChapters={draft.chapters}
+                    isExpanded={!collapsedChapters[chapter.id]}
                     expandedLessons={expandedLessons}
                     fieldErrors={fieldErrors}
+                    onToggleChapterExpand={() =>
+                      setCollapsedChapters((prev) => ({
+                        ...prev,
+                        [chapter.id]: !prev[chapter.id],
+                      }))
+                    }
                     onToggleLessonExpand={(lessonId) =>
                       setExpandedLessons((prev) => ({
                         ...prev,

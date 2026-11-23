@@ -20,8 +20,8 @@ describe('courseIds derivation helpers', () => {
     expect(deriveCourseSlug('CS201', 'Data Structures & Algorithms')).toBe(
       'cs201-data-structures-algorithms'
     );
-    expect(formatChapterPositionTag(1)).toBe('Ch 1');
-    expect(formatLessonPositionTag(1, 3)).toBe('Ch 1 - L 3');
+    expect(formatChapterPositionTag(1)).toBe('Ch1');
+    expect(formatLessonPositionTag(2, 1)).toBe('Ch2 / L1');
   });
 
   it('derives unique chapter and lesson IDs prefixed by course code and chapter/lesson order', () => {

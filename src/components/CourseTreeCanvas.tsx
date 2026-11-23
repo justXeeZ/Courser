@@ -115,6 +115,7 @@ export function CourseTreeCanvas({
   onContextMenuLesson,
 }: CourseTreeCanvasProps) {
   const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
@@ -122,28 +123,26 @@ export function CourseTreeCanvas({
     active: boolean;
     startX: number;
     startY: number;
-    scrollLeft: number;
-    scrollTop: number;
+    startPanX: number;
+    startPanY: number;
     moved: boolean;
   }>({
     active: false,
     startX: 0,
     startY: 0,
-    scrollLeft: 0,
-    scrollTop: 0,
+    startPanX: 0,
+    startPanY: 0,
     moved: false,
   });
 
   const handleContainerMouseDown = (e: MouseEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
     dragStateRef.current = {
       active: true,
       startX: e.clientX,
       startY: e.clientY,
-      scrollLeft: container.scrollLeft,
-      scrollTop: container.scrollTop,
+      startPanX: pan.x,
+      startPanY: pan.y,
       moved: false,
     };
     setIsDragging(true);
@@ -152,8 +151,6 @@ export function CourseTreeCanvas({
   const handleContainerMouseMove = (e: MouseEvent<HTMLDivElement>) => {
     const state = dragStateRef.current;
     if (!state.active) return;
-    const container = scrollContainerRef.current;
-    if (!container) return;
     const dx = e.clientX - state.startX;
     const dy = e.clientY - state.startY;
     if (!state.moved && Math.hypot(dx, dy) > 5) {
@@ -161,8 +158,10 @@ export function CourseTreeCanvas({
     }
     if (state.moved) {
       e.preventDefault();
-      container.scrollLeft = state.scrollLeft - dx;
-      container.scrollTop = state.scrollTop - dy;
+      setPan({
+        x: state.startPanX + dx,
+        y: state.startPanY + dy,
+      });
     }
   };
 
@@ -238,7 +237,10 @@ export function CourseTreeCanvas({
         </button>
         <button
           type="button"
-          onClick={() => setZoom(1)}
+          onClick={() => {
+            setZoom(1);
+            setPan({ x: 0, y: 0 });
+          }}
           className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
           title="Reset zoom"
           aria-label="Reset zoom"
@@ -266,7 +268,7 @@ export function CourseTreeCanvas({
         onMouseUp={endContainerDrag}
         onMouseLeave={endContainerDrag}
         onClickCapture={handleContainerClickCapture}
-        className={`w-full overflow-auto pb-8 ${
+        className={`w-full overflow-hidden pb-8 ${
           isDragging ? 'cursor-grabbing select-none' : 'cursor-grab'
         } ${framed ? 'roadmap-canvas-frame p-2 sm:p-4' : ''}`}
       >
@@ -276,6 +278,7 @@ export function CourseTreeCanvas({
             width: `${Math.round(zoom * 100)}%`,
             minWidth: `${Math.round(Math.min(layout.width, 640) * zoom)}px`,
             maxWidth: `${Math.round(layout.width * zoom)}px`,
+            transform: `translate(${pan.x}px, ${pan.y}px)`,
           }}
         >
           <svg

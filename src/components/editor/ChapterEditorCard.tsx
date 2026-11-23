@@ -1,7 +1,8 @@
-import { ArrowDown, ArrowUp, Plus, Trash2 } from 'lucide-react';
+import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { LessonEditorCard } from '@/components/editor/LessonEditorCard';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
+import { formatChapterPositionTag } from '@/lib/courseIds';
 import type { Chapter, SubLesson } from '@/types/course';
 
 interface ChapterEditorCardProps {
@@ -12,8 +13,10 @@ interface ChapterEditorCardProps {
   derivedLessonIds: string[];
   courseCode: string;
   allChapters: Chapter[];
+  isExpanded?: boolean;
   expandedLessons: Record<string, boolean>;
   fieldErrors?: Record<string, string>;
+  onToggleChapterExpand?: () => void;
   onToggleLessonExpand: (lessonId: string) => void;
   onUpdateChapter: (updater: (ch: Chapter) => Chapter) => void;
   onMoveChapter: (direction: -1 | 1) => void;
@@ -34,8 +37,10 @@ export function ChapterEditorCard({
   derivedLessonIds,
   courseCode,
   allChapters,
+  isExpanded = true,
   expandedLessons,
   fieldErrors,
+  onToggleChapterExpand,
   onToggleLessonExpand,
   onUpdateChapter,
   onMoveChapter,
@@ -69,10 +74,29 @@ export function ChapterEditorCard({
       className="scroll-mt-32 rounded-lg border border-slate-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
     >
       {/* Compact Sticky Chapter Header Row (NO overflow-hidden on outer container!) */}
-      <div className="sticky top-[120px] z-20 flex min-h-12 flex-wrap items-center justify-between gap-2 rounded-t-lg border-b border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-2 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436]">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <div
+        className={`sticky top-[120px] z-20 flex min-h-12 flex-wrap items-center justify-between gap-2 border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-2 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436] ${
+          isExpanded ? 'rounded-t-lg border-b' : 'rounded-lg'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={onToggleChapterExpand}
+          aria-expanded={isExpanded}
+          aria-label={
+            isExpanded
+              ? `Collapse Chapter ${chapterOrder}`
+              : `Expand Chapter ${chapterOrder}`
+          }
+          className="flex min-w-0 flex-1 items-center gap-2 text-left"
+        >
+          {isExpanded ? (
+            <ChevronUp className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+          ) : (
+            <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+          )}
           <span className="shrink-0 rounded bg-slate-900 px-2 py-0.5 font-mono text-xs font-bold text-white dark:bg-[#0d131f] dark:text-amber-400">
-            Ch {chapterOrder}
+            {formatChapterPositionTag(chapterOrder)}
           </span>
           <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
             {chapter.title || 'Untitled Chapter'}
@@ -88,7 +112,7 @@ export function ChapterEditorCard({
               ? '0 lessons'
               : `${chapter.lessons.length} ${chapter.lessons.length === 1 ? 'lesson' : 'lessons'}`}
           </span>
-        </div>
+        </button>
 
         <div className="flex shrink-0 items-center gap-1">
           <button
@@ -124,6 +148,7 @@ export function ChapterEditorCard({
       </div>
 
       {/* Chapter Details & Content */}
+      {isExpanded && (
       <div className="space-y-4 rounded-b-lg p-4">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <div className="sm:col-span-2">
@@ -294,6 +319,7 @@ export function ChapterEditorCard({
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

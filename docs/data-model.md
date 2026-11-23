@@ -15,7 +15,7 @@ Inspect schema and interface definitions in code rather than duplicating field l
 - **Shared ID namespace, standardized position tags & deterministic rekeying (`src/lib/courseIds.ts`):**
   - `deriveCoursePrefix(course.code)` extracts the lowercase alphanumeric prefix.
   - Every chapter ID (`${prefix}-ch${order}-${slug}` via `deriveChapterId`) and sub-lesson ID (`${prefix}-ch${chapterOrder}-l${lessonOrder}-${slug}` via `deriveLessonId`) shares **one** uniqueness namespace per course and starts with `${prefix}-`.
-  - Position tags use `formatChapterPositionTag(chapterOrder)` (`"Ch 1"`) and `formatLessonPositionTag(chapterOrder, lessonOrder)` (`"Ch 1 - L 3"`), matching the `ch<N>-l<M>` ID and URL query structure (`/course/:slug?chapter=<chapterId>` and `/course/:slug?lesson=<lessonId>`).
+  - Position tags use `formatChapterPositionTag(chapterOrder)` (`"Ch1"`) and `formatLessonPositionTag(chapterOrder, lessonOrder)` (`"Ch1 / L3"`), matching the `ch<N>-l<M>` ID and URL query structure (`/course/:slug?chapter=<chapterId>` and `/course/:slug?lesson=<lessonId>`).
   - Uploaded file IDs (`${prefix}-file-${8 hex}` via `deriveFileId`) are never altered when chapter or lesson titles change.
   - Saves (`useCourseStore.tsx`) and imports (`courseExchange.ts`) first run `validateRawCourseReferences` (rejecting duplicate raw IDs, self-prerequisites, and unknown prerequisite IDs), then run `rekeyCourseContentIdsWithMap` to derive canonical IDs and remap prerequisites, and call `remapCourseProgress` so user statuses, bookmarks, and assessment scores survive renames and code changes.
 - **Leaf chapters vs. multi-lesson chapters (`src/lib/courseItems.ts`):**
