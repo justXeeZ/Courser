@@ -109,7 +109,7 @@ Do not include "attachments".
 - "id" (required, string): unique across ALL chapters and lessons, prefixed with "<prefix>-" where <prefix> is the lowercase alphanumeric characters of "code" (canonical: "<prefix>-ch<order>-<slugified-title>").
 - "order" (required, positive integer): sequential 1, 2, 3, ...
 - "title" (required, non-empty string): e.g. "1. Limits & Continuity".
-- "weekRange" (optional, string): e.g. "Weeks 1–3".
+- "weekRange" (optional, string): e.g. "Week 1" or "Week 1-3".
 - "description" (required, non-empty string): chapter summary.
 - "notes" (optional, string): study tips or context.
 - "prerequisites" (optional, string[]): array of chapter or lesson IDs present in this same course (no self-references).
@@ -172,7 +172,7 @@ export const LLM_EXAM_PROMPT = `Design an interactive exam or assignment and out
   "assessment": {
     "mode": "exam", // "exam" | "assignment"
     "instructions": "Optional instructions supporting KaTeX $...$ and $$...$$.",
-    "timeLimitMinutes": 20, // optional positive integer (1..300)
+    "timeLimitMinutes": 20, // optional positive integer (exam mode)
     "passingScorePercent": 70, // optional integer (0..100)
     "shuffleQuestions": false, // optional boolean
     "questions": [ ... ] // required, at least 1 question
@@ -600,7 +600,7 @@ export function DataFormatsPage() {
                     field: 'weekRange',
                     type: 'string',
                     required: 'Optional',
-                    details: 'Schedule hint (e.g. "Weeks 1–3").',
+                    details: 'Schedule hint (e.g. "Week 1" or "Week 1-3").',
                   },
                   {
                     field: 'description',
@@ -663,7 +663,7 @@ export function DataFormatsPage() {
                     field: 'notes',
                     type: 'string',
                     required: 'Optional',
-                    details: 'Optional detailed notes for the Notes tab.',
+                    details: 'Optional detailed notes for the Study Notes tab.',
                   },
                   {
                     field: 'side',
@@ -947,9 +947,9 @@ export function DataFormatsPage() {
                   },
                   {
                     field: 'timeLimitMinutes',
-                    type: 'number (int 1..300)',
+                    type: 'number (int > 0)',
                     required: 'Optional',
-                    details: 'Countdown duration in minutes (typically used with mode: "exam").',
+                    details: 'Positive integer countdown duration in minutes (typically used with mode: "exam").',
                   },
                   {
                     field: 'passingScorePercent',

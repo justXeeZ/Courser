@@ -35,7 +35,7 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
         id: 'stat101-ch1-descriptive-statistics',
         order: 1,
         title: '1. Descriptive Statistics',
-        weekRange: 'Weeks 1–3',
+        weekRange: 'Week 1-3',
         description:
           'Summarizing distributions numerically and visually before formal probability modeling.',
         notes:
@@ -89,7 +89,7 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
         id: 'stat101-ch2-probability-distributions',
         order: 2,
         title: '2. Probability & Distributions',
-        weekRange: 'Weeks 4–7',
+        weekRange: 'Week 4-7',
         description:
           'Conditional probability, Bayes rule, and discrete and continuous probability models.',
         prerequisites: ['stat101-ch1-descriptive-statistics'],
@@ -176,7 +176,7 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
         id: 'stat101-ch3-applied-data-lab-capstone',
         order: 3,
         title: '3. Applied Data Lab Capstone',
-        weekRange: 'Weeks 8–10',
+        weekRange: 'Week 8-10',
         description:
           'Direct project chapter applying descriptive statistics and distribution checks to a real dataset.',
         notes:
