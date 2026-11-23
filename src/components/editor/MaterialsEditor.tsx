@@ -466,50 +466,36 @@ export function MaterialsEditor({
   const activeBuilderRes =
     builderRowIndex !== null ? resources[builderRowIndex] : undefined;
 
-  return (
-    <div className="border-t border-slate-200 pt-2.5 dark:border-slate-700/80">
-      <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
-          <Link2 className="h-3.5 w-3.5" />
-          {titleLabel} ({resources.length})
-        </span>
-        <button
-          type="button"
-          onClick={handleAddMaterial}
-          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
-        >
-          <Plus className="h-3 w-3" />
-          Add Material
-        </button>
-      </div>
+  const pinnedEntries = resources
+    .map((res, rIdx) => ({ res, rIdx }))
+    .filter(({ res }) => Boolean(res.recommended));
+  const regularEntries = resources
+    .map((res, rIdx) => ({ res, rIdx }))
+    .filter(({ res }) => !res.recommended);
 
-      {resources.length > 0 && (
-        <div className="space-y-2.5">
-          {resources.map((res, rIdx) => {
-            const rowKey = resolvedRowKeys[rIdx] ?? `row-fallback-${rIdx}`;
-            const mode = getMode(rowKey, res);
-            const feedback = feedbackByRow[rowKey] ?? {};
-            const expectedHint = getExpectedExtensionsHint(res.kind);
-            const importOpen = Boolean(importOpenByRow[rowKey]);
-            const importText = importTextByRow[rowKey] ?? '';
-            const importError = importErrorByRow[rowKey] ?? null;
-            const errorKey = errorPrefix ? `${errorPrefix}.${rIdx}` : undefined;
-            const rowValidationError = errorKey ? fieldErrors?.[errorKey] : undefined;
-            const showInteractiveTab = res.kind === 'exam' || res.kind === 'assignment';
+  const renderMaterialRow = (res: LessonResource, rIdx: number) => {
+    const rowKey = resolvedRowKeys[rIdx] ?? `row-fallback-${rIdx}`;
+    const mode = getMode(rowKey, res);
+    const feedback = feedbackByRow[rowKey] ?? {};
+    const expectedHint = getExpectedExtensionsHint(res.kind);
+    const importOpen = Boolean(importOpenByRow[rowKey]);
+    const importText = importTextByRow[rowKey] ?? '';
+    const importError = importErrorByRow[rowKey] ?? null;
+    const errorKey = errorPrefix ? `${errorPrefix}.${rIdx}` : undefined;
+    const rowValidationError = errorKey ? fieldErrors?.[errorKey] : undefined;
+    const showInteractiveTab = res.kind === 'exam' || res.kind === 'assignment';
 
-            return (
-              <div
-                key={rowKey}
-                data-error-key={errorKey}
-                data-field-error={rowValidationError ? 'true' : undefined}
-                className={`space-y-2 rounded-md border p-2.5 transition-colors ${
-                  rowValidationError
-                    ? 'border-red-500 bg-red-50/20 ring-1 ring-red-500/30 dark:border-red-500 dark:bg-red-950/20'
-                    : res.recommended
-                      ? 'border-amber-300 bg-amber-50/40 dark:border-amber-500/40 dark:bg-amber-400/5'
-                      : 'border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]'
-                }`}
-              >
+    return (
+      <div
+        key={rowKey}
+        data-error-key={errorKey}
+        data-field-error={rowValidationError ? 'true' : undefined}
+        className={`space-y-2 rounded-md border p-2.5 transition-colors ${
+          rowValidationError
+            ? 'border-red-500 bg-red-50/20 ring-1 ring-red-500/30 dark:border-red-500 dark:bg-red-950/20'
+            : 'border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]'
+        }`}
+      >
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
                   {/* Kind selector + badge */}
                   <div className="flex items-center gap-1.5 sm:w-44 sm:shrink-0">
@@ -611,7 +597,7 @@ export function MaterialsEditor({
                         }
                         className={`inline-flex items-center gap-1 rounded border px-1.5 py-1 text-[11px] font-medium transition-colors ${
                           res.recommended
-                            ? 'border-amber-400 bg-amber-100 text-amber-900 dark:border-amber-500/60 dark:bg-amber-400/20 dark:text-amber-300'
+                            ? 'border-[var(--recommended-border)] bg-[var(--recommended-label-bg)] text-[var(--recommended-accent)]'
                             : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
                         }`}
                       >
@@ -962,7 +948,41 @@ export function MaterialsEditor({
                 )}
               </div>
             );
-          })}
+  };
+
+  return (
+    <div className="border-t border-slate-200 pt-2.5 dark:border-slate-700/80">
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+          <Link2 className="h-3.5 w-3.5" />
+          {titleLabel} ({resources.length})
+        </span>
+        <button
+          type="button"
+          onClick={handleAddMaterial}
+          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+        >
+          <Plus className="h-3 w-3" />
+          Add Material
+        </button>
+      </div>
+
+      {resources.length > 0 && (
+        <div className="space-y-2.5">
+          {pinnedEntries.length > 0 && (
+            <div
+              data-testid="editor-recommended-group"
+              className="space-y-2 rounded-lg border-2 border-dotted border-[var(--recommended-border)] bg-[var(--recommended-bg)] p-2.5"
+            >
+              <h4 className="text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
+                Recommended
+              </h4>
+              <div className="space-y-2">
+                {pinnedEntries.map(({ res, rIdx }) => renderMaterialRow(res, rIdx))}
+              </div>
+            </div>
+          )}
+          {regularEntries.map(({ res, rIdx }) => renderMaterialRow(res, rIdx))}
         </div>
       )}
 

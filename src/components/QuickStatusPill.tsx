@@ -41,21 +41,25 @@ export function QuickStatusPill({
     };
   }, [onClose]);
 
-  const pillWidth = 276;
-  const centerX = anchor.left + anchor.width / 2;
-  const maxLeft = typeof window !== 'undefined' ? window.innerWidth - pillWidth - 12 : centerX;
-  const left = Math.max(12, Math.min(centerX - pillWidth / 2, maxLeft));
-  const top = Math.max(12, anchor.top - 46);
+  const rightEdge = anchor.left + anchor.width;
+  const maxRight = typeof window !== 'undefined' ? window.innerWidth - 12 : rightEdge;
+  const clampedRight = Math.max(12, Math.min(rightEdge, maxRight));
+  const top = Math.max(40, anchor.top + 1);
 
   return (
     <div
       ref={pillRef}
-      style={{ left: `${left}px`, top: `${top}px` }}
+      data-testid="quick-status-pill"
+      style={{
+        left: `${clampedRight}px`,
+        top: `${top}px`,
+        transform: 'translate(-100%, -100%)',
+      }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-50 pb-3"
+      className="fixed z-50"
     >
-      <div className="rounded-md shadow-lg">
+      <div className="rounded-t-md shadow-md">
         <StatusSegmentedControl
           status={currentStatus}
           onChange={(next) => {
@@ -63,6 +67,7 @@ export function QuickStatusPill({
             onClose();
           }}
           showReset
+          attachedToNode
           itemRole="menuitem"
           ariaLabel="Quick status menu"
         />

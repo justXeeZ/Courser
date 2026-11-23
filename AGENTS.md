@@ -15,6 +15,7 @@ Run from the repository root:
 - **Strict clean schema (no legacy hacks):** Never add backwards-compatibility fallbacks or coercions for dropped schemas (`'reading'`, string `semester` options, or legacy v1 catalog storage keys).
 - **Decouple brand strings from persistence:** Put user-facing brand copy in `src/config/brand.ts` (`BRAND`). Never tie `localStorage` keys, IndexedDB identifiers, or export envelope `format` identifiers to `BRAND`.
 - **Workspace hygiene & user self-test:** Never create `.agents/teamwork/` metadata folders inside the repository (use external scratch directories only). When fixing an issue or adding a feature, kindly invite the user to test the changed feature themselves when needed to confirm everything went smoothly.
+- **Ongoing changelog maintenance:** After completing any task that adds, changes, fixes, or removes behavior, update `CHANGELOG.md` before finishing. Add entries under "Unreleased" in the correct category, and move or reword existing entries if the task reverses an earlier change. Don't create entries for pure refactors, formatting, or comment changes unless they affect behavior.
 
 ## 3. Documentation Routing Table
 Read only the document that matches your task:

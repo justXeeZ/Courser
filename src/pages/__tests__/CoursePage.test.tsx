@@ -218,10 +218,13 @@ describe('CoursePage integration', () => {
       ) as SVGGElement;
       expect(lessonNode).not.toBeNull();
 
-      // Hovering sublesson opens QuickStatusPill
+      // Hovering sublesson opens QuickStatusPill attached flush to the top-right edge with flat bottom corners
       fireEvent.mouseEnter(lessonNode);
       const pill = screen.getByLabelText('Quick status menu');
       expect(pill).toBeInTheDocument();
+      expect(pill).toHaveClass('rounded-t-md', 'rounded-b-none', 'border-b-0');
+      const pillWrapper = screen.getByTestId('quick-status-pill');
+      expect(pillWrapper.style.transform).toBe('translate(-100%, -100%)');
 
       // Leaving node and entering pill within grace delay keeps it open
       fireEvent.mouseLeave(lessonNode);

@@ -593,9 +593,18 @@ describe('CourseEditorPage & editor components', () => {
     const pinBtn = lessonScope.getByRole('button', { name: /Pin as recommended/i });
     expect(pinBtn).toHaveAttribute('aria-pressed', 'false');
     fireEvent.click(pinBtn);
-    expect(
-      lessonScope.getByRole('button', { name: /Unpin recommended material/i })
-    ).toHaveAttribute('aria-pressed', 'true');
+    const unpinBtn = lessonScope.getByRole('button', { name: /Unpin recommended material/i });
+    expect(unpinBtn).toHaveAttribute('aria-pressed', 'true');
+    expect(unpinBtn.className).toContain('border-[var(--recommended-border)]');
+
+    // Pinned resources are grouped inside a single dotted purple Recommended container
+    const recGroup = lessonScope.getByTestId('editor-recommended-group');
+    expect(recGroup).toHaveClass(
+      'border-dotted',
+      'border-[var(--recommended-border)]',
+      'bg-[var(--recommended-bg)]'
+    );
+    expect(within(recGroup).getByRole('heading', { name: 'Recommended' })).toBeInTheDocument();
 
     const stickyBar = screen.getByTestId('editor-sticky-bar');
     fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));

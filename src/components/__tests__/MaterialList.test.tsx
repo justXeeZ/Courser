@@ -55,10 +55,11 @@ describe('ResourceBadge & MaterialList', () => {
     const { container } = render(<MaterialList resources={resources} />);
     const recBox = screen.getByTestId('recommended-resources-container');
     expect(recBox).toHaveClass(
+      'border-dotted',
       'border-[var(--recommended-border)]',
       'bg-[var(--recommended-bg)]'
     );
-    expect(within(recBox).getByText('Recommended')).toBeInTheDocument();
+    expect(within(recBox).getByRole('heading', { name: 'Recommended' })).toBeInTheDocument();
 
     const recItems = Array.from(recBox.querySelectorAll('li')).map((li) => li.textContent ?? '');
     expect(recItems).toHaveLength(2);

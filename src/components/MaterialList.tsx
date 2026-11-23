@@ -6,7 +6,6 @@ import {
   ExternalLink,
   Eye,
   FileText,
-  Pin,
 } from 'lucide-react';
 import { resolveEmbedUrl } from '@/lib/embedResolver';
 import { openStoredFile } from '@/lib/fileStore';
@@ -320,12 +319,11 @@ export function MaterialList({
       {recommendedResources.length > 0 && (
         <div
           data-testid="recommended-resources-container"
-          className="rounded-lg border border-[var(--recommended-border)] border-l-4 bg-[var(--recommended-bg)] p-2.5"
+          className="rounded-lg border-2 border-dotted border-[var(--recommended-border)] bg-[var(--recommended-bg)] p-3"
         >
-          <div className="mb-1.5 flex items-center gap-1.5 px-1 text-xs font-semibold text-[var(--recommended-accent)]">
-            <Pin className="h-3.5 w-3.5 shrink-0" />
-            <span>Recommended</span>
-          </div>
+          <h4 className="mb-2 text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
+            Recommended
+          </h4>
           <ul className="space-y-1.5">
             {recommendedResources.map((res, idx) => renderResourceItem(res, idx))}
           </ul>
