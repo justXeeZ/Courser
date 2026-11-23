@@ -248,12 +248,21 @@ describe('CoursePage integration', () => {
       });
       expect(screen.queryByLabelText('Quick status menu')).not.toBeInTheDocument();
 
-      // Right-click still opens QuickStatusPill and keeps it open without hover timeout
+      // Right-click still opens QuickStatusPill, centers it via translateX(-50%), and hovering another node does not replace or close it
       fireEvent.contextMenu(lessonNode);
+      const otherLessonNode = document.querySelector(
+        'g[data-node-id="demo201-ch1-l2-left-branch-placement-example"]'
+      ) as SVGGElement;
+      fireEvent.mouseEnter(otherLessonNode);
+      fireEvent.mouseLeave(otherLessonNode);
       act(() => {
         vi.advanceTimersByTime(500);
       });
-      expect(screen.getByLabelText('Quick status menu')).toBeInTheDocument();
+      const rcPill = screen.getByLabelText('Quick status menu');
+      expect(rcPill).toBeInTheDocument();
+      expect(screen.getByTestId('quick-status-pill').style.transform).toBe('translateX(-50%)');
+      // Reset to Todo is still present because toolbar stayed locked on the first node (which is Done)
+      expect(within(rcPill).getByRole('menuitem', { name: /Reset to Todo/i })).toBeInTheDocument();
     } finally {
       vi.useRealTimers();
     }

@@ -80,7 +80,7 @@ export function LessonEditorCard({
     : 'rounded-md';
 
   return (
-    <div data-edit-lesson={lesson.id} className="py-2.5 first:pt-0 last:pb-0">
+    <div data-edit-lesson={lesson.id}>
       {/* Lesson Header Row — sticky below chapter header when expanded; identical colors in collapsed & expanded states */}
       <div
         ref={headerRef}

@@ -523,10 +523,10 @@ export function MaterialsEditor({
         key={rowKey}
         data-error-key={errorKey}
         data-field-error={rowValidationError ? 'true' : undefined}
-        className={`space-y-2 rounded-md border p-2.5 transition-colors ${
+        className={`space-y-2 p-2.5 transition-colors ${
           rowValidationError
-            ? 'border-red-500 bg-red-50/20 ring-1 ring-red-500/30 dark:border-red-500 dark:bg-red-950/20'
-            : 'border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]'
+            ? 'bg-red-50/30 ring-1 ring-inset ring-red-500/50 dark:bg-red-950/25'
+            : ''
         }`}
       >
                 <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
@@ -1024,24 +1024,37 @@ export function MaterialsEditor({
       </div>
 
       {resources.length > 0 && (
-        <div className="space-y-2.5">
+        <div
+          data-testid="editor-materials-container"
+          className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]"
+        >
           {pinnedEntries.length > 0 && (
             <div
               data-testid="editor-recommended-group"
-              className="recommended-group-box space-y-2 rounded-lg p-2.5"
+              className="recommended-group-box m-2 overflow-hidden rounded-md"
             >
-              <h4 className="text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
+              <h4 className="border-b border-[var(--recommended-border)]/40 px-2.5 py-1.5 text-xs font-semibold tracking-wide text-[var(--recommended-accent)] uppercase">
                 Recommended
               </h4>
-              <div className="space-y-2">
+              <div className="divide-y divide-slate-200/80 dark:divide-slate-700/80">
                 {pinnedEntries.map(({ res, rIdx }, pos) =>
                   renderMaterialRow(res, rIdx, pinnedEntries, pos)
                 )}
               </div>
             </div>
           )}
-          {regularEntries.map(({ res, rIdx }, pos) =>
-            renderMaterialRow(res, rIdx, regularEntries, pos)
+          {regularEntries.length > 0 && (
+            <div
+              className={`divide-y divide-slate-200 dark:divide-slate-700/80 ${
+                pinnedEntries.length > 0
+                  ? 'border-t border-slate-200 dark:border-slate-700/80'
+                  : ''
+              }`}
+            >
+              {regularEntries.map(({ res, rIdx }, pos) =>
+                renderMaterialRow(res, rIdx, regularEntries, pos)
+              )}
+            </div>
           )}
         </div>
       )}

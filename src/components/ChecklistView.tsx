@@ -41,7 +41,7 @@ export function ChecklistView({
   const orderedChapters = [...course.chapters].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 pb-12">
+    <div className="w-full space-y-5 pb-12">
       {orderedChapters.map((chapter) => {
         const stats = computeChapterStats(chapter, statuses);
         const isLeaf = isLeafChapter(chapter);

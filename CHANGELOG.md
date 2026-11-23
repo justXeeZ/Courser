@@ -13,12 +13,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - In-app Material Viewer: clicking any external URL resource now opens inside the native viewer (native preview for supported types, or a sandboxed embedded webpage with a visible "Open in new tab" fallback notice for general webpages).
 
 ### Changed
-- Chapter and lesson overviews: renamed headings to **CHAPTER MATERIALS & RESOURCES** and **LESSON MATERIALS & RESOURCES**, and unified materials into a single bordered divider-row card with recommended materials grouped inside the card under a purple star **RECOMMENDED** subtitle with a shared dashed purple outline and mild purple tint.
-- Course edit mode: pinned resources use purple pin styling and are grouped inside a single shared dashed purple "Recommended" container; material delete buttons now match chapter and sub-lesson delete buttons.
+- Chapter and lesson overviews: renamed headings to **CHAPTER MATERIALS & RESOURCES** and **LESSON MATERIALS & RESOURCES**, unified materials into a single bordered divider-row card with recommended materials grouped inside under a purple star **RECOMMENDED** subtitle with a shared dashed purple outline and mild purple tint, and matched the uploaded-file Eye icon's default and hover colors to the external-link icon.
+- Course edit mode: removed divider lines between sub-lesson cards, grouped added materials inside a single bordered container (with pinned resources grouped inside the shared dashed purple "Recommended" container), and matched material delete buttons to chapter and sub-lesson delete buttons.
+- Course page: aligned the Syllabus Checklist container width to match the Progress Strip and Tree View container width.
 - Tree view: restored the centered floating Done / Learning / Skip status toolbar (keeping hover + right-click triggers and conditional Reset to Todo button) and kept it open after selecting a status until pointer-leave (hover) or click/focus-out (right-click).
 
 ### Fixed
 - Course edit mode: validation errors (both inline field errors and the sticky error banner) now clear automatically as soon as the offending field becomes valid.
+- Tree view: centered the floating Done / Learning / Skip toolbar accurately over its node, kept it synchronized with the node while scrolling, and prevented hovering other nodes from dismissing or replacing a right-click-opened toolbar.
 
 ## [0.8.0]
 

@@ -217,7 +217,7 @@ export function MaterialList({
             <Eye
               aria-hidden="true"
               data-testid="uploaded-viewer-icon"
-              className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400"
+              className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400"
             />
           </button>
         </li>

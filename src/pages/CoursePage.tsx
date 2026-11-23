@@ -263,11 +263,11 @@ export function CoursePage() {
               setContextMenu({ itemId, anchor, trigger: 'contextmenu' });
             }}
             onHoverLesson={(itemId, anchor) => {
-              clearHoverCloseTimer();
               setContextMenu((prev) => {
-                if (prev?.trigger === 'contextmenu' && prev.itemId === itemId) {
+                if (prev?.trigger === 'contextmenu') {
                   return prev;
                 }
+                clearHoverCloseTimer();
                 return { itemId, anchor, trigger: 'hover' };
               });
             }}
@@ -290,6 +290,7 @@ export function CoursePage() {
       {/* Right-click / Hover Quick Status Pill */}
       {contextMenu && (
         <QuickStatusPill
+          itemId={contextMenu.itemId}
           anchor={contextMenu.anchor}
           currentStatus={getLessonStatus(course.slug, contextMenu.itemId)}
           onSelectStatus={(next) => setLessonStatus(course.slug, contextMenu.itemId, next)}

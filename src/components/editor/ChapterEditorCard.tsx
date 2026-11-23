@@ -433,7 +433,7 @@ export function ChapterEditorCard({
               No sub-lessons are added yet
             </div>
           ) : (
-            <div className="divide-y divide-slate-200 dark:divide-slate-700/80">
+            <div className="space-y-2.5">
               {chapter.lessons.map((lesson, lIdx) => (
                 <LessonEditorCard
                   key={lesson.id}
