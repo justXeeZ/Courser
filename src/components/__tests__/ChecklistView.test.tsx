@@ -85,7 +85,7 @@ describe('ChecklistView', () => {
 
     const ch3TitleBtn = screen.getByRole('button', { name: demoCourse.chapters[2].title });
     const headerBar = ch3TitleBtn.closest('div[class*="border-l-[var(--accent-amber)]"]') as HTMLElement;
-    expect(headerBar).toHaveClass('bg-[var(--surface-2)]', 'border-l-4', 'border-l-[var(--accent-amber)]');
+    expect(headerBar).toHaveClass('bg-[var(--surface-1)]', 'dark:bg-[var(--surface-2)]', 'border-l-4', 'border-l-[var(--accent-amber)]');
     expect(headerBar.nextElementSibling).toBeNull();
   });
 

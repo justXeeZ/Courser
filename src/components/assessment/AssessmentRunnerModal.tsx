@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
+  ArrowLeft,
+  ArrowRight,
   CheckCircle2,
   ChevronDown,
   ChevronUp,
@@ -746,33 +748,6 @@ export function AssessmentRunnerModal({
                         {isHintOpen ? 'Hide Hint' : 'Show Hint'}
                       </button>
                     )}
-
-                    {isExam && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setFlaggedIds((prev) => {
-                            const next = new Set(prev);
-                            if (next.has(currentQuestion.id)) {
-                              next.delete(currentQuestion.id);
-                            } else {
-                              next.add(currentQuestion.id);
-                            }
-                            return next;
-                          })
-                        }
-                        aria-label={isFlagged ? 'Unflag question' : 'Flag question'}
-                        aria-pressed={isFlagged}
-                        title={isFlagged ? 'Unflag question' : 'Flag question'}
-                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
-                          isFlagged
-                            ? 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
-                            : 'border-[var(--border-subtle)] bg-[var(--surface-inset)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
-                        }`}
-                      >
-                        <Flag className={`h-4 w-4 ${isFlagged ? 'fill-current' : ''}`} />
-                      </button>
-                    )}
                   </div>
                 </div>
 
@@ -1037,35 +1012,65 @@ export function AssessmentRunnerModal({
 
             {/* Sticky Footer Navigation */}
             <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  disabled={currentIndex === 0}
-                  onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                  className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-45"
-                >
-                  Previous
-                </button>
-
-                <button
-                  type="button"
-                  disabled={currentIndex >= orderedQuestions.length - 1}
-                  onClick={() =>
-                    setCurrentIndex((i) => Math.min(orderedQuestions.length - 1, i + 1))
-                  }
-                  className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-45"
-                >
-                  Next
-                </button>
-              </div>
-
               <button
                 type="button"
-                onClick={() => setPhase('review')}
-                className="rounded-md bg-[var(--cta-bg)] px-4 py-1.5 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+                disabled={currentIndex === 0}
+                onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-45"
               >
-                Review &amp; Submit
+                <ArrowLeft className="h-3.5 w-3.5" />
+                Previous
               </button>
+
+              <div className="flex items-center gap-2">
+                {isExam && (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setFlaggedIds((prev) => {
+                        const next = new Set(prev);
+                        if (next.has(currentQuestion.id)) {
+                          next.delete(currentQuestion.id);
+                        } else {
+                          next.add(currentQuestion.id);
+                        }
+                        return next;
+                      })
+                    }
+                    aria-label={isFlagged ? 'Unflag question' : 'Flag question'}
+                    aria-pressed={isFlagged}
+                    title={isFlagged ? 'Unflag question' : 'Flag question'}
+                    className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
+                      isFlagged
+                        ? 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
+                        : 'border-[var(--border-subtle)] bg-[var(--surface-inset)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+                    }`}
+                  >
+                    <Flag className={`h-4 w-4 ${isFlagged ? 'fill-current' : ''}`} />
+                  </button>
+                )}
+
+                {currentIndex < orderedQuestions.length - 1 ? (
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setCurrentIndex((i) => Math.min(orderedQuestions.length - 1, i + 1))
+                    }
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                  >
+                    Next
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setPhase('review')}
+                    className="rounded-md bg-[var(--cta-bg)] px-4 py-1.5 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+                  >
+                    Review &amp; Submit
+                  </button>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -1112,12 +1117,36 @@ export function AssessmentRunnerModal({
 
               <div className="space-y-2">
                 {orderedQuestions.map((q, idx) => {
-                  const answered = isQuestionAnswered(q, answers[q.id]);
+                  const ans = answers[q.id];
+                  const answered = isQuestionAnswered(q, ans);
                   const flagged = isExam && flaggedIds.has(q.id);
+                  const opts =
+                    q.type === 'true-false' ? (q.options ?? ['True', 'False']) : (q.options ?? []);
+
+                  let chosenLetters: string | null = null;
+                  let chosenText: string | null = null;
+                  if (answered) {
+                    if ((q.type === 'mcq' || q.type === 'true-false') && typeof ans === 'number') {
+                      chosenLetters = String.fromCharCode(65 + ans);
+                      chosenText = opts[ans] ?? '';
+                    } else if (q.type === 'multi-select' && Array.isArray(ans)) {
+                      const sorted = [...ans].sort((a, b) => a - b);
+                      chosenLetters = sorted.map((i) => String.fromCharCode(65 + i)).join(', ');
+                      chosenText = sorted.map((i) => opts[i] ?? '').join(', ');
+                    } else if (typeof ans === 'string') {
+                      chosenText = ans.trim();
+                    }
+                  }
+
                   return (
-                    <div
+                    <button
                       key={q.id}
-                      className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-inset)] p-3"
+                      type="button"
+                      onClick={() => {
+                        setCurrentIndex(idx);
+                        setPhase('active');
+                      }}
+                      className="flex w-full items-center justify-between gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-inset)] p-3 text-left transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)]"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
@@ -1147,17 +1176,23 @@ export function AssessmentRunnerModal({
                         )}
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCurrentIndex(idx);
-                          setPhase('active');
-                        }}
-                        className="shrink-0 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
-                      >
-                        Go to Q{idx + 1}
-                      </button>
-                    </div>
+                      <div className="flex w-36 shrink-0 items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2.5 py-1.5 text-xs sm:w-52">
+                        {answered ? (
+                          <>
+                            {chosenLetters && (
+                              <span className="inline-flex shrink-0 items-center justify-center rounded border border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)] px-1.5 py-0.5 font-mono text-[10px] font-bold text-[var(--accent-purple-text)]">
+                                {chosenLetters}
+                              </span>
+                            )}
+                            <span className="min-w-0 flex-1 truncate text-[var(--text-primary)]">
+                              {chosenText}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="truncate text-[var(--text-muted)]">No answer</span>
+                        )}
+                      </div>
+                    </button>
                   );
                 })}
               </div>
@@ -1197,7 +1232,7 @@ export function AssessmentRunnerModal({
                       className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                         gradedResult.passed
                           ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
-                          : 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
+                          : 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]'
                       }`}
                     >
                       {gradedResult.passed ? (

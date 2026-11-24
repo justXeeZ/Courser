@@ -16,9 +16,9 @@
 - **Semantic CSS variable palette (`src/index.css`):**
   - **Light mode:** Warm neutrals (`--surface-canvas: #f7f5f0`, `--surface-1: #fdfcfa`, `--surface-2: #efede8`, `--border-subtle: #e5e1d8`, `--border-strong: #767067`, `--text-muted: #5c564e`).
   - **Dark mode:** Oxford Blue surfaces (`#0b0f17` / `#121926` / `#1b2436` / `#0d131f`) paired with cool slate-gray muted tokens (`--surface-warm-muted: #1e293b`, `--border-strong: #64748b`, `--text-muted: #94a3b8`, `--status-skipped-bg: #1e293b`).
-  - **Semantic accents:** Vibrant Violet-Purple primary CTAs, bookmarks, notes left-borders, progress bars (`1%–99%`), & Recommended containers (`--cta-bg`, `--accent-purple`, `--recommended-*`), **Amber** chapter tags (`--tag-amber-*`), **Burnt Peach** lesson tags (`--tag-peach-*` anchored on `#E97451` / `#ad3c1a`), Green `Done` / `Passed` / `100%` (`--status-done-*`), Orange `Warning` / `Flag` / `Not Passed` / `1%–99%` ProgressStrip badge (`--status-warning-*`), and Red `Danger` (`--status-danger-*`).
+  - **Semantic accents:** Vibrant Violet-Purple primary CTAs, bookmarks, `CourseCard` progress bars (`1%–99%`), & Recommended containers (`--cta-bg`, `--accent-purple`, `--recommended-*`), **Amber** chapter tags, `ChapterDrawer` icons/notes/`1%–99%` progress bar (`--tag-amber-*`, `--accent-amber`), **Burnt Peach** lesson tags & `LessonDrawer` icons/notes (`--tag-peach-*`, `--accent-peach` anchored on `#E97451` / `#ad3c1a`), Green `Done` / `Passed` / `100%` (`--status-done-*`), Orange `Warning` / `Flag` / `1%–99%` ProgressStrip badge (`--status-warning-*`), and Red `Danger` / `Not Passed` (`--status-danger-*`).
 - **Editor card stability:**
-  - `ChapterEditorCard` and `ChecklistView` chapter headers use a left amber accent border on a neutral Surface-2 bar.
+  - `ChapterEditorCard` uses a left amber accent border on a neutral Surface-2 bar; `ChecklistView` chapter headers use a left amber accent border on Surface-1 in Light mode (matching child sub-lesson rows) and Surface-2 in Dark mode.
   - `LessonEditorCard` header uses a left burnt-peach accent border (`--tag-peach-border`), keeps identical background and border classes whether collapsed or expanded, and displays a standardized position tag (`Ch X - L Y`).
 - **Unified component recipes:**
   - **Recommended container:** `1.5px dashed var(--recommended-border)` with `--recommended-bg` and purple star header.
@@ -57,6 +57,7 @@ Reuse these components instead of creating one-off patterns:
 | `RichMathText` | `src/components/RichMathText.tsx` | Safe mixed prose + KaTeX math renderer for exam instructions, question headers, choices, hints, and explanations. |
 | `ConfirmDialog` | `src/components/ConfirmDialog.tsx` | Destructive confirmation modal (e.g., course deletion or unsaved-edits prompt). |
 | `ExportCourseDialog` | `src/components/ExportCourseDialog.tsx` | `.course.json` export modal with base64 attachment toggle and size summary. |
+| `ProgressBackupDialog` | `src/components/ProgressBackupDialog.tsx` | Progress JSON download & restore modal (`.json` file upload or paste) supporting per-course (`CoursePage`) and all-courses (`CatalogPage` footer) scopes. |
 | `ImportCourseDialog` | `src/components/editor/ImportCourseDialog.tsx` | `.course.json` file/paste import modal on `/editor/new`. |
 | `EditorStickyBar` | `src/components/editor/EditorStickyBar.tsx` | Sticky top bar in `CourseEditorPage` with breadcrumb (`Ch X › Ch X - L Y`) and sticky `+ Add Chapter`, `Collapse all`, and `Save` actions. |
 | `ChapterEditorCard` / `LessonEditorCard` | `src/components/editor/` | Sticky-header chapter (`Ch X`) and sub-lesson (`Ch X - L Y`) form cards inside `CourseEditorPage`. |

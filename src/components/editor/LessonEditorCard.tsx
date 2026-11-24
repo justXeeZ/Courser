@@ -84,7 +84,7 @@ export function LessonEditorCard({
     : 'rounded-md';
 
   return (
-    <div data-edit-lesson={lesson.id}>
+    <div data-edit-lesson={lesson.id} className="scroll-mt-48">
       {/* Lesson Header Row — sticky below chapter header when expanded; identical colors in collapsed & expanded states */}
       <div
         ref={headerRef}

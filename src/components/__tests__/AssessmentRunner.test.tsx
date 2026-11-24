@@ -306,9 +306,10 @@ describe('AssessmentRunnerModal', () => {
       passed: true,
     });
 
-    // Retake -> Overview -> Start Exam -> Review & Submit with unanswered -> ConfirmDialog -> 0% Not Passed
+    // Retake -> Overview -> Start Exam -> jump to last question -> Review & Submit with unanswered -> ConfirmDialog -> 0% Not Passed
     fireEvent.click(screen.getByRole('button', { name: 'Retake' }));
     fireEvent.click(screen.getByRole('button', { name: 'Start Exam' }));
+    fireEvent.click(screen.getByRole('button', { name: /Question 4/i }));
     fireEvent.click(screen.getByRole('button', { name: 'Review & Submit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit Exam' }));
     // Confirm unanswered submission

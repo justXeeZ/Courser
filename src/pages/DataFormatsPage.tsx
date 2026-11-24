@@ -351,7 +351,7 @@ export function DataFormatsPage() {
 
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-900 dark:border-amber-400/30 dark:bg-amber-400/10 dark:text-amber-200">
+              <div className="inline-flex items-center gap-2 rounded-full border border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)] px-3 py-1 text-xs font-medium text-[var(--accent-purple-text)]">
                 <FileJson className="h-3.5 w-3.5" />
                 Data Formats &amp; Authoring Guide
               </div>
@@ -419,7 +419,7 @@ export function DataFormatsPage() {
             {/* Section 1: Overview */}
             <section
               id="overview"
-              className="space-y-4 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+              className="space-y-4 scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
             >
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">1. Overview</h2>
               <p className="text-sm text-slate-600 dark:text-slate-300">
@@ -467,7 +467,7 @@ export function DataFormatsPage() {
             {/* Section 2: Course JSON Format */}
             <section
               id="course-json"
-              className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+              className="space-y-6 scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
             >
               <div className="space-y-2">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -869,7 +869,7 @@ export function DataFormatsPage() {
             {/* Section 3: Interactive Exams & Assignments JSON */}
             <section
               id="assessment-json"
-              className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+              className="space-y-6 scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
             >
               <div className="space-y-2">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -1107,7 +1107,7 @@ export function DataFormatsPage() {
             {/* Section 4: Progress Backup JSON Format */}
             <section
               id="progress-json"
-              className="space-y-5 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+              className="space-y-5 scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
             >
               <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                 4. Progress Backup JSON Format
@@ -1199,7 +1199,7 @@ export function DataFormatsPage() {
             {/* Section 5: Full Valid Examples */}
             <section
               id="examples"
-              className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+              className="space-y-6 scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
             >
               <div className="space-y-1">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -1276,7 +1276,7 @@ export function DataFormatsPage() {
             {/* Section 6: Prompts for an LLM */}
             <section
               id="llm-prompt"
-              className="space-y-6 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+              className="space-y-6 scroll-mt-20 rounded-xl border border-slate-200 bg-white p-6 shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
             >
               <div className="space-y-1">
                 <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">

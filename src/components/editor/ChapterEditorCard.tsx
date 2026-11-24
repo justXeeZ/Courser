@@ -167,7 +167,7 @@ export function ChapterEditorCard({
             'calc(var(--editor-chapter-sticky-top, 120px) + var(--editor-chapter-header-height, 48px))',
         } as React.CSSProperties
       }
-      className="scroll-mt-32 rounded-lg border border-slate-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+      className="scroll-mt-36 rounded-lg border border-slate-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
     >
       {/* Compact Sticky Chapter Header Row (NO overflow-hidden on outer container!) */}
       <div

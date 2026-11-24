@@ -144,6 +144,8 @@ describe('CoursePage integration', () => {
     const reopenedRadios = within(reopenedRunner).getAllByRole('radio');
     fireEvent.click(reopenedRadios[1]);
 
+    // Jump to last question to access Review & Submit
+    fireEvent.click(within(reopenedRunner).getByRole('button', { name: /Question 4/i }));
     fireEvent.click(within(reopenedRunner).getByRole('button', { name: 'Review & Submit' }));
     fireEvent.click(within(reopenedRunner).getByRole('button', { name: 'Submit Exam' }));
     const confirmSubmitBtns = screen.getAllByRole('button', { name: 'Submit Exam' });
@@ -190,10 +192,12 @@ describe('CoursePage integration', () => {
     const backupBtn = screen.getAllByRole('button', { name: 'Backup Progress' })[0];
     fireEvent.click(backupBtn);
 
-    const backupDialog = screen.getByRole('dialog', { name: 'Backup and Restore Progress' });
+    const backupDialog = screen.getByRole('dialog', { name: 'Backup & Restore Progress' });
     expect(backupDialog).toBeInTheDocument();
     expect(backupDialog.className).toContain('bg-[var(--surface-1)]');
 
+    // Switch to All Courses tab to download full backup
+    fireEvent.click(within(backupDialog).getByRole('tab', { name: 'All Courses' }));
     fireEvent.click(within(backupDialog).getByRole('button', { name: /Download Progress JSON/i }));
     await waitFor(() => {
       expect(createObjectUrlSpy).toHaveBeenCalledTimes(1);
@@ -202,10 +206,10 @@ describe('CoursePage integration', () => {
     expect(clickSpy).toHaveBeenCalledTimes(1);
     expect(revokeObjectUrlSpy).toHaveBeenCalledWith('blob:progress-url');
 
-    // Escape closes the inline Backup modal
+    // Escape closes the Backup modal
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(
-      screen.queryByRole('dialog', { name: 'Backup and Restore Progress' })
+      screen.queryByRole('dialog', { name: 'Backup & Restore Progress' })
     ).not.toBeInTheDocument();
   });
 

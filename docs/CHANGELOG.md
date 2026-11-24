@@ -6,6 +6,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+- Progress backup & restore: added reusable `ProgressBackupDialog` supporting `.json` file upload (in addition to pasting JSON), per-course export/restore (`This Course` vs `All Courses` in `CoursePage`), and an `All Courses` `Backup & Restore Progress` action in the `CatalogPage` footer.
+
+### Changed
+- Chapter & lesson overviews: matched `ChapterDrawer` section icons, notes left-border, and `< 100%` progress bar to Amber (`--accent-amber`, turning Green at `100%`), and matched `LessonDrawer` section icons and notes left-border to Burnt Peach (`--accent-peach`).
+- Interactive exams (`AssessmentRunnerModal`): moved `Previous` (`←`) to bottom-left and `Next` (`→`) to bottom-right beside an icon-only `Flag` button (replaced by `Review & Submit` on the last question); made Pre-Submit Review rows directly clickable to jump to any question while displaying a unified-width chosen answer preview (keycap letter + truncated answer text); and styled the `"Not Passed"` results badge in red (`--status-danger-*`).
+- Catalog home page: unified `CourseCard` across mobile and desktop by placing Edit/Delete/Bookmark controls in the top-right on all viewports (removing the mobile bottom strip), and improved the mobile `CatalogPage` footer layout.
+- Navbar: kept the `"Bookmarked"` label visible on mobile viewports instead of hiding it below `sm:`.
+
+### Fixed
+- Syllabus checklist (`ChecklistView`): matched chapter header backgrounds to `--surface-1` in Light mode so chapter entries no longer blend into the canvas background.
+- Data formats page: matched the header badge to the Violet-Purple accent and added `scroll-mt-20` to all Table of Contents target sections so jumping to a section clears the sticky `Navbar`.
+- Course editor tree-mode navigation: increased `scroll-mt-*` offsets on `ChapterEditorCard` (`scroll-mt-36`) and `LessonEditorCard` (`scroll-mt-48`) so clicking nodes in Live Tree Preview scrolls cleanly below sticky headers.
+
 ## [1.0.0] - 2026-11-24
 
 ### Added

@@ -27,7 +27,7 @@ export function CourseCard({
     <div className="group relative overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] shadow-xs transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)]">
       <Link
         to={`/course/${course.slug}`}
-        className="flex min-h-[78px] flex-col justify-between p-3.5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] sm:pr-24"
+        className="flex min-h-[92px] flex-col justify-between p-3.5 pr-24 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
       >
         <div>
           <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
@@ -79,13 +79,13 @@ export function CourseCard({
         )}
       </Link>
 
-      {/* Action buttons: clean footer bar on mobile, top-right overlay on sm+ */}
-      <div className="flex items-center justify-end gap-1 border-t border-[var(--border-subtle)] bg-[var(--surface-2)]/60 px-2.5 py-1.5 sm:absolute sm:top-2 sm:right-2 sm:z-10 sm:border-t-0 sm:bg-transparent sm:p-0">
+      {/* Action buttons: unified top-right overlay on all viewports */}
+      <div className="absolute top-2.5 right-2.5 z-10 flex items-center gap-1">
         <Link
           to={`/course/${course.slug}/edit`}
           aria-label={`Edit ${course.title}`}
           title="Edit course"
-          className="inline-flex h-9 w-9 items-center justify-center rounded p-1 text-[var(--text-muted)] opacity-75 transition-opacity group-hover:opacity-100 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:!opacity-100 sm:h-auto sm:w-auto"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--text-muted)] opacity-75 transition-opacity group-hover:opacity-100 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:!opacity-100"
         >
           <Pencil className="h-3.5 w-3.5" />
         </Link>
@@ -94,7 +94,7 @@ export function CourseCard({
           onClick={onRequestDelete}
           aria-label={`Delete ${course.title}`}
           title="Delete course"
-          className="inline-flex h-9 w-9 items-center justify-center rounded p-1 text-[var(--text-muted)] opacity-75 transition-colors group-hover:opacity-100 hover:bg-[var(--status-danger-bg)] hover:text-[var(--status-danger-text)] hover:!opacity-100 focus-visible:bg-[var(--status-danger-bg)] focus-visible:text-[var(--status-danger-text)] focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] sm:h-auto sm:w-auto"
+          className="inline-flex h-7 w-7 items-center justify-center rounded text-[var(--text-muted)] opacity-75 transition-colors group-hover:opacity-100 hover:bg-[var(--status-danger-bg)] hover:text-[var(--status-danger-text)] hover:!opacity-100 focus-visible:bg-[var(--status-danger-bg)] focus-visible:text-[var(--status-danger-text)] focus-visible:ring-2 focus-visible:ring-[var(--border-focus)]"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -103,7 +103,7 @@ export function CourseCard({
           onClick={onToggleBookmark}
           aria-label={bookmarked ? `Remove ${course.title} bookmark` : `Bookmark ${course.title}`}
           title={bookmarked ? 'Remove bookmark' : 'Bookmark course'}
-          className={`inline-flex h-9 w-9 items-center justify-center rounded p-1 transition-opacity sm:h-auto sm:w-auto ${
+          className={`inline-flex h-7 w-7 items-center justify-center rounded transition-opacity ${
             bookmarked
               ? 'text-[var(--accent-purple)] opacity-100'
               : 'text-[var(--text-muted)] opacity-75 group-hover:opacity-100 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:!opacity-100'

@@ -162,6 +162,11 @@ interface ProgressContextValue {
   forgetCourse: (slug: string) => void;
   exportProgressJson: () => string;
   importProgressJson: (raw: string) => { ok: true } | { ok: false; error: string };
+  exportCourseProgressJson: (courseSlug: string) => string;
+  importCourseProgressJson: (
+    courseSlug: string,
+    raw: string
+  ) => { ok: true } | { ok: false; error: string };
   getCourseStats: (course: CourseTree) => ProgressStats;
   getChapterStats: (courseSlug: string, chapter: Chapter) => ProgressStats;
   persistError: string | null;
@@ -443,6 +448,65 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
     return { ok: true as const };
   }, []);
 
+  const exportCourseProgressJson = useCallback(
+    (courseSlug: string) => {
+      const courseStatuses = state.statuses[courseSlug];
+      const courseScores = state.assessmentScores?.[courseSlug];
+      const singleCourseState: ProgressState = {
+        version: 1,
+        statuses: courseStatuses ? { [courseSlug]: courseStatuses } : {},
+        bookmarks: state.bookmarks.includes(courseSlug) ? [courseSlug] : [],
+        ...(courseScores ? { assessmentScores: { [courseSlug]: courseScores } } : {}),
+      };
+      return JSON.stringify(singleCourseState, null, 2);
+    },
+    [state]
+  );
+
+  const importCourseProgressJson = useCallback((courseSlug: string, raw: string) => {
+    const result = parseImportedProgressJson(raw);
+    if (!result.ok) {
+      return result;
+    }
+    const importedStatuses = result.state.statuses[courseSlug];
+    const importedBookmarked = result.state.bookmarks.includes(courseSlug);
+    const importedScores = result.state.assessmentScores?.[courseSlug];
+
+    setState((prev) => {
+      const nextStatuses = { ...prev.statuses };
+      if (importedStatuses && Object.keys(importedStatuses).length > 0) {
+        nextStatuses[courseSlug] = importedStatuses;
+      } else {
+        delete nextStatuses[courseSlug];
+      }
+
+      const nextBookmarks = importedBookmarked
+        ? prev.bookmarks.includes(courseSlug)
+          ? prev.bookmarks
+          : [...prev.bookmarks, courseSlug]
+        : prev.bookmarks.filter((slug) => slug !== courseSlug);
+
+      const nextAssessmentScores = { ...(prev.assessmentScores ?? {}) };
+      if (importedScores && Object.keys(importedScores).length > 0) {
+        nextAssessmentScores[courseSlug] = importedScores;
+      } else {
+        delete nextAssessmentScores[courseSlug];
+      }
+
+      const { assessmentScores: _omitScores, ...rest } = prev;
+      return {
+        ...rest,
+        statuses: nextStatuses,
+        bookmarks: nextBookmarks,
+        ...(Object.keys(nextAssessmentScores).length > 0
+          ? { assessmentScores: nextAssessmentScores }
+          : {}),
+      };
+    });
+
+    return { ok: true as const };
+  }, []);
+
   const getCourseStats = useCallback(
     (course: CourseTree) => computeCourseStats(course, state.statuses[course.slug]),
     [state.statuses]
@@ -470,6 +534,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       forgetCourse,
       exportProgressJson,
       importProgressJson,
+      exportCourseProgressJson,
+      importCourseProgressJson,
       getCourseStats,
       getChapterStats,
       persistError,
@@ -490,6 +556,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       forgetCourse,
       exportProgressJson,
       importProgressJson,
+      exportCourseProgressJson,
+      importCourseProgressJson,
       getCourseStats,
       getChapterStats,
       persistError,

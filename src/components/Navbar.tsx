@@ -43,7 +43,7 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
               className="inline-flex shrink-0 items-center gap-1.5 transition-colors hover:text-white"
             >
               <Bookmark className="h-3.5 w-3.5 text-violet-400" />
-              <span className="hidden sm:inline">Bookmarked</span>
+              <span>Bookmarked</span>
               {bookmarkCount > 0 && (
                 <span className="rounded-full bg-slate-800 px-1.5 py-0.5 font-mono text-xs text-slate-200">
                   {bookmarkCount}

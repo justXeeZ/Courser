@@ -85,7 +85,7 @@ describe('Navbar theme toggle and mobile layout', () => {
     expect(screen.getByRole('button', { name: /Theme: System/i })).toBeInTheDocument();
   });
 
-  it('renders + New Course as a compact mobile icon button and hides Bookmarked text below sm', () => {
+  it('renders + New Course as a compact mobile icon button and keeps Bookmarked text visible on mobile', () => {
     render(
       <MemoryRouter>
         <ThemeProvider>
@@ -102,7 +102,7 @@ describe('Navbar theme toggle and mobile layout', () => {
     expect(newCourseLabel).toHaveClass('hidden', 'sm:inline');
 
     const bookmarkedLabel = screen.getByText('Bookmarked');
-    expect(bookmarkedLabel).toHaveClass('hidden', 'sm:inline');
+    expect(bookmarkedLabel).not.toHaveClass('hidden');
   });
 
   it('keeps Navbar persistently dark in both Light and Dark modes and renders BRAND mark & shortName', () => {

@@ -289,7 +289,11 @@ export function ChapterDrawer({
         </div>
         <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-inset)]">
           <div
-            className="h-full rounded-full bg-[var(--accent-done)] transition-all duration-200"
+            className={`h-full rounded-full transition-all duration-200 ${
+              stats.percentDone === 100
+                ? 'bg-[var(--accent-done)]'
+                : 'bg-[var(--accent-amber)]'
+            }`}
             style={{ width: `${stats.percentDone}%` }}
           />
         </div>
@@ -299,7 +303,7 @@ export function ChapterDrawer({
       {prereqItems.length > 0 && (
         <div className="mb-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
           <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase">
-            <GitBranch className="h-3.5 w-3.5 text-[var(--accent-purple)]" />
+            <GitBranch className="h-3.5 w-3.5 text-[var(--accent-amber)]" />
             Recommended Prerequisites
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -333,7 +337,7 @@ export function ChapterDrawer({
                   key={item.id}
                   type="button"
                   onClick={() => onSelectItem(item.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:border-[var(--accent-purple)] ${
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:border-[var(--accent-amber)] ${
                     isDone
                       ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
                       : isSkipped
@@ -358,7 +362,7 @@ export function ChapterDrawer({
         (isLeaf || resources.length > 0) && (
           <div className="mb-6">
             <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--accent-purple)]" />
+              <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" />
               Chapter Materials &amp; Resources
             </h3>
             <MaterialList
@@ -372,7 +376,7 @@ export function ChapterDrawer({
           </div>
         )
       ) : (
-        <div className="mb-6 rounded-lg border border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-purple)] bg-[var(--surface-2)] p-4">
+        <div className="mb-6 rounded-lg border border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-amber)] bg-[var(--surface-2)] p-4">
           <h3 className="mb-2 text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
             Chapter Notes
           </h3>
@@ -392,7 +396,7 @@ export function ChapterDrawer({
       {!isLeaf && (
         <div>
           <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-[var(--text-muted)] uppercase">
-            <Layers className="h-3.5 w-3.5 shrink-0 text-[var(--accent-purple)]" />
+            <Layers className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" />
             Sub-Lessons ({chapter.lessons.length})
           </h3>
           <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white dark:divide-slate-700/80 dark:border-slate-700/80 dark:bg-[#1b2436]">

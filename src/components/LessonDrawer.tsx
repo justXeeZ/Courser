@@ -250,7 +250,7 @@ export function LessonDrawer({
       {prereqItems.length > 0 && (
         <div className="mb-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
           <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase">
-            <GitBranch className="h-3.5 w-3.5 text-[var(--accent-purple)]" />
+            <GitBranch className="h-3.5 w-3.5 text-[var(--accent-peach)]" />
             Recommended Prerequisites
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -284,7 +284,7 @@ export function LessonDrawer({
                   key={item.id}
                   type="button"
                   onClick={() => navigateToItem?.(item.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:border-[var(--accent-purple)] ${
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:border-[var(--accent-peach)] ${
                     isDone
                       ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
                       : isSkipped
@@ -307,7 +307,7 @@ export function LessonDrawer({
       {activeTab === 'resources' ? (
         <div>
           <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-[var(--text-muted)] uppercase">
-            <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--accent-purple)]" />
+            <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--accent-peach)]" />
             Lesson Materials &amp; Resources
           </h3>
           <MaterialList
@@ -321,7 +321,7 @@ export function LessonDrawer({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-lg border border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-purple)] bg-[var(--surface-2)] p-4">
+          <div className="rounded-lg border border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-peach)] bg-[var(--surface-2)] p-4">
             <h3 className="mb-2 text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
               Key Study Notes
             </h3>

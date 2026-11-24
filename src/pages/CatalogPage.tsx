@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { Plus, RotateCcw } from 'lucide-react';
+import { Download, Plus, RotateCcw } from 'lucide-react';
 import { BRAND } from '@/config/brand';
 import { getCoursesByDepartment } from '@/data/courses';
 import { useCourses } from '@/store/useCourseStore';
 import { useProgress } from '@/store/useProgressStore';
 import { CourseCard } from '@/components/CourseCard';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { ProgressBackupDialog } from '@/components/ProgressBackupDialog';
 import type { CourseTree } from '@/types/course';
 
 type CatalogTab = 'all' | 'bookmarked' | 'in-progress';
@@ -16,6 +17,7 @@ export function CatalogPage() {
   const { courses, deleteCourse, resetCatalogToDefaults } = useCourses();
   const { isBookmarked, toggleBookmark, getCourseStats, forgetCourse } = useProgress();
   const [courseToDelete, setCourseToDelete] = useState<CourseTree | null>(null);
+  const [backupModalOpen, setBackupModalOpen] = useState(false);
 
   const rawTab = searchParams.get('tab');
   const activeTab: CatalogTab =
@@ -145,16 +147,31 @@ export function CatalogPage() {
       </section>
 
       <footer className="border-t border-[var(--border-subtle)] bg-[var(--surface-1)]">
-        <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-6 text-xs text-[var(--text-secondary)] sm:px-6">
-          <span>{BRAND.footerNote}</span>
-          <Link
-            to="/docs/data-formats"
-            className="font-medium text-[var(--text-primary)] transition-colors hover:text-[var(--accent-purple)]"
-          >
-            Data formats →
-          </Link>
+        <div className="mx-auto flex max-w-5xl flex-col gap-3 px-4 py-5 text-xs text-[var(--text-secondary)] sm:flex-row sm:items-center sm:justify-between sm:px-6 sm:py-6">
+          <span className="leading-relaxed">{BRAND.footerNote}</span>
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[var(--border-subtle)] pt-3 sm:shrink-0 sm:border-t-0 sm:pt-0">
+            <button
+              type="button"
+              onClick={() => setBackupModalOpen(true)}
+              className="inline-flex items-center gap-1.5 font-medium text-[var(--text-primary)] transition-colors hover:text-[var(--accent-purple)]"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Backup &amp; Restore Progress
+            </button>
+            <Link
+              to="/docs/data-formats"
+              className="font-medium text-[var(--text-primary)] transition-colors hover:text-[var(--accent-purple)]"
+            >
+              Data formats →
+            </Link>
+          </div>
         </div>
       </footer>
+
+      <ProgressBackupDialog
+        open={backupModalOpen}
+        onClose={() => setBackupModalOpen(false)}
+      />
 
       <ConfirmDialog
         open={Boolean(courseToDelete)}

@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { X, Download, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
-import { BRAND } from '@/config/brand';
-import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { findCourseItem } from '@/lib/courseItems';
 import { layoutCourseTree } from '@/lib/layoutTree';
 import { ROADMAP_COLORS } from '@/lib/theme';
@@ -20,6 +17,7 @@ import { QuickStatusPill } from '@/components/QuickStatusPill';
 import { LessonDrawer } from '@/components/LessonDrawer';
 import { ChapterDrawer } from '@/components/ChapterDrawer';
 import { ExportCourseDialog } from '@/components/ExportCourseDialog';
+import { ProgressBackupDialog } from '@/components/ProgressBackupDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { MaterialViewerModal } from '@/components/viewer/MaterialViewerModal';
 import { AssessmentRunnerModal } from '@/components/assessment/AssessmentRunnerModal';
@@ -41,8 +39,6 @@ export function CoursePage() {
     toggleBookmark,
     forgetCourse,
     getCourseStats,
-    exportProgressJson,
-    importProgressJson,
   } = useProgress();
 
   const [activeTab, setActiveTab] = useState<CourseViewTab>('tree');
@@ -77,7 +73,6 @@ export function CoursePage() {
     return () => clearHoverCloseTimer();
   }, []);
   const [backupModalOpen, setBackupModalOpen] = useState(false);
-  const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [activeViewerMaterial, setActiveViewerMaterial] = useState<LessonResource | null>(null);
@@ -85,23 +80,13 @@ export function CoursePage() {
     itemId: string;
     resource: LessonResource;
   } | null>(null);
-  const [importText, setImportText] = useState('');
-  const [importNotice, setImportNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
-  const backupDialogRef = useRef<HTMLDivElement | null>(null);
-
-  useDialogFocus({
-    isOpen: backupModalOpen && !confirmRestoreOpen,
-    containerRef: backupDialogRef,
-    onEscape: () => setBackupModalOpen(false),
-  });
 
   useEffect(() => {
     setActiveViewerMaterial(null);
     setActiveAssessmentMaterial(null);
     setBackupModalOpen(false);
-    setConfirmRestoreOpen(false);
     setExportModalOpen(false);
     setConfirmDeleteOpen(false);
     setContextMenu(null);
@@ -111,7 +96,6 @@ export function CoursePage() {
     activeViewerMaterial ||
       activeAssessmentMaterial ||
       backupModalOpen ||
-      confirmRestoreOpen ||
       exportModalOpen ||
       confirmDeleteOpen
   );
@@ -210,31 +194,6 @@ export function CoursePage() {
     URL.revokeObjectURL(url);
   };
 
-  const handleExportJsonFile = () => {
-    const blob = new Blob([exportProgressJson()], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = BRAND.progressBackupFilename;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleImportSubmit = () => {
-    setConfirmRestoreOpen(true);
-  };
-
-  const handleConfirmRestore = () => {
-    setConfirmRestoreOpen(false);
-    const result = importProgressJson(importText);
-    if (result.ok) {
-      setImportNotice({ ok: true, text: 'Progress restored successfully.' });
-      setImportText('');
-    } else {
-      setImportNotice({ ok: false, text: result.error });
-    }
-  };
-
   return (
     <main id="main-content" className="min-h-[calc(100vh-64px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]">
       <CourseHeader
@@ -244,10 +203,7 @@ export function CoursePage() {
         onToggleBookmark={() => toggleBookmark(course.slug)}
         onDownloadSvg={handleDownloadSvg}
         onOpenExport={() => setExportModalOpen(true)}
-        onOpenBackup={() => {
-          setImportNotice(null);
-          setBackupModalOpen(true);
-        }}
+        onOpenBackup={() => setBackupModalOpen(true)}
         onRequestDelete={() => setConfirmDeleteOpen(true)}
         onChangeTab={setActiveTab}
       />
@@ -397,102 +353,10 @@ export function CoursePage() {
       />
 
       {/* Export / Import Progress Modal */}
-      {backupModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop-modal)] p-4"
-          onClick={() => setBackupModalOpen(false)}
-        >
-          <div
-            ref={backupDialogRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Backup and Restore Progress"
-            onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 text-[var(--text-primary)] shadow-xl"
-          >
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-bold text-[var(--text-primary)]">
-                Backup &amp; Restore Progress
-              </h2>
-              <button
-                type="button"
-                onClick={() => setBackupModalOpen(false)}
-                aria-label="Close backup dialog"
-                className="rounded-md bg-[var(--surface-2)] p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <p className="mb-4 text-xs text-[var(--text-secondary)]">
-              Your progress is saved locally in this browser. Export a JSON backup to transfer
-              across devices or keep a semester copy.
-            </p>
-
-            <button
-              type="button"
-              onClick={handleExportJsonFile}
-              className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--cta-bg)] px-3 py-2 text-sm font-medium text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
-            >
-              <Download className="h-4 w-4" />
-              Download Progress JSON
-            </button>
-
-            <div className="border-t border-[var(--border-subtle)] pt-3">
-              <label
-                htmlFor="import-progress-json"
-                className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]"
-              >
-                Restore from JSON
-              </label>
-              <textarea
-                id="import-progress-json"
-                rows={4}
-                value={importText}
-                onChange={(e) => {
-                  setImportText(e.target.value);
-                  setImportNotice(null);
-                }}
-                placeholder='Paste exported JSON here (e.g. {"version":1,...})'
-                className="mb-2 w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] p-2 font-mono text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none"
-              />
-              {importNotice && (
-                <div
-                  role={importNotice.ok ? 'status' : 'alert'}
-                  className={`mb-2 flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-xs ${
-                    importNotice.ok
-                      ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
-                      : 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]'
-                  }`}
-                >
-                  {importNotice.ok ? (
-                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
-                  ) : (
-                    <AlertCircle className="h-3.5 w-3.5 shrink-0" />
-                  )}
-                  {importNotice.text}
-                </div>
-              )}
-              <button
-                type="button"
-                onClick={handleImportSubmit}
-                disabled={!importText.trim()}
-                className="inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--solid-bg)] px-3 py-2 text-sm font-semibold text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)] disabled:opacity-40"
-              >
-                <Upload className="h-4 w-4" />
-                Restore Progress
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <ConfirmDialog
-        open={confirmRestoreOpen}
-        title="Restore progress from JSON?"
-        description="This will overwrite your current saved progress, bookmarks, and assessment scores across all courses."
-        confirmLabel="Restore Progress"
-        onConfirm={handleConfirmRestore}
-        onCancel={() => setConfirmRestoreOpen(false)}
+      <ProgressBackupDialog
+        open={backupModalOpen}
+        onClose={() => setBackupModalOpen(false)}
+        course={{ slug: course.slug, code: course.code, title: course.title }}
       />
 
       <ConfirmDialog
