@@ -285,4 +285,31 @@ describe('CourseTreeCanvas', () => {
     fireEvent.touchEnd(canvasContainer, { touches: [] });
     expect(zoomWrapper.className).toContain('transition-[width,max-width,min-width]');
   });
+
+  it('centers mathematically on the first click of Fit and Reset zoom (100%)', () => {
+    const { container } = render(
+      <CourseTreeCanvas
+        layout={layout}
+        statuses={{}}
+        onSelectLesson={vi.fn()}
+        onSelectChapter={vi.fn()}
+        onQuickToggleDone={vi.fn()}
+        onContextMenuLesson={vi.fn()}
+      />
+    );
+
+    const scrollEl = container.querySelector('.touch-none') as HTMLDivElement;
+    const zoomWrapper = scrollEl.firstElementChild as HTMLDivElement;
+    Object.defineProperty(scrollEl, 'clientWidth', { configurable: true, value: 360 });
+    // Even if offsetWidth is stale (e.g. 0), first click of Fit and Reset zoom centers mathematically
+    Object.defineProperty(zoomWrapper, 'offsetWidth', { configurable: true, value: 0 });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Fit tree to screen' }));
+    expect(zoomWrapper.style.transform).toBe('translate(0px, 0px)');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Reset zoom' }));
+    const expectedMinW = Math.round(Math.min(layout.width, 640));
+    const expectedCenterPanX = -Math.round((expectedMinW - 360) / 2);
+    expect(zoomWrapper.style.transform).toBe(`translate(${expectedCenterPanX}px, 0px)`);
+  });
 });

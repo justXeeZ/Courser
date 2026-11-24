@@ -12,11 +12,11 @@
   - **Surface-1:** Primary cards, `CourseHeader`, `ProgressStrip`, drawers (`DrawerShell`), and modal dialogs. `ProgressStrip` must use a neutral Surface-1 background in dark mode—never a warm/reddish warning tint.
   - **Surface-2:** Elevated/nested headers and rows (`ChecklistView` chapter headers, `EditorStickyBar`, `ChapterEditorCard` headers, and `LessonEditorCard` headers).
   - **Inset controls:** Form inputs (`input`, `select`, `textarea`), filter pill containers, file dropzones, and code blocks use distinct inset backgrounds and high-contrast borders so inputs never blend into Surface-1 cards in dark mode.
-- **Persistent sticky dark `Navbar` exception:** `src/components/Navbar.tsx` stays sticky at the top (`sticky top-0 z-40`) and dark in **both** Light and Dark modes with a Purple (`from-purple-700 to-purple-800`) `+ New Course` CTA; `CatalogPage`, `CourseCard`, `SearchModal`, and all other views adapt to the active theme.
-- **56-token semantic CSS variable palette (`src/index.css`):**
+- **Persistent sticky dark `Navbar` exception:** `src/components/Navbar.tsx` stays sticky at the top (`sticky top-0 z-40`) and dark in **both** Light and Dark modes with a Violet-Purple (`from-violet-600 to-purple-600`) `+ New Course` CTA and `text-violet-400` Bookmark icon; `CatalogPage`, `CourseCard`, `SearchModal`, and all other views adapt to the active theme.
+- **Semantic CSS variable palette (`src/index.css`):**
   - **Light mode:** Warm neutrals (`--surface-canvas: #f7f5f0`, `--surface-1: #fdfcfa`, `--surface-2: #efede8`, `--border-subtle: #e5e1d8`, `--border-strong: #767067`, `--text-muted: #5c564e`).
-  - **Dark mode:** Oxford Blue surfaces (`#0b0f17` / `#121926` / `#1b2436` / `#0d131f`) with warm dark gray muted surfaces (`#2e2b28` / `#383430`).
-  - **Semantic accents:** Purple primary CTAs & Recommended containers (`--cta-bg`, `--accent-purple`, `--recommended-*`), **Amber** chapter tags (`--tag-amber-*`), **Burnt Peach** lesson tags (`--tag-peach-*` anchored on `#E97451` / `#ad3c1a`), Green `Done` / `Passed` (`--status-done-*`), Orange `Warning` / `Flag` / `Not Passed` (`--status-warning-*`), and Red `Danger` (`--status-danger-*`).
+  - **Dark mode:** Oxford Blue surfaces (`#0b0f17` / `#121926` / `#1b2436` / `#0d131f`) paired with cool slate-gray muted tokens (`--surface-warm-muted: #1e293b`, `--border-strong: #64748b`, `--text-muted: #94a3b8`, `--status-skipped-bg: #1e293b`).
+  - **Semantic accents:** Vibrant Violet-Purple primary CTAs, bookmarks, notes left-borders, progress bars (`1%–99%`), & Recommended containers (`--cta-bg`, `--accent-purple`, `--recommended-*`), **Amber** chapter tags (`--tag-amber-*`), **Burnt Peach** lesson tags (`--tag-peach-*` anchored on `#E97451` / `#ad3c1a`), Green `Done` / `Passed` / `100%` (`--status-done-*`), Orange `Warning` / `Flag` / `Not Passed` / `1%–99%` ProgressStrip badge (`--status-warning-*`), and Red `Danger` (`--status-danger-*`).
 - **Editor card stability:**
   - `ChapterEditorCard` and `ChecklistView` chapter headers use a left amber accent border on a neutral Surface-2 bar.
   - `LessonEditorCard` header uses a left burnt-peach accent border (`--tag-peach-border`), keeps identical background and border classes whether collapsed or expanded, and displays a standardized position tag (`Ch X - L Y`).
@@ -27,8 +27,8 @@
 - **Resource kind badges (`RESOURCE_BADGE_STYLES` in `src/lib/theme.ts`):**
   - Keep all 10 `ResourceKind` badges visually distinct in both Light and Dark modes (`document` sky, `course` red, `textbook` teal, `official` blue, `slides` amber, `video` purple, `audio` rose, `lab` emerald, `exam` inverted high-contrast slate, `assignment` indigo).
 - **SVG tree node states (`src/index.css`, `src/lib/theme.ts`, `src/components/CourseTreeCanvas.tsx`):**
-  - Spine chapter nodes and branch sub-lesson nodes use black borders/text with distinct yellow/cream fills.
-  - Status classes override node styling: `done` (muted gray fill + strikethrough), `learning` (soft violet fill + underline), `skipped` (slate gray fill + white strikethrough), and active/prerequisite highlight (blue stroke).
+  - Spine chapter nodes use Amber fills (`--svg-chapter-fill`), branch sub-lesson nodes use Burnt Peach fills (`--svg-lesson-fill`), both keeping crisp black (`#000000`) borders and text, while connectors and junction dots use Violet-Purple (`--svg-edge-color`).
+  - Status classes override node styling: `done` (muted gray fill + strikethrough), `learning` (soft violet fill + underline), `skipped` (slate gray fill + white strikethrough), and active/prerequisite highlight (Violet-Purple stroke).
 
 ## 2. Typography, Math & Icons
 - **Body copy:** System sans-serif stack (`src/index.css`).

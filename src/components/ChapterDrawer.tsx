@@ -358,7 +358,7 @@ export function ChapterDrawer({
         (isLeaf || resources.length > 0) && (
           <div className="mb-6">
             <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-              <Link2 className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+              <Link2 className="h-3.5 w-3.5 shrink-0 text-[var(--accent-purple)]" />
               Chapter Materials &amp; Resources
             </h3>
             <MaterialList
@@ -372,16 +372,16 @@ export function ChapterDrawer({
           </div>
         )
       ) : (
-        <div className="mb-6 rounded-lg border border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 p-4 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436]">
-          <h3 className="mb-2 text-xs font-semibold tracking-wider text-slate-600 uppercase dark:text-slate-300">
+        <div className="mb-6 rounded-lg border border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-purple)] bg-[var(--surface-2)] p-4">
+          <h3 className="mb-2 text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
             Chapter Notes
           </h3>
           {chapter.notes ? (
-            <div className="whitespace-pre-line text-sm leading-relaxed text-slate-800 dark:text-slate-200">
+            <div className="whitespace-pre-line text-sm leading-relaxed text-[var(--text-primary)]">
               {chapter.notes}
             </div>
           ) : (
-            <p className="text-sm text-slate-500 dark:text-slate-400">
+            <p className="text-sm text-[var(--text-muted)]">
               No study notes added for this chapter yet.
             </p>
           )}
@@ -391,8 +391,8 @@ export function ChapterDrawer({
       {/* Sub-lessons List (for chapters with sub-lessons) */}
       {!isLeaf && (
         <div>
-          <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-slate-500 uppercase dark:text-slate-400">
-            <Layers className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+          <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-[var(--text-muted)] uppercase">
+            <Layers className="h-3.5 w-3.5 shrink-0 text-[var(--accent-purple)]" />
             Sub-Lessons ({chapter.lessons.length})
           </h3>
           <ul className="divide-y divide-slate-200 overflow-hidden rounded-lg border border-slate-200 bg-white dark:divide-slate-700/80 dark:border-slate-700/80 dark:bg-[#1b2436]">

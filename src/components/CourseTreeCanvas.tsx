@@ -143,11 +143,16 @@ export function CourseTreeCanvas({
     startZoom: 1,
   });
 
+  const getWrapperWidthForZoom = (targetZoom: number, cw: number) => {
+    const minW = Math.round(Math.min(layout.width, 640) * targetZoom);
+    const maxW = Math.round(layout.width * targetZoom);
+    const pctW = Math.round(cw * targetZoom);
+    return Math.max(minW, Math.min(maxW, pctW));
+  };
+
   const getCenteredPanX = (targetZoom = 1) => {
     const cw = scrollContainerRef.current?.clientWidth ?? 0;
-    const sw =
-      zoomWrapperRef.current?.offsetWidth ||
-      Math.round(Math.min(layout.width, 640) * targetZoom);
+    const sw = getWrapperWidthForZoom(targetZoom, cw);
     if (cw > 0 && sw > cw) {
       return -Math.round((sw - cw) / 2);
     }
@@ -163,10 +168,8 @@ export function CourseTreeCanvas({
   };
 
   useEffect(() => {
-    const isNarrowMobile = typeof window !== 'undefined' && window.innerWidth < 640;
-    const initialZoom = isNarrowMobile ? getFitZoom() : 1;
-    setZoom(initialZoom);
-    setPan({ x: getCenteredPanX(initialZoom), y: 0 });
+    setZoom(1);
+    setPan({ x: getCenteredPanX(1), y: 0 });
   }, [layout.width]);
 
   const clampPan = (rawX: number, rawY: number, targetZoom = zoom) => {
@@ -184,7 +187,7 @@ export function CourseTreeCanvas({
       };
     }
 
-    const sw = content?.offsetWidth || Math.round(layout.width * targetZoom);
+    const sw = content?.offsetWidth || getWrapperWidthForZoom(targetZoom, cw);
     const sh = content?.offsetHeight || Math.round(layout.height * targetZoom);
     const slack = 64;
 
@@ -371,8 +374,16 @@ export function CourseTreeCanvas({
 
   return (
     <div className="relative w-full">
-      {/* Compact zoom controls */}
-      <div className="mb-2 flex items-center justify-end gap-1">
+      {/* Top toolbar: interaction hint on left (lg+) + zoom controls on right */}
+      <div className="mb-2 flex items-center justify-between gap-2">
+        <span className="hidden text-xs text-[var(--text-muted)] lg:inline">
+          Click to study · Right-click or{' '}
+          <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-warm-muted)] px-1 text-[var(--text-secondary)]">
+            Shift+Click
+          </kbd>{' '}
+          to mark
+        </span>
+        <div className="ml-auto flex items-center gap-1">
         <button
           type="button"
           disabled={zoom <= 0.5}
@@ -420,6 +431,7 @@ export function CourseTreeCanvas({
         >
           <ZoomIn className="h-3.5 w-3.5" />
         </button>
+        </div>
       </div>
 
       <div
@@ -461,7 +473,7 @@ export function CourseTreeCanvas({
                 <path
                   key={edge.id}
                   d={edge.d}
-                  stroke={ROADMAP_COLORS.edgeBlue}
+                  stroke="var(--svg-edge-color)"
                   strokeWidth={3.5}
                   strokeDasharray={edge.kind === 'branch' ? '0.8 8' : undefined}
                   strokeLinecap="round"
@@ -550,7 +562,7 @@ export function CourseTreeCanvas({
                       width={node.width}
                       height={node.height}
                       rx={5}
-                      fill={ROADMAP_COLORS.chapterFill}
+                      fill="var(--svg-chapter-fill)"
                       stroke={ROADMAP_COLORS.nodeStroke}
                       strokeWidth={2.7}
                     />
@@ -682,7 +694,7 @@ export function CourseTreeCanvas({
                       width={node.width}
                       height={node.height}
                       rx={5}
-                      fill={ROADMAP_COLORS.lessonFill}
+                      fill="var(--svg-lesson-fill)"
                       stroke={ROADMAP_COLORS.nodeStroke}
                       strokeWidth={2.7}
                     />

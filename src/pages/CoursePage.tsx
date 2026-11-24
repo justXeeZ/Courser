@@ -183,6 +183,11 @@ export function CoursePage() {
     clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
     const styleTag = document.createElementNS('http://www.w3.org/2000/svg', 'style');
     styleTag.textContent = `
+      :root {
+        --svg-chapter-fill: ${ROADMAP_COLORS.chapterFill};
+        --svg-lesson-fill: ${ROADMAP_COLORS.lessonFill};
+        --svg-edge-color: ${ROADMAP_COLORS.edgeBlue};
+      }
       text { font-family: "Balsamiq Sans", ui-sans-serif, system-ui, sans-serif; }
       g.node-done > rect.node-rect { fill: ${ROADMAP_COLORS.statusDoneFill}; }
       g.node-done > text.node-label { fill: ${ROADMAP_COLORS.nodeText}; text-decoration: line-through; }

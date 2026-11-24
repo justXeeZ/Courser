@@ -15,24 +15,24 @@
   --border-subtle: #e5e1d8;
   --border-warm-subtle: #e5e1d8;
   --border-strong: #767067;
-  --border-focus: #7e22ce;
+  --border-focus: #7c3aed;
   --text-primary: #1c1917;
   --text-secondary: #4a453e;
   --text-muted: #5c564e;
   --solid-bg: #1c1917;
   --solid-bg-hover: #292524;
   --solid-text: #ffffff;
-  --cta-bg: #7e22ce;
-  --cta-bg-hover: #6b21a8;
-  --cta-border: #7e22ce;
+  --cta-bg: #7c3aed;
+  --cta-bg-hover: #6d28d9;
+  --cta-border: #7c3aed;
   --cta-text: #ffffff;
-  --accent-purple: #7e22ce;
-  --accent-purple-text: #6b21a8;
-  --accent-purple-soft-bg: #f3e8ff;
-  --recommended-bg: rgba(147, 51, 234, 0.045);
-  --recommended-border: #9333ea;
-  --recommended-accent: #6b21a8;
-  --recommended-label-bg: #f3e8ff;
+  --accent-purple: #7c3aed;
+  --accent-purple-text: #6d28d9;
+  --accent-purple-soft-bg: #f5f3ff;
+  --recommended-bg: rgba(124, 58, 237, 0.055);
+  --recommended-border: #8b5cf6;
+  --recommended-accent: #6d28d9;
+  --recommended-label-bg: #ede9fe;
   --tag-amber-bg: #fde68a;
   --tag-amber-border: #b45309;
   --tag-amber-text: #451a03;
@@ -45,10 +45,15 @@
   --status-done-border: #15803d;
   --status-done-text: #14532d;
   --accent-done: #15803d;
-  --status-learning-bg: #f3e8ff;
-  --status-learning-border: #7e22ce;
-  --status-learning-text: #581c87;
-  --status-learning-icon: #7e22ce;
+  --status-learning-bg: #f5f3ff;
+  --status-learning-border: #7c3aed;
+  --status-learning-text: #5b21b6;
+  --status-learning-icon: #7c3aed;
+  --svg-chapter-fill: #fde68a;
+  --svg-chapter-hover: #fcd34d;
+  --svg-lesson-fill: #fad2c6;
+  --svg-lesson-hover: #f5b5a2;
+  --svg-edge-color: #7c3aed;
   --status-skipped-bg: #efede8;
   --status-skipped-border: #767067;
   --status-skipped-text: #3f3b36;
@@ -70,29 +75,29 @@
   --surface-2: #1b2436;
   --surface-inset: #0d131f;
   --surface-hover: #242f45;
-  --surface-warm-muted: #2e2b28;
-  --surface-warm-hover: #383430;
+  --surface-warm-muted: #1e293b;
+  --surface-warm-hover: #263349;
   --border-subtle: #263248;
-  --border-warm-subtle: #3b3733;
-  --border-strong: #7c766e;
-  --border-focus: #c084fc;
+  --border-warm-subtle: #334155;
+  --border-strong: #64748b;
+  --border-focus: #a78bfa;
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
-  --text-muted: #a6a097;
+  --text-muted: #94a3b8;
   --solid-bg: #e2e8f0;
   --solid-bg-hover: #f8fafc;
   --solid-text: #0f172a;
-  --cta-bg: #9333ea;
-  --cta-bg-hover: #7e22ce;
-  --cta-border: #a855f7;
+  --cta-bg: #7c3aed;
+  --cta-bg-hover: #6d28d9;
+  --cta-border: #8b5cf6;
   --cta-text: #ffffff;
-  --accent-purple: #c084fc;
-  --accent-purple-text: #d8b4fe;
-  --accent-purple-soft-bg: rgba(168, 85, 247, 0.16);
-  --recommended-bg: rgba(168, 85, 247, 0.1);
-  --recommended-border: rgba(192, 132, 252, 0.75);
-  --recommended-accent: #e9d5ff;
-  --recommended-label-bg: rgba(147, 51, 234, 0.28);
+  --accent-purple: #a78bfa;
+  --accent-purple-text: #c4b5fd;
+  --accent-purple-soft-bg: rgba(139, 92, 246, 0.18);
+  --recommended-bg: rgba(139, 92, 246, 0.12);
+  --recommended-border: rgba(167, 139, 250, 0.8);
+  --recommended-accent: #ddd6fe;
+  --recommended-label-bg: rgba(124, 58, 237, 0.3);
   --tag-amber-bg: rgba(251, 191, 36, 0.16);
   --tag-amber-border: rgba(251, 191, 36, 0.55);
   --tag-amber-text: #fcd34d;
@@ -105,13 +110,18 @@
   --status-done-border: #22c55e;
   --status-done-text: #86efac;
   --accent-done: #4ade80;
-  --status-learning-bg: rgba(147, 51, 234, 0.22);
-  --status-learning-border: #a855f7;
-  --status-learning-text: #e9d5ff;
-  --status-learning-icon: #c084fc;
-  --status-skipped-bg: #2e2b28;
-  --status-skipped-border: #7c766e;
-  --status-skipped-text: #e7e5e4;
+  --status-learning-bg: rgba(139, 92, 246, 0.22);
+  --status-learning-border: #a78bfa;
+  --status-learning-text: #ddd6fe;
+  --status-learning-icon: #c4b5fd;
+  --status-skipped-bg: #1e293b;
+  --status-skipped-border: #64748b;
+  --status-skipped-text: #cbd5e1;
+  --svg-chapter-fill: #f5cf6b;
+  --svg-chapter-hover: #eab308;
+  --svg-lesson-fill: #f2a891;
+  --svg-lesson-hover: #E97451;
+  --svg-edge-color: #a78bfa;
   --status-danger-bg: rgba(127, 29, 29, 0.42);
   --status-danger-border: #ef4444;
   --status-danger-text: #fca5a5;
@@ -159,7 +169,7 @@
 }
 
 .roadmap-svg g[data-node-kind="chapter"]:hover > rect.node-rect {
-  fill: #d6d700;
+  fill: var(--svg-chapter-hover);
 }
 
 .roadmap-svg g[data-node-kind="lesson"] {
@@ -167,7 +177,7 @@
 }
 
 .roadmap-svg g[data-node-kind="lesson"]:hover > rect.node-rect {
-  fill: #f3c950;
+  fill: var(--svg-lesson-hover);
 }
 
 .roadmap-svg g.node-done > rect.node-rect {
@@ -199,7 +209,7 @@
 
 .roadmap-svg g.node-highlighted > rect.node-rect,
 .dark .roadmap-svg g.node-highlighted > rect.node-rect {
-  stroke: #2b78e4 !important;
+  stroke: var(--svg-edge-color) !important;
   stroke-width: 3.4 !important;
 }
 

@@ -197,15 +197,17 @@ describe('CatalogPage & CourseCard', () => {
 
     const codeBadge = screen.getByText('GUIDE101');
     expect(codeBadge).toHaveClass(
-      'border-[var(--tag-amber-border)]',
-      'bg-[var(--tag-amber-bg)]',
-      'text-[var(--tag-amber-text)]'
+      'bg-[var(--solid-bg)]',
+      'text-[var(--solid-text)]'
     );
 
     const guideCardLink = codeBadge.closest('a') as HTMLElement;
-    expect(guideCardLink).toHaveClass('bg-[var(--surface-1)]', 'border-[var(--border-subtle)]');
+    expect(guideCardLink.parentElement).toHaveClass(
+      'bg-[var(--surface-1)]',
+      'border-[var(--border-subtle)]'
+    );
     const pctText = within(guideCardLink).getByText(/%$/);
-    expect(pctText).toHaveClass('text-[var(--accent-done)]');
+    expect(pctText).toHaveClass('text-[var(--accent-purple-text)]');
   });
 
   it('clears saved progress and bookmarks (and Navbar badge) when deleting a course from CatalogPage', () => {

@@ -42,7 +42,7 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
               aria-label={`Bookmarked (${bookmarkCount})`}
               className="inline-flex shrink-0 items-center gap-1.5 transition-colors hover:text-white"
             >
-              <Bookmark className="h-3.5 w-3.5 text-yellow-400" />
+              <Bookmark className="h-3.5 w-3.5 text-violet-400" />
               <span className="hidden sm:inline">Bookmarked</span>
               {bookmarkCount > 0 && (
                 <span className="rounded-full bg-slate-800 px-1.5 py-0.5 font-mono text-xs text-slate-200">
@@ -87,7 +87,7 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
             to="/editor/new"
             aria-label="New Course"
             title="New Course"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-purple-700 to-purple-800 p-0 text-xs font-medium text-white transition-opacity hover:opacity-90 sm:w-auto sm:px-3.5"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-violet-600 to-purple-600 p-0 text-xs font-medium text-white transition-opacity hover:opacity-90 sm:w-auto sm:px-3.5"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">New Course</span>

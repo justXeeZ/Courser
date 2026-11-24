@@ -62,10 +62,10 @@ export function CourseHeader({
             {/* Extra action controls: horizontally reveal to the left of mobile toggle */}
             <div
               id="course-header-extra-actions"
-              className={`flex items-center justify-end gap-1 overflow-hidden transition-all duration-300 ease-out sm:pointer-events-auto sm:visible sm:max-w-none sm:gap-1.5 sm:overflow-visible sm:opacity-100 ${
+              className={`flex items-center justify-start gap-1 transition-all duration-300 ease-out sm:pointer-events-auto sm:visible sm:max-w-none sm:justify-end sm:gap-1.5 sm:overflow-visible sm:opacity-100 ${
                 actionsExpanded
-                  ? 'pointer-events-auto visible max-w-[22rem] opacity-100'
-                  : 'pointer-events-none invisible max-w-0 opacity-0'
+                  ? 'pointer-events-auto visible max-w-[calc(100vw-8.5rem)] overflow-x-auto opacity-100'
+                  : 'pointer-events-none invisible max-w-0 overflow-hidden opacity-0'
               }`}
             >
               <Link
@@ -75,7 +75,6 @@ export function CourseHeader({
                 className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
               >
                 <Pencil className="h-3.5 w-3.5 shrink-0" />
-                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Edit</span>}
                 <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Edit Course</span>
               </Link>
 
@@ -87,7 +86,6 @@ export function CourseHeader({
                 className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
               >
                 <FileArchive className="h-3.5 w-3.5 shrink-0" />
-                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Export</span>}
                 <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Export Course</span>
               </button>
 
@@ -99,7 +97,6 @@ export function CourseHeader({
                 className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
               >
                 <Save className="h-3.5 w-3.5 shrink-0" />
-                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Backup</span>}
                 <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Backup Progress</span>
               </button>
 
@@ -111,7 +108,6 @@ export function CourseHeader({
                 className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--cta-border)] bg-[var(--cta-bg)] px-2 text-[var(--cta-text)] transition-colors hover:bg-[var(--cta-bg-hover)]"
               >
                 <Download className="h-3.5 w-3.5 shrink-0" />
-                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">SVG</span>}
                 <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Download SVG</span>
               </button>
 
@@ -123,7 +119,6 @@ export function CourseHeader({
                 className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--status-danger-border)] bg-[var(--surface-1)] px-2 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
                 <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Delete</span>}
                 <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Delete Course</span>
               </button>
             </div>
@@ -153,7 +148,7 @@ export function CourseHeader({
               aria-label={bookmarked ? 'Remove from bookmarks' : 'Bookmark course'}
               className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
                 bookmarked
-                  ? 'border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] text-[var(--accent-amber)]'
+                  ? 'border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)] text-[var(--accent-purple)]'
                   : 'border-[var(--border-strong)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]'
               }`}
             >

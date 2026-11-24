@@ -100,7 +100,7 @@ describe('CourseHeader', () => {
     fireEvent.click(toggleBtn);
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
     expect(toggleBtn).toHaveAttribute('aria-label', 'Collapse course actions');
-    expect(tray).toHaveClass('max-w-[22rem]', 'visible');
+    expect(tray).toHaveClass('max-w-[calc(100vw-8.5rem)]', 'visible', 'overflow-x-auto');
 
     const checklistTab = screen.getByRole('tab', { name: /Syllabus Checklist/i });
     expect(checklistTab).toHaveAttribute('aria-selected', 'false');

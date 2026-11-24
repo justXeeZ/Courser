@@ -321,7 +321,7 @@ export function LessonDrawer({
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-lg border border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-amber)] bg-[var(--surface-2)] p-4">
+          <div className="rounded-lg border border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-purple)] bg-[var(--surface-2)] p-4">
             <h3 className="mb-2 text-xs font-semibold tracking-wider text-[var(--text-secondary)] uppercase">
               Key Study Notes
             </h3>

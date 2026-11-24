@@ -6,6 +6,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-24
+
 ### Added
 - Pre-release accessibility & keyboard navigation: shared `useDialogFocus` (`Tab` trap, focus restore, topmost `Escape`), `Skip to main content` link, `ArrowUp`/`ArrowDown`/`Enter` navigation in `SearchModal`, `Shift+Enter`/`Shift+Space` (toggle Done) and `M`/`Shift+F10` (quick status menu) on SVG tree nodes, mobile `"Fit"` zoom preset, and `< sm` initial fit-to-width.
 - `ErrorBoundary` fallback screen, `React.lazy` route code-splitting, and Vite vendor `manualChunks`.
@@ -15,7 +17,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Rebranded user-facing UI to **Courser** with bold **`c.`** monogram, while keeping storage keys, IndexedDB names, and export format identifiers unchanged.
-- Standardized the 56-token semantic CSS variable palette in `src/index.css`: warm Light neutrals, Oxford Blue Dark surfaces, Purple primary & Navbar `+ New Course` CTAs, **Burnt Peach** (`--tag-peach-*`) lesson tags, unified `1.5px dashed` Recommended containers, and WCAG 2.1 AA contrast fixes across `RESOURCE_BADGE_STYLES`, `Navbar`, and `ROADMAP_COLORS`.
+- Standardized the semantic CSS variable palette in `src/index.css`: warm Light neutrals, Oxford Blue Dark surfaces with cool slate-gray muted tokens, brighter Violet-Purple primary/Navbar/bookmark/notes/progress accents, **Burnt Peach** (`--tag-peach-*`) lesson tags, **Amber** chapter SVG nodes + **Burnt Peach** lesson SVG nodes with crisp black borders and Violet-Purple connectors, unified `1.5px dashed` Recommended containers, borderless ghost delete icon on `CourseCard`, neutral `course.code` badge on `CourseCard`, and WCAG 2.1 AA contrast fixes across `RESOURCE_BADGE_STYLES`, `Navbar`, and `ROADMAP_COLORS`.
+- Updated `ProgressStrip` to show `{percentDone}% Done` (neutral at `0%`, orange `1%–99%`, green at `100%`), adaptively keep desktop on a single line, and compact mobile into 2 rows; moved the `"Click to study · Right-click or Shift+Click to mark"` hint to the `CourseTreeCanvas` toolbar; redesigned `CourseCard` on mobile with a dedicated bottom action bar; aligned `ChapterDrawer` `Link2` icon to `--accent-purple`; updated `CourseHeader` mobile expanded actions to scrollable icon-only controls; and fixed `CourseTreeCanvas` to default to `100%` centered zoom and center mathematically on the first click of `Fit` or `100%`.
 - Redesigned `AssessmentRunnerModal`: added Pre-Start Overview screen, 2-column Active view with color-coded question navigator, `A/B/C` option keycaps, hints hidden by default behind a toggle directly under the question header, icon-only Flag button, Pre-Submit Review screen, Results filter pills (`All`, `Incorrect`, `Unanswered`, `Flagged`), and `ConfirmDialog` guards for unanswered submissions and mid-attempt exit.
 - Standardized drawer tabs and material counts to `"Materials"` / `"Notes"` and `"materials"` counts (`"Overview"` kept for multi-lesson chapters without chapter materials), made `ChecklistView` chapters collapsible (expanded by default), expanded Chapter 1 & starter Lesson 1 by default on `/editor/new`, and capped in-app text file previews at 1 MB / 10,000 lines with a Download fallback.
 
@@ -23,6 +26,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Course edit mode validation: enforced `>= 2` char min-length, slug regex, duplicate-slug checks, `To >= From` week range validation, and isolated store errors from live validation.
 - Security & viewer hardening: restricted `LessonResourceSchema.url` to `http(s)://`, dropped `allow-same-origin` from external iframe `sandbox`, added `referrerPolicy="no-referrer"`, routed `http://` links to the new-tab fallback card, and added a 3-second loading fallback prompt in `MaterialViewerModal`.
 - Schema strictness: removed `.catch('Preparatory')` from strict `CourseTreeSchema.department` (default `'Preparatory'` preserved only in lenient import pre-pass).
+
+## [0.9.0]
 
 ### Added
 - Course edit mode: added Move material up and Move material down arrow buttons on material rows to reorder materials with persisted order.
