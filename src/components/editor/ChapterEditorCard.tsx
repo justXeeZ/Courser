@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { LessonEditorCard } from '@/components/editor/LessonEditorCard';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
@@ -92,6 +92,9 @@ export function ChapterEditorCard({
   const [chapterHeaderHeight, setChapterHeaderHeight] = useState<number>(48);
   const [isStuck, setIsStuck] = useState<boolean>(false);
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
+  const descriptionId = useId();
+  const notesId = useId();
 
   useEffect(() => {
     const el = headerRef.current;
@@ -178,7 +181,7 @@ export function ChapterEditorCard({
           }
           onToggleChapterExpand?.();
         }}
-        className={`sticky top-[var(--editor-chapter-sticky-top,120px)] z-20 flex min-h-12 cursor-pointer flex-wrap items-center justify-between gap-2 border-slate-200 border-l-4 border-l-amber-400 bg-slate-50 px-4 py-2 dark:border-slate-700/80 dark:border-l-amber-400 dark:bg-[#1b2436] ${headerCornerClass}`}
+        className={`sticky top-[var(--editor-chapter-sticky-top,120px)] z-20 flex min-h-12 cursor-pointer flex-wrap items-center justify-between gap-2 border-[var(--border-subtle)] border-l-4 border-l-[var(--accent-amber)] bg-[var(--surface-2)] px-4 py-2 ${headerCornerClass}`}
       >
         <button
           type="button"
@@ -192,18 +195,18 @@ export function ChapterEditorCard({
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+            <ChevronUp className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
           ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
           )}
           <span className="shrink-0 rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-2 py-0.5 font-mono text-xs font-bold text-[var(--tag-amber-text)]">
             {formatChapterPositionTag(chapterOrder)}
           </span>
-          <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
             {chapter.title || 'Untitled Chapter'}
           </span>
           <span
-            className="hidden rounded border border-slate-200 bg-white px-2 py-0.5 font-mono text-[11px] text-slate-700 sm:inline dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-300"
+            className="hidden rounded border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-2 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] sm:inline"
             title="Auto-derived chapter ID"
           >
             {derivedChapterId}
@@ -218,7 +221,7 @@ export function ChapterEditorCard({
               data-testid="chapter-resource-count-tag"
               className="shrink-0 rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-amber-text)]"
             >
-              {chapterResourceCount} {chapterResourceCount === 1 ? 'resource' : 'resources'}
+              {chapterResourceCount} {chapterResourceCount === 1 ? 'material' : 'materials'}
             </span>
           )}
         </button>
@@ -230,7 +233,7 @@ export function ChapterEditorCard({
             onClick={() => onMoveChapter(-1)}
             title="Move chapter up"
             aria-label="Move chapter up"
-            className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
           >
             <ArrowUp className="h-3.5 w-3.5" />
           </button>
@@ -240,16 +243,17 @@ export function ChapterEditorCard({
             onClick={() => onMoveChapter(1)}
             title="Move chapter down"
             aria-label="Move chapter down"
-            className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
           >
             <ArrowDown className="h-3.5 w-3.5" />
           </button>
           <button
             type="button"
+            disabled={totalChapters <= 1}
             onClick={onRemoveChapter}
-            title="Delete chapter"
+            title={totalChapters <= 1 ? 'A course must have at least one chapter' : 'Delete chapter'}
             aria-label="Delete chapter"
-            className="rounded border border-red-200 bg-white p-1 text-red-600 hover:bg-red-50 dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
+            className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-30"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -261,10 +265,11 @@ export function ChapterEditorCard({
       <div className="space-y-4 rounded-b-lg p-4">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-3">
           <div className="sm:col-span-2">
-            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor={titleId} className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
               Chapter Title *
             </label>
             <input
+              id={titleId}
               type="text"
               value={chapter.title}
               onChange={(e) =>
@@ -331,7 +336,7 @@ export function ChapterEditorCard({
               <div className="min-w-0 flex-1">
                 <input
                   type="number"
-                  min={1}
+                  min={weekFrom ? Number(weekFrom) : 1}
                   step={1}
                   inputMode="numeric"
                   value={weekTo}
@@ -350,17 +355,26 @@ export function ChapterEditorCard({
                   }}
                   placeholder="To"
                   aria-label={`Chapter ${chapterOrder} week to`}
-                  className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                  aria-invalid={Boolean(
+                    weekFrom !== '' && weekTo !== '' && Number(weekTo) < Number(weekFrom)
+                  )}
+                  className="w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 />
               </div>
             </div>
+            {weekFrom !== '' && weekTo !== '' && Number(weekTo) < Number(weekFrom) && (
+              <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
+                To week must be greater than or equal to From week.
+              </p>
+            )}
           </div>
 
           <div className="sm:col-span-3">
-            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor={descriptionId} className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
               Description *
             </label>
             <input
+              id={descriptionId}
               type="text"
               value={chapter.description}
               onChange={(e) =>
@@ -385,10 +399,11 @@ export function ChapterEditorCard({
           </div>
 
           <div className="sm:col-span-3">
-            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor={notesId} className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
               Chapter Notes (optional)
             </label>
             <textarea
+              id={notesId}
               rows={2}
               value={chapter.notes ?? ''}
               onChange={(e) =>
@@ -427,10 +442,10 @@ export function ChapterEditorCard({
         />
 
         {/* Sub-Lessons List */}
-        <div className="border-t border-slate-200 pt-3 dark:border-slate-700/80">
+        <div className="border-t border-[var(--border-subtle)] pt-3">
           {isLeafChapter ? (
-            <div className="dashed-box rounded-md border-amber-300 bg-amber-50 px-3 py-2.5 text-xs text-amber-950 dark:border-amber-500/40 dark:bg-amber-400/10 dark:text-amber-200">
-              No sub-lessons are added yet
+            <div className="rounded-md border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-3 py-2.5 text-xs text-[var(--status-warning-text)]">
+              No sub-lessons added yet — chapters with 0 sub-lessons appear as direct milestones on the course tree.
             </div>
           ) : (
             <div className="space-y-2.5">
@@ -464,7 +479,7 @@ export function ChapterEditorCard({
             <button
               type="button"
               onClick={onAddLesson}
-              className="dashed-box inline-flex items-center gap-1.5 rounded-md border-slate-300 bg-slate-50/70 px-3 py-1.5 text-xs font-medium text-slate-700 transition-colors hover:border-slate-400 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436]/60 dark:text-slate-200 dark:hover:border-slate-500 dark:hover:bg-[#1b2436]"
+              className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Sub-Lesson to Chapter {chapterOrder}

@@ -9,7 +9,7 @@ export const guide101QuickStart: CourseTree = {
   semester: 1,
   credits: 1,
   description:
-    'Course B — Step-by-step tutorial teaching you how to browse the catalog, pan and zoom interactive course trees, track your progress, author courses with From → To week ranges and collapsible editor cards, attach materials, and back up your data.',
+    'Step-by-step tutorial teaching you how to browse the catalog, pan and zoom interactive course trees, track your progress, author courses with From → To week ranges and collapsible editor cards, attach materials, and back up your data.',
   chapters: [
     {
       id: 'guide101-ch1-navigating-the-catalog',
@@ -203,7 +203,7 @@ export const guide101QuickStart: CourseTree = {
           summary:
             'Click + New Course in the navbar to open the course editor. Required fields start with a sensible default and a placeholder (shown if cleared), while optional fields (Year, Semester, Credits, From → To week range, and Notes) start completely empty with helpful placeholders. Chapter and lesson IDs are automatically derived from the course code, compact position tag (Ch2 / L1), and title.',
           notes:
-            'Because progress is remapped using an oldId-to-newId map on save, renaming a tracked lesson or changing a course code never orphans your Done/Learning/Skipped history or saved quiz scores.\nIf a required field is left blank, clicking Save highlights the invalid fields in red and lists them in the sticky bottom bar.',
+            'Because progress is remapped using an oldId-to-newId map on save, renaming a tracked lesson or changing a course code never orphans your Done/Learning/Skipped history or saved quiz scores.\nIf a required field is left blank, clicking Save highlights the invalid fields in red and shows the first validation issue in the sticky top bar.',
           side: 'left',
           resources: [
             {
@@ -217,7 +217,7 @@ export const guide101QuickStart: CourseTree = {
           id: 'guide101-ch4-l2-chapters-lessons-direct-milestones',
           title: 'Chapters, Lessons & Direct Milestones',
           summary:
-            'Each chapter includes optional positive-integer From → To week fields: leave both empty for no label, fill From only (or equal From and To) for Week 1, or set a span for Week 1-2 (the To input stays disabled until From has a value). Chapters and sky-blue-accented sub-lesson cards can be collapsed individually or all at once via Collapse all.',
+            'Each chapter includes optional positive-integer From → To week fields: leave both empty for no label, fill From only (or equal From and To) for Week 1, or set a span for Week 1-2 (the To input stays disabled until From has a value). Chapters and burnt-peach-accented sub-lesson cards can be collapsed individually or all at once via Collapse all.',
           notes:
             'Existing chapters and lessons start collapsed when loading the editor so you can scan or reorder large courses effortlessly, while clicking Add Chapter or Add Sub-Lesson expands the new card immediately.\nChapters with 0 sub-lessons act as direct milestones on the spine for midterms, capstones, or final exams.',
           side: 'right',

@@ -16,7 +16,11 @@
   - Standardized `Ch X - L Y` position badges and `${prefix}-ch${chapterOrder}-l${lessonOrder}-${slug}` lesson IDs across editor, tree, drawers, and URLs.
   - Direct sub-lesson completion toggling inside `ChapterDrawer`, conditional `Notes` tab visibility, removal of redundant schedule tags, `'audio'` (`Audio`) material kind with centered viewer embeds, and `'exam'`/`'assignment'`-only `Interactive` material mode tab.
 
+- **Milestone 5 (0.8.0 & Pre-Release Hardening — Courser):**
+  - Rebranded UI to **Courser** (`c.`) with MIT `LICENSE`, root `README.md`, GitHub Pages SPA routing (`base: '/Courser/'`, `public/404.html`), `ErrorBoundary`, `React.lazy` route splitting, and Vite `manualChunks`.
+  - Standardized 56 semantic CSS tokens in `src/index.css` (warm Light neutrals, Oxford Blue Dark surfaces, Purple primary/Navbar CTAs, Burnt Peach lesson tags `--tag-peach-*`, Amber chapter tags `--tag-amber-*`, WCAG 2.1 AA badge contrast, and `ROADMAP_COLORS` SVG export sync).
+  - Redesigned `AssessmentRunnerModal` (Pre-Start Overview, 2-column Active view with icon-only Flag and hidden-by-default Hint under question header, Pre-Submit Review, Results filter pills, and mid-attempt/unanswered `ConfirmDialog` guards), made `ChecklistView` chapters collapsible, and standardized `ChX / LY` tags & `"Materials"`/`"Notes"` copy.
+  - Hardened data integrity, security, and accessibility (`useDialogFocus` across all modals/drawers, corrupt `localStorage` backup/recovery, `QuotaExceededError` alerts, `http(s)://` URL validation & sandboxed iframe, `To >= From` week validation, `beforeunload`/router unsaved-changes guard, and ESLint setup).
+
 ## Planned Future Work
-- **Brand Identity & Naming Update:** Pick a final product name and monogram by updating `src/config/brand.ts` (`BRAND`) and `index.html` (`<title>`, inline SVG favicon) while leaving `localStorage` keys, IndexedDB identifiers, and `.course.json` / `.assessment.json` format identifiers unchanged.
 - **Multi-User Backend Deployment (Future):** Implement remote API-backed versions of `PremadeRoadmapRepository`, `UserRoadmapRepository`, `ProgressRepository`, and `MaterialFileRepository` (`src/lib/storage/types.ts`) so premade roadmaps are author-managed while authenticated users maintain custom roadmaps and per-user progress.
-- **Open Consistency & Polish Decisions:** Resolve the pending items tracked in [`ISSUES.md`](./ISSUES.md) as decided by the user.

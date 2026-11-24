@@ -1,10 +1,28 @@
 # Changelog
 
-All notable user-visible changes to **College Course Trees** are documented in this file.
+All notable user-visible changes to **Courser** (formerly College Course Trees) are documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions prior to a formal release are grouped chronologically from the project's git history.
 
 ## [Unreleased]
+
+### Added
+- Pre-release accessibility & keyboard navigation: shared `useDialogFocus` (`Tab` trap, focus restore, topmost `Escape`), `Skip to main content` link, `ArrowUp`/`ArrowDown`/`Enter` navigation in `SearchModal`, `Shift+Enter`/`Shift+Space` (toggle Done) and `M`/`Shift+F10` (quick status menu) on SVG tree nodes, mobile `"Fit"` zoom preset, and `< sm` initial fit-to-width.
+- `ErrorBoundary` fallback screen, `React.lazy` route code-splitting, and Vite vendor `manualChunks`.
+- GitHub Pages deployment support (`base: '/Courser/'`, `public/404.html`, SPA path restoration in `index.html`), root `README.md`, `LICENSE` (MIT), and `npm run lint` (ESLint).
+- Storage resilience: corrupt `localStorage` catalog backup and per-course recovery, `QuotaExceededError` / persistence alert banners, multi-tab IndexedDB GC editor lease guard, and 50 MB JSON import size guard.
+- Unsaved-changes guards (`beforeunload`, router navigation, and `SearchModal` navigation) in `CourseEditorPage`, plus `ConfirmDialog` prompts before deleting populated chapters/lessons, overwriting populated assessment/file rows on mode switch, or restoring progress.
+
+### Changed
+- Rebranded user-facing UI to **Courser** with bold **`c.`** monogram, while keeping storage keys, IndexedDB names, and export format identifiers unchanged.
+- Standardized the 56-token semantic CSS variable palette in `src/index.css`: warm Light neutrals, Oxford Blue Dark surfaces, Purple primary & Navbar `+ New Course` CTAs, **Burnt Peach** (`--tag-peach-*`) lesson tags, unified `1.5px dashed` Recommended containers, and WCAG 2.1 AA contrast fixes across `RESOURCE_BADGE_STYLES`, `Navbar`, and `ROADMAP_COLORS`.
+- Redesigned `AssessmentRunnerModal`: added Pre-Start Overview screen, 2-column Active view with color-coded question navigator, `A/B/C` option keycaps, hints hidden by default behind a toggle directly under the question header, icon-only Flag button, Pre-Submit Review screen, Results filter pills (`All`, `Incorrect`, `Unanswered`, `Flagged`), and `ConfirmDialog` guards for unanswered submissions and mid-attempt exit.
+- Standardized drawer tabs and material counts to `"Materials"` / `"Notes"` and `"materials"` counts (`"Overview"` kept for multi-lesson chapters without chapter materials), made `ChecklistView` chapters collapsible (expanded by default), expanded Chapter 1 & starter Lesson 1 by default on `/editor/new`, and capped in-app text file previews at 1 MB / 10,000 lines with a Download fallback.
+
+### Fixed
+- Course edit mode validation: enforced `>= 2` char min-length, slug regex, duplicate-slug checks, `To >= From` week range validation, and isolated store errors from live validation.
+- Security & viewer hardening: restricted `LessonResourceSchema.url` to `http(s)://`, dropped `allow-same-origin` from external iframe `sandbox`, added `referrerPolicy="no-referrer"`, routed `http://` links to the new-tab fallback card, and added a 3-second loading fallback prompt in `MaterialViewerModal`.
+- Schema strictness: removed `.catch('Preparatory')` from strict `CourseTreeSchema.department` (default `'Preparatory'` preserved only in lenient import pre-pass).
 
 ### Added
 - Course edit mode: added Move material up and Move material down arrow buttons on material rows to reorder materials with persisted order.

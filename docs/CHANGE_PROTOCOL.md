@@ -14,8 +14,8 @@ Match your verification effort to the scope of the change to avoid burning token
 Only when changing data contracts or user-facing features, grep for the changed key/kind and update the affected layers:
 1. **Schemas & libs:** `src/types/course.ts` and affected modules in `src/lib/` or `src/config/brand.ts`.
 2. **Stores & UI:** Affected files in `src/store/`, `src/components/`, `src/pages/` (keep storage keys and format IDs decoupled from `BRAND`).
-3. **Seeds, guides & docs (only if affected):** `src/data/`, `src/pages/DataFormatsPage.tsx`, `CONTRIBUTING_COURSES.md`, and the matching file in `docs/`, `PLAN.md`, or `ISSUES.md`.
-4. **Verify:** Run `npm run typecheck`, `npm run test`, and `npm run build`.
+3. **Seeds, guides & docs (only if affected):** `src/data/`, `src/pages/DataFormatsPage.tsx`, [`CONTRIBUTING_COURSES.md`](./CONTRIBUTING_COURSES.md), and the matching file in `docs/` ([`DESIGN.md`](./DESIGN.md), [`DATA_MODEL.md`](./DATA_MODEL.md), [`PLAN.md`](./PLAN.md), or [`ISSUES.md`](./ISSUES.md)).
+4. **Verify:** Run `npm run typecheck`, `npm run lint`, `npm run test`, and `npm run build`.
 
 ## 4. Handoff & User Testing
 - Finish with one concise line listing the files/areas touched (no exhaustive reference dumps).

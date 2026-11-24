@@ -10,7 +10,7 @@ Inspect schema and interface definitions in code rather than duplicating field l
 ## 2. Schema Rules & Domain Invariants
 - **Course & structured term fields (`CourseTreeSchema` in `src/types/course.ts`):**
   - `slug`: lowercase kebab-case (`/^[a-z0-9-]+$/`), unique across the catalog.
-  - `department`: trimmed string (min 2 chars), defaulting/catching to `'Preparatory'`. `getCoursesByDepartment` (`src/data/courses/index.ts`) orders `'Preparatory'` first, then alphabetical departments, sorting courses within each department by term then `code`.
+  - `department`: trimmed string (min 2 chars), strictly required on `CourseTreeSchema` (no `.catch()` fallback). Lenient import pre-pass (`applyLenientPrepass` in `src/lib/courseExchange.ts`) defaults omitted or blank values to `'Preparatory'`. `getCoursesByDepartment` (`src/data/courses/index.ts`) orders `'Preparatory'` first, then alphabetical departments, sorting courses within each department by term then `code`.
   - Term fields: optional `year` (integer `1..10`) and optional `semester` (`1 | 2`), formatted via `formatCourseTerm(course)` (`"Year N · 1st Semester"`, `"Year N"`, `"2nd Semester"`, or `null`).
 - **Shared ID namespace, standardized position tags & deterministic rekeying (`src/lib/courseIds.ts`):**
   - `deriveCoursePrefix(course.code)` extracts the lowercase alphanumeric prefix.
@@ -33,7 +33,7 @@ Inspect schema and interface definitions in code rather than duplicating field l
   - `collectReferencedFileIds(courses)` scans `chapter.resources[].file?.id`, `lesson.resources[].file?.id`, and `resource.assessment?.questions[].header.imageFile?.id`.
   - `garbageCollectFiles` runs once on initial mount in `src/App.tsx`, skipped on `/editor*` and `*/edit` routes so unsaved editor uploads are preserved.
 - **Interactive assessments, LaTeX math & score persistence (`src/types/course.ts`, `src/lib/mathRender.ts`, `src/lib/storage/types.ts`):**
-  - `AssessmentSchema`: `mode` (`'exam' | 'assignment'`), optional `instructions`, `timeLimitMinutes`, `passingScorePercent`, `shuffleQuestions`, and non-empty `questions` with unique IDs across 4 types (`'mcq'`, `'multi-select'`, `'true-false'`, `'short-answer'`).
+  - `AssessmentSchema`: `mode` (`'exam' | 'assignment'`), optional `instructions`, `timeLimitMinutes` (int > 0), `passingScorePercent` (number 0..100, defaults to 70% if omitted), `shuffleQuestions`, and non-empty `questions` with unique IDs across 4 types (`'mcq'`, `'multi-select'`, `'true-false'`, `'short-answer'`).
   - `AssessmentQuestionHeaderSchema`: requires at least one of non-empty `text`, `imageUrl` (`http://` or `https://`), or `imageFile` (`StoredFileRef`).
   - `mathRender.ts` & `RichMathText.tsx`: render prose as React text nodes (no raw HTML/XSS) and inline/display math via KaTeX (`throwOnError: false`, ignoring escaped `\$` and currency like `$50`).
   - `ProgressState.assessmentScores`: maps `courseSlug -> getAssessmentScoreKey(itemId, resourceTitle) -> AssessmentScoreRecord` (`bestScorePercent`, `latestScorePercent`, `attempts`, `passed`, `updatedAt`).

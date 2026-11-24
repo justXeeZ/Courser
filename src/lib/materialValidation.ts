@@ -184,3 +184,15 @@ export function formatBytes(bytes: number): string {
   const formatted = value.toFixed(1).replace(/\.0$/, '');
   return `${formatted} ${units[unitIndex]}`;
 }
+
+export function isSafeHttpUrl(raw?: string): raw is string {
+  if (!raw) return false;
+  const trimmed = raw.trim();
+  if (!/^https?:\/\//i.test(trimmed)) return false;
+  try {
+    const parsed = new URL(trimmed);
+    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+  } catch {
+    return false;
+  }
+}

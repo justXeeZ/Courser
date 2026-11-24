@@ -35,7 +35,7 @@ describe('ResourceBadge & MaterialList', () => {
 
     expect(screen.getByText('Document')).toHaveClass('bg-sky-200');
     expect(screen.getByText('Course')).toHaveClass('bg-red-600');
-    expect(screen.getByText('Textbook')).toHaveClass('bg-teal-600');
+    expect(screen.getByText('Textbook')).toHaveClass('bg-teal-700');
     expect(screen.getByText('Official')).toHaveClass('bg-blue-600');
     expect(screen.getByText('Slides')).toHaveClass('bg-amber-300');
     expect(screen.getByText('Video')).toHaveClass('bg-purple-300');
@@ -227,7 +227,7 @@ describe('ResourceBadge & MaterialList', () => {
     expect(within(examBtn).getAllByText('Exam')).toHaveLength(2);
     expect(within(examBtn).getByText('2 questions')).toBeInTheDocument();
     expect(within(examBtn).getByText('45 min')).toBeInTheDocument();
-    expect(within(examBtn).getByText('Best: 92%')).toHaveClass('bg-emerald-100');
+    expect(within(examBtn).getByText('Best: 92%')).toHaveClass('bg-[var(--status-done-bg)]');
     fireEvent.click(examBtn);
     expect(onOpenAssessment).toHaveBeenCalledWith(resources[0]);
 
@@ -266,6 +266,6 @@ describe('ResourceBadge & MaterialList', () => {
       </ProgressProvider>
     );
 
-    expect(screen.getByText('Best: 55%')).toHaveClass('bg-amber-100');
+    expect(screen.getByText('Best: 55%')).toHaveClass('bg-[var(--status-warning-bg)]');
   });
 });

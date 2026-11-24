@@ -31,6 +31,19 @@ export function createEmptyProgressState(): ProgressState {
   };
 }
 
+export type PersistResult = { ok: true } | { ok: false; error: string };
+
+export type CatalogLoadStatus = 'ok' | 'missing' | 'recovered' | 'corrupt';
+
+export interface CatalogLoadResult {
+  courses: CourseTree[] | null;
+  status: CatalogLoadStatus;
+  /** Number of stored courses that failed validation and were dropped. */
+  droppedCount: number;
+  /** True when the raw stored string was copied to the corrupt-backup key. */
+  backedUp: boolean;
+}
+
 export interface StoredFileRecord {
   id: string;
   name: string;
@@ -56,7 +69,9 @@ export interface PremadeRoadmapRepository {
  */
 export interface UserRoadmapRepository {
   loadCourses(): CourseTree[] | null;
-  saveCourses(courses: CourseTree[]): void;
+  /** Like loadCourses but reports corruption/recovery status. */
+  loadCatalog(): CatalogLoadResult;
+  saveCourses(courses: CourseTree[]): PersistResult;
   clear(): void;
 }
 
@@ -66,7 +81,7 @@ export interface UserRoadmapRepository {
  */
 export interface ProgressRepository {
   loadProgress(): ProgressState;
-  saveProgress(state: ProgressState): void;
+  saveProgress(state: ProgressState): PersistResult;
   clearProgress(): void;
 }
 

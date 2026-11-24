@@ -136,7 +136,7 @@ Do not include "attachments".
       "mode": "exam" | "assignment",
       "instructions": "optional string (supports KaTeX $...$ and $$...$$)",
       "timeLimitMinutes": 20, // optional positive int (exam mode)
-      "passingScorePercent": 70, // optional int 0..100
+      "passingScorePercent": 70, // optional number 0..100
       "shuffleQuestions": false, // optional boolean
       "questions": [
         {
@@ -173,7 +173,7 @@ export const LLM_EXAM_PROMPT = `Design an interactive exam or assignment and out
     "mode": "exam", // "exam" | "assignment"
     "instructions": "Optional instructions supporting KaTeX $...$ and $$...$$.",
     "timeLimitMinutes": 20, // optional positive integer (exam mode)
-    "passingScorePercent": 70, // optional integer (0..100)
+    "passingScorePercent": 70, // optional number (0..100)
     "shuffleQuestions": false, // optional boolean
     "questions": [ ... ] // required, at least 1 question
   }
@@ -274,7 +274,7 @@ function CopyButton({ text, label }: CopyButtonProps) {
     >
       {copied ? (
         <>
-          <Check className="h-3.5 w-3.5 text-green-600 dark:text-green-400" />
+          <Check className="h-3.5 w-3.5 text-[var(--accent-done)]" />
           <span>Copied!</span>
         </>
       ) : (
@@ -283,6 +283,9 @@ function CopyButton({ text, label }: CopyButtonProps) {
           <span>{label}</span>
         </>
       )}
+      <span className="sr-only" role="status" aria-live="polite">
+        {copied ? 'Copied to clipboard' : ''}
+      </span>
     </button>
   );
 }
@@ -332,7 +335,10 @@ function SchemaTable({ title, rows }: { title: string; rows: FieldRow[] }) {
 
 export function DataFormatsPage() {
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-slate-50 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
+    <main
+      id="main-content"
+      className="min-h-[calc(100vh-64px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]"
+    >
       <div className="mx-auto max-w-6xl space-y-8 px-4 py-8 sm:px-6 sm:py-10">
         {/* Top Back Navigation & Header */}
         <header className="space-y-4 border-b border-slate-200 pb-6 dark:border-slate-800">
@@ -539,7 +545,7 @@ export function DataFormatsPage() {
                     type: 'string',
                     required: 'Required',
                     details:
-                      'Department grouping label (min 2 trimmed chars). Defaults to "Preparatory" if omitted/invalid.',
+                      'Department grouping label (min 2 trimmed chars). Lenient import defaults missing/blank values to "Preparatory".',
                   },
                   {
                     field: 'year',
@@ -953,7 +959,7 @@ export function DataFormatsPage() {
                   },
                   {
                     field: 'passingScorePercent',
-                    type: 'number (int 0..100)',
+                    type: 'number (0..100)',
                     required: 'Optional',
                     details: 'Pass threshold percentage (defaults to 70% if omitted).',
                   },
@@ -1051,9 +1057,9 @@ export function DataFormatsPage() {
                   },
                   {
                     field: 'imageUrl',
-                    type: 'string (https://...)',
+                    type: 'string (http(s)://...)',
                     required: 'At least one',
-                    details: 'External HTTPS image URL shown in the question header.',
+                    details: 'External HTTP/HTTPS image URL shown in the question header.',
                   },
                   {
                     field: 'imageFile',

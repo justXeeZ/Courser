@@ -198,7 +198,13 @@ export const LessonResourceSchema = z
     title: z.string().min(1),
     kind: ResourceKindSchema,
     recommended: z.boolean().optional(),
-    url: z.string().url().optional(),
+    url: z
+      .string()
+      .url()
+      .refine((v) => /^https?:\/\//i.test(v), {
+        message: 'URL must start with http:// or https://',
+      })
+      .optional(),
     file: StoredFileRefSchema.optional(),
     assessment: AssessmentSchema.optional(),
   })
@@ -245,7 +251,7 @@ export const CourseTreeSchema = z
     slug: z.string().regex(/^[a-z0-9-]+$/, 'Slug must be lowercase kebab-case'),
     code: z.string().min(2),
     title: z.string().min(2),
-    department: z.string().trim().min(2).catch('Preparatory'),
+    department: z.string().trim().min(2),
     year: CourseYearSchema.optional(),
     semester: CourseSemesterSchema.optional(),
     credits: z.number().int().positive().optional(),

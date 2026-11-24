@@ -12,6 +12,8 @@ import {
 } from 'lucide-react';
 import { useCourses } from '@/store/useCourseStore';
 import { useProgress } from '@/store/useProgressStore';
+import { useNavigationGuard } from '@/context/NavigationGuardContext';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import {
   deriveChapterId,
   deriveCoursePrefix,
@@ -22,6 +24,11 @@ import {
   rekeyCourseContentIds,
 } from '@/lib/courseIds';
 import { layoutCourseTree } from '@/lib/layoutTree';
+import {
+  EDITOR_LEASE_STORAGE_KEY,
+  collectReferencedFileIds,
+  garbageCollectFiles,
+} from '@/lib/fileStore';
 import { CourseTreeCanvas } from '@/components/CourseTreeCanvas';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorStickyBar } from '@/components/editor/EditorStickyBar';
@@ -88,7 +95,8 @@ interface ValidationResult {
 
 function validateCourseDraft(
   draft: CourseTree,
-  yearError: string | null
+  yearError: string | null,
+  otherSlugs: string[] = []
 ): ValidationResult {
   const fieldErrors: Record<string, string> = {};
   const chaptersToExpand: string[] = [];
@@ -115,21 +123,43 @@ function validateCourseDraft(
     }
   };
 
-  if (!draft.code.trim()) {
+  const codeTrimmed = draft.code.trim();
+  if (!codeTrimmed) {
     recordError('code', 'Course Metadata: Please enter a Course Code.');
+  } else if (codeTrimmed.length < 2) {
+    recordError('code', 'Course Metadata: Course Code must be at least 2 characters.');
   }
-  if (!draft.title.trim()) {
+
+  const titleTrimmed = draft.title.trim();
+  if (!titleTrimmed) {
     recordError('title', 'Course Metadata: Please enter a Course Title.');
+  } else if (titleTrimmed.length < 2) {
+    recordError('title', 'Course Metadata: Course Title must be at least 2 characters.');
   }
-  if (!draft.department.trim()) {
+
+  const deptTrimmed = draft.department.trim();
+  if (!deptTrimmed) {
     recordError('department', 'Course Metadata: Please enter a Department.');
+  } else if (deptTrimmed.length < 2) {
+    recordError('department', 'Course Metadata: Department must be at least 2 characters.');
   }
+
   if (yearError) {
     recordError('year', `Course Metadata: ${yearError}`);
   }
-  if (!draft.slug.trim()) {
+
+  const slugTrimmed = draft.slug.trim();
+  if (!slugTrimmed) {
     recordError('slug', 'Course Metadata: Please enter a URL Slug.');
+  } else if (!/^[a-z0-9-]+$/.test(slugTrimmed)) {
+    recordError(
+      'slug',
+      'Course Metadata: URL Slug must contain only lowercase letters, numbers, and hyphens.'
+    );
+  } else if (otherSlugs.includes(slugTrimmed)) {
+    recordError('slug', `Course Metadata: A course with slug "${slugTrimmed}" already exists.`);
   }
+
   if (!draft.description.trim()) {
     recordError('description', 'Course Metadata: Please enter a Course Description.');
   }
@@ -221,6 +251,17 @@ function validateCourseDraft(
         chapter.id
       );
     }
+    if (chapter.weekRange) {
+      const rangeMatch = /^Week\s+(\d+)\s*-\s*(\d+)$/i.exec(chapter.weekRange.trim());
+      if (rangeMatch && Number(rangeMatch[2]) < Number(rangeMatch[1])) {
+        recordError(
+          `${chPrefix}.weekRange`,
+          `${chLabel}: To week must be greater than or equal to From week.`,
+          undefined,
+          chapter.id
+        );
+      }
+    }
 
     (chapter.resources ?? []).forEach((res, rIdx) => {
       validateResource(res, rIdx, chLabel, `${chPrefix}.resources`, undefined, chapter.id);
@@ -280,21 +321,39 @@ export function CourseEditorPage() {
   );
   const [slugTouched, setSlugTouched] = useState<boolean>(isEditing);
   const [activeTab, setActiveTab] = useState<'editor' | 'preview'>('editor');
-  const [collapsedChapters, setCollapsedChapters] = useState<Record<string, boolean>>(() =>
-    buildCollapsedChaptersMap(existingCourse ?? createBlankCourse())
-  );
-  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>({});
+  const [collapsedChapters, setCollapsedChapters] = useState<Record<string, boolean>>(() => {
+    if (existingCourse) {
+      return buildCollapsedChaptersMap(existingCourse);
+    }
+    return {};
+  });
+  const [expandedLessons, setExpandedLessons] = useState<Record<string, boolean>>(() => {
+    if (!existingCourse) {
+      const starter = createBlankCourse();
+      const firstLessonId = starter.chapters[0]?.lessons[0]?.id;
+      return firstLessonId ? { [firstLessonId]: true } : {};
+    }
+    return {};
+  });
   const [focusedChapterId, setFocusedChapterId] = useState<string | null>(null);
   const [focusedLessonId, setFocusedLessonId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [storeErrorMsg, setStoreErrorMsg] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  const [pendingDeleteChapterIdx, setPendingDeleteChapterIdx] = useState<number | null>(null);
+  const [pendingDeleteLesson, setPendingDeleteLesson] = useState<{
+    chapterIdx: number;
+    lessonIdx: number;
+  } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [importBanner, setImportBanner] = useState<{ warnings: string[] } | null>(null);
   const [stickyBarHeight, setStickyBarHeight] = useState<number>(56);
 
   const editorRegionRef = useRef<HTMLDivElement | null>(null);
+  const unsavedDialogRef = useRef<HTMLDivElement | null>(null);
+  const { registerGuard } = useNavigationGuard();
   const prevRouteSlugRef = useRef<string | undefined>(slug);
   const pendingScrollChapterIdRef = useRef<string | null>(null);
   const pendingPreviewJumpRef = useRef<
@@ -330,8 +389,34 @@ export function CourseEditorPage() {
     setImportOpen(false);
   }, [slug, getCourseBySlug]);
 
+  useDialogFocus({
+    isOpen: Boolean(pendingNavPath),
+    containerRef: unsavedDialogRef,
+    onEscape: () => setPendingNavPath(null),
+  });
+
+  useEffect(() => {
+    return registerGuard({
+      isDirty,
+      onBlockedNavigate: (to) => setPendingNavPath(to),
+    });
+  }, [registerGuard, isDirty]);
+
   useEffect(() => {
     if (!isDirty) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const handlePopState = () => {
+      window.history.pushState(null, '', window.location.href);
+      setPendingNavPath('__BACK__');
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
 
     const handleDocumentClickCapture = (e: MouseEvent) => {
       if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) {
@@ -364,7 +449,11 @@ export function CourseEditorPage() {
     };
 
     document.addEventListener('click', handleDocumentClickCapture, true);
-    return () => document.removeEventListener('click', handleDocumentClickCapture, true);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+      document.removeEventListener('click', handleDocumentClickCapture, true);
+    };
   }, [isDirty, location.pathname]);
 
   useEffect(() => {
@@ -441,10 +530,30 @@ export function CourseEditorPage() {
     return () => node.removeEventListener('focusin', handleFocusIn);
   }, []);
 
+  useEffect(() => {
+    const writeLease = () => {
+      try {
+        window.localStorage.setItem(EDITOR_LEASE_STORAGE_KEY, String(Date.now()));
+      } catch {
+        // Ignore storage errors
+      }
+    };
+    writeLease();
+    const id = window.setInterval(writeLease, 20_000);
+    return () => {
+      window.clearInterval(id);
+      try {
+        window.localStorage.removeItem(EDITOR_LEASE_STORAGE_KEY);
+      } catch {
+        // Ignore storage errors
+      }
+    };
+  }, []);
+
   const normalizedPreviewCourse = useMemo(() => rekeyCourseContentIds(draft), [draft]);
   const previewLayout = useMemo(
-    () => layoutCourseTree(normalizedPreviewCourse),
-    [normalizedPreviewCourse]
+    () => (activeTab === 'preview' ? layoutCourseTree(normalizedPreviewCourse) : null),
+    [activeTab, normalizedPreviewCourse]
   );
 
   const focusedChapterEntry = useMemo(() => {
@@ -477,11 +586,20 @@ export function CourseEditorPage() {
     return null;
   })();
 
+  const otherSlugs = useMemo(
+    () => courses.filter((c) => !isEditing || c.slug !== slug).map((c) => c.slug),
+    [courses, isEditing, slug]
+  );
+
+  useEffect(() => {
+    setStoreErrorMsg(null);
+  }, [draft]);
+
   const hasFieldErrors = Object.keys(fieldErrors).length > 0;
   useEffect(() => {
     if (!hasFieldErrors && !errorMsg) return;
 
-    const liveValidation = validateCourseDraft(draft, yearError);
+    const liveValidation = validateCourseDraft(draft, yearError, otherSlugs);
 
     if (hasFieldErrors) {
       setFieldErrors((prev) => {
@@ -601,13 +719,13 @@ export function CourseEditorPage() {
     });
   };
 
-  const removeChapter = (chapterIdx: number) => {
+  const performRemoveChapter = (chapterIdx: number) => {
     setDraft((prev) => {
       if (prev.chapters.length <= 1) {
-        setErrorMsg('A course must have at least one chapter.');
         return prev;
       }
       const targetChapter = prev.chapters[chapterIdx];
+      if (!targetChapter) return prev;
       const removedIds = new Set([
         targetChapter.id,
         ...targetChapter.lessons.map((l) => l.id),
@@ -632,6 +750,24 @@ export function CourseEditorPage() {
     });
   };
 
+  const removeChapter = (chapterIdx: number) => {
+    if (draft.chapters.length <= 1) {
+      setErrorMsg('A course must have at least one chapter.');
+      return;
+    }
+    const targetChapter = draft.chapters[chapterIdx];
+    if (!targetChapter) return;
+    const isPopulated =
+      targetChapter.lessons.length > 0 ||
+      (targetChapter.resources?.length ?? 0) > 0 ||
+      Boolean(targetChapter.notes?.trim());
+    if (isPopulated) {
+      setPendingDeleteChapterIdx(chapterIdx);
+      return;
+    }
+    performRemoveChapter(chapterIdx);
+  };
+
   const toggleChapterPrerequisite = (chapterIdx: number, prereqId: string) => {
     updateChapter(chapterIdx, (chapter) => {
       const current = chapter.prerequisites ?? [];
@@ -642,31 +778,28 @@ export function CourseEditorPage() {
   };
 
   const addLesson = (chapterIdx: number) => {
-    setDraft((prev) => {
-      const existingIds = new Set(
-        prev.chapters.flatMap((c) => [c.id, ...c.lessons.map((l) => l.id)])
-      );
-      const nextNum = prev.chapters[chapterIdx].lessons.length + 1;
-      const title = `New Sub-Lesson ${nextNum}`;
-      const newId = deriveLessonId(prev.code, chapterIdx + 1, nextNum, title, existingIds);
-      const newLesson: SubLesson = {
-        id: newId,
-        title,
-        summary: 'Brief summary of what students will learn.',
-        resources: [],
-      };
-      const parentChapterId = prev.chapters[chapterIdx]?.id;
-      if (parentChapterId) {
-        setCollapsedChapters((col) => ({ ...col, [parentChapterId]: false }));
-      }
-      setExpandedLessons((exp) => ({ ...exp, [newId]: true }));
-      return {
-        ...prev,
-        chapters: prev.chapters.map((ch, idx) =>
-          idx === chapterIdx ? { ...ch, lessons: [...ch.lessons, newLesson] } : ch
-        ),
-      };
-    });
+    const targetChapter = draft.chapters[chapterIdx];
+    if (!targetChapter) return;
+    const existingIds = new Set(
+      draft.chapters.flatMap((c) => [c.id, ...c.lessons.map((l) => l.id)])
+    );
+    const nextNum = targetChapter.lessons.length + 1;
+    const title = `New Sub-Lesson ${nextNum}`;
+    const newId = deriveLessonId(draft.code, chapterIdx + 1, nextNum, title, existingIds);
+    const newLesson: SubLesson = {
+      id: newId,
+      title,
+      summary: 'Brief summary of what students will learn.',
+      resources: [],
+    };
+    setCollapsedChapters((col) => ({ ...col, [targetChapter.id]: false }));
+    setExpandedLessons((exp) => ({ ...exp, [newId]: true }));
+    setDraft((prev) => ({
+      ...prev,
+      chapters: prev.chapters.map((ch, idx) =>
+        idx === chapterIdx ? { ...ch, lessons: [...ch.lessons, newLesson] } : ch
+      ),
+    }));
   };
 
   const updateLesson = (
@@ -690,9 +823,10 @@ export function CourseEditorPage() {
     });
   };
 
-  const removeLesson = (chapterIdx: number, lessonIdx: number) => {
+  const performRemoveLesson = (chapterIdx: number, lessonIdx: number) => {
     setDraft((prev) => {
-      const removedId = prev.chapters[chapterIdx].lessons[lessonIdx]?.id;
+      const removedId = prev.chapters[chapterIdx]?.lessons[lessonIdx]?.id;
+      if (!removedId) return prev;
       const filterPrereqs = (prereqs: string[] | undefined) => {
         const next = prereqs?.filter((id) => id !== removedId);
         return next && next.length > 0 ? next : undefined;
@@ -713,6 +847,18 @@ export function CourseEditorPage() {
     });
   };
 
+  const removeLesson = (chapterIdx: number, lessonIdx: number) => {
+    const targetLesson = draft.chapters[chapterIdx]?.lessons[lessonIdx];
+    if (!targetLesson) return;
+    const isPopulated =
+      targetLesson.resources.length > 0 || Boolean(targetLesson.notes?.trim());
+    if (isPopulated) {
+      setPendingDeleteLesson({ chapterIdx, lessonIdx });
+      return;
+    }
+    performRemoveLesson(chapterIdx, lessonIdx);
+  };
+
   const toggleLessonPrerequisite = (
     chapterIdx: number,
     lessonIdx: number,
@@ -730,16 +876,24 @@ export function CourseEditorPage() {
     requestAnimationFrame(() => {
       const firstErrEl = document.querySelector('[data-field-error="true"]');
       if (firstErrEl && typeof firstErrEl.scrollIntoView === 'function') {
-        firstErrEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        const reducedMotion =
+          typeof window !== 'undefined' &&
+          typeof window.matchMedia === 'function' &&
+          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        firstErrEl.scrollIntoView({
+          behavior: reducedMotion ? 'auto' : 'smooth',
+          block: 'center',
+        });
       }
     });
   };
 
   const handleSave = (redirectTarget?: string): boolean => {
     setErrorMsg(null);
+    setStoreErrorMsg(null);
     setFieldErrors({});
 
-    const validation = validateCourseDraft(draft, yearError);
+    const validation = validateCourseDraft(draft, yearError, otherSlugs);
     if (validation.firstErrorMsg) {
       setActiveTab('editor');
       setFieldErrors(validation.fieldErrors);
@@ -770,25 +924,38 @@ export function CourseEditorPage() {
       const result = updateCourse(slug, draft);
       if (!result.ok) {
         setActiveTab('editor');
-        setErrorMsg(result.error);
+        setStoreErrorMsg(result.error);
         scrollFirstErrorIntoView();
         return false;
       }
       remapCourseProgress(result.previousSlug, result.course.slug, result.idMap);
       setBaselineJson(JSON.stringify(draft));
-      navigate(redirectTarget ?? `/course/${result.course.slug}`);
+      const nextCourses = courses.map((c) => (c.slug === slug ? result.course : c));
+      void garbageCollectFiles(collectReferencedFileIds(nextCourses)).catch(() => {});
+      if (redirectTarget === '__BACK__') {
+        navigate(-1);
+      } else {
+        navigate(redirectTarget ?? `/course/${result.course.slug}`);
+      }
       return true;
     }
 
     const result = addCourse(draft);
     if (!result.ok) {
       setActiveTab('editor');
-      setErrorMsg(result.error);
+      setStoreErrorMsg(result.error);
       scrollFirstErrorIntoView();
       return false;
     }
     setBaselineJson(JSON.stringify(draft));
-    navigate(redirectTarget ?? `/course/${result.course.slug}`);
+    void garbageCollectFiles(
+      collectReferencedFileIds([...courses, result.course])
+    ).catch(() => {});
+    if (redirectTarget === '__BACK__') {
+      navigate(-1);
+    } else {
+      navigate(redirectTarget ?? `/course/${result.course.slug}`);
+    }
     return true;
   };
 
@@ -796,6 +963,8 @@ export function CourseEditorPage() {
     if (slug) {
       forgetCourse(slug);
       deleteCourse(slug);
+      const remaining = courses.filter((c) => c.slug !== slug);
+      void garbageCollectFiles(collectReferencedFileIds(remaining)).catch(() => {});
     }
     setConfirmDeleteOpen(false);
     navigate('/');
@@ -855,26 +1024,28 @@ export function CourseEditorPage() {
     setActiveTab('editor');
   };
 
+  const displayErrorMsg = storeErrorMsg ?? errorMsg;
   const hasExpandedLessons = Object.values(expandedLessons).some(Boolean);
   const hasExpandedChapters = draft.chapters.some((ch) => !collapsedChapters[ch.id]);
   const effectiveStickyBarHeight =
-    stickyBarHeight > 56 ? stickyBarHeight : errorMsg ? 92 : 56;
+    stickyBarHeight > 56 ? stickyBarHeight : displayErrorMsg ? 92 : 56;
 
   const inputClass =
-    'w-full rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500';
+    'w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] px-3 py-1.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none';
 
   return (
     <main
+      id="main-content"
       style={
         {
           '--editor-sticky-bar-height': `${effectiveStickyBarHeight}px`,
           '--editor-chapter-sticky-top': `calc(64px + ${effectiveStickyBarHeight}px)`,
         } as React.CSSProperties
       }
-      className="min-h-[calc(100vh-64px)] bg-slate-50 pb-16 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100"
+      className="min-h-[calc(100vh-64px)] bg-[var(--surface-canvas)] pb-16 text-[var(--text-primary)]"
     >
       {/* Header Bar */}
-      <section className="border-b border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#121926]">
+      <section className="border-b border-[var(--border-subtle)] bg-[var(--surface-1)]">
         <div className="mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-7">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <Link
@@ -886,7 +1057,7 @@ export function CourseEditorPage() {
                   setPendingNavPath(isEditing ? `/course/${slug}` : '/');
                 }
               }}
-              className="inline-flex items-center gap-1.5 text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
             >
               <ArrowLeft className="h-4 w-4" />
               {isEditing ? `Back to ${existingCourse?.code}` : 'All Courses'}
@@ -908,7 +1079,7 @@ export function CourseEditorPage() {
                 <button
                   type="button"
                   onClick={() => setConfirmDeleteOpen(true)}
-                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-red-200 bg-white px-3 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 sm:text-sm dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
+                  className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--status-danger-border)] bg-[var(--surface-1)] px-3 text-xs font-medium text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 sm:text-sm"
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete Course
@@ -918,7 +1089,7 @@ export function CourseEditorPage() {
               <button
                 type="button"
                 onClick={() => handleSave()}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-yellow-400 px-3.5 text-xs font-semibold text-black transition-colors hover:bg-yellow-500 sm:text-sm"
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--cta-bg)] px-3.5 text-xs font-semibold text-[var(--cta-text)] transition-colors hover:bg-[var(--cta-bg-hover)] sm:text-sm"
               >
                 <Save className="h-3.5 w-3.5" />
                 Save Course
@@ -951,8 +1122,8 @@ export function CourseEditorPage() {
               onClick={() => setActiveTab('editor')}
               className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors ${
                 activeTab === 'editor'
-                  ? 'border-slate-900 text-slate-900 dark:border-yellow-400 dark:text-white'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'border-[var(--accent-purple)] text-[var(--text-primary)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               <FileEdit className="h-4 w-4" />
@@ -965,8 +1136,8 @@ export function CourseEditorPage() {
               onClick={() => setActiveTab('preview')}
               className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors ${
                 activeTab === 'preview'
-                  ? 'border-slate-900 text-slate-900 dark:border-yellow-400 dark:text-white'
-                  : 'border-transparent text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                  ? 'border-[var(--accent-purple)] text-[var(--text-primary)]'
+                  : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               <GitFork className="h-4 w-4" />
@@ -996,8 +1167,11 @@ export function CourseEditorPage() {
               : null
           }
           hasExpandedLessons={hasExpandedLessons || hasExpandedChapters}
-          errorMsg={errorMsg}
-          onDismissError={() => setErrorMsg(null)}
+          errorMsg={displayErrorMsg}
+          onDismissError={() => {
+            setErrorMsg(null);
+            setStoreErrorMsg(null);
+          }}
           onHeightChange={setStickyBarHeight}
           onAddChapter={addChapter}
           onCollapseAll={() => {
@@ -1063,15 +1237,17 @@ export function CourseEditorPage() {
                 lessons
               </span>
             </div>
-            <CourseTreeCanvas
-              layout={previewLayout}
-              statuses={{}}
-              framed={false}
-              onSelectLesson={handlePreviewSelectLesson}
-              onSelectChapter={handlePreviewSelectChapter}
-              onQuickToggleDone={() => {}}
-              onContextMenuLesson={() => {}}
-            />
+            {previewLayout && (
+              <CourseTreeCanvas
+                layout={previewLayout}
+                statuses={{}}
+                framed={false}
+                onSelectLesson={handlePreviewSelectLesson}
+                onSelectChapter={handlePreviewSelectChapter}
+                onQuickToggleDone={() => {}}
+                onContextMenuLesson={() => {}}
+              />
+            )}
           </div>
         ) : (
           <div className="space-y-6">
@@ -1103,16 +1279,21 @@ export function CourseEditorPage() {
                     data-field-error={fieldErrors.code ? 'true' : undefined}
                     className={`${inputClass} font-mono ${
                       fieldErrors.code
-                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
                         : ''
                     }`}
                   />
+                  {fieldErrors.code && (
+                    <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
+                      {fieldErrors.code}
+                    </p>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">
                   <label
                     htmlFor="course-title"
-                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-[var(--text-secondary)]"
                   >
                     Course Title *
                   </label>
@@ -1127,16 +1308,21 @@ export function CourseEditorPage() {
                     data-field-error={fieldErrors.title ? 'true' : undefined}
                     className={`${inputClass} ${
                       fieldErrors.title
-                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
                         : ''
                     }`}
                   />
+                  {fieldErrors.title && (
+                    <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
+                      {fieldErrors.title}
+                    </p>
+                  )}
                 </div>
 
                 <div>
                   <label
                     htmlFor="course-dept"
-                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-[var(--text-secondary)]"
                   >
                     Department *
                   </label>
@@ -1151,10 +1337,15 @@ export function CourseEditorPage() {
                     data-field-error={fieldErrors.department ? 'true' : undefined}
                     className={`${inputClass} ${
                       fieldErrors.department
-                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
                         : ''
                     }`}
                   />
+                  {fieldErrors.department && (
+                    <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
+                      {fieldErrors.department}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -1249,7 +1440,7 @@ export function CourseEditorPage() {
                         value="1"
                         checked={draft.semester === 1}
                         onChange={() => updateMeta({ semester: 1 })}
-                        className="accent-amber-500 dark:accent-amber-400"
+                        className="accent-[var(--accent-amber)]"
                       />
                       1st
                     </label>
@@ -1260,7 +1451,7 @@ export function CourseEditorPage() {
                         value="2"
                         checked={draft.semester === 2}
                         onChange={() => updateMeta({ semester: 2 })}
-                        className="accent-amber-500 dark:accent-amber-400"
+                        className="accent-[var(--accent-amber)]"
                       />
                       2nd
                     </label>
@@ -1314,16 +1505,21 @@ export function CourseEditorPage() {
                     data-field-error={fieldErrors.slug ? 'true' : undefined}
                     className={`${inputClass} font-mono text-xs ${
                       fieldErrors.slug
-                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
                         : ''
                     }`}
                   />
+                  {fieldErrors.slug && (
+                    <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
+                      {fieldErrors.slug}
+                    </p>
+                  )}
                 </div>
 
                 <div className="sm:col-span-3">
                   <label
                     htmlFor="course-desc"
-                    className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300"
+                    className="mb-1 block text-xs font-medium text-[var(--text-secondary)]"
                   >
                     Course Description *
                   </label>
@@ -1338,10 +1534,15 @@ export function CourseEditorPage() {
                     data-field-error={fieldErrors.description ? 'true' : undefined}
                     className={`${inputClass} ${
                       fieldErrors.description
-                        ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
+                        ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
                         : ''
                     }`}
                   />
+                  {fieldErrors.description && (
+                    <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
+                      {fieldErrors.description}
+                    </p>
+                  )}
                 </div>
               </div>
             </section>
@@ -1349,8 +1550,9 @@ export function CourseEditorPage() {
             {/* 2. Chapters & Sub-Lessons Builder */}
             <section className="space-y-4">
               <div className="flex items-center justify-between">
-                <h2 className="text-sm font-bold tracking-wide text-slate-700 uppercase dark:text-slate-300">
-                  Chapters &amp; Sub-Lessons ({draft.chapters.length} chapters)
+                <h2 className="text-sm font-bold tracking-wide text-[var(--text-secondary)] uppercase">
+                  Chapters &amp; Sub-Lessons ({draft.chapters.length}{' '}
+                  {draft.chapters.length === 1 ? 'chapter' : 'chapters'})
                 </h2>
               </div>
 
@@ -1423,36 +1625,68 @@ export function CourseEditorPage() {
         onCancel={() => setConfirmDeleteOpen(false)}
       />
 
+      <ConfirmDialog
+        open={pendingDeleteChapterIdx !== null}
+        title="Delete populated chapter?"
+        description="This chapter contains sub-lessons, materials, or notes. Deleting it will permanently remove them from this draft."
+        confirmLabel="Delete Chapter"
+        onConfirm={() => {
+          if (pendingDeleteChapterIdx !== null) {
+            performRemoveChapter(pendingDeleteChapterIdx);
+          }
+          setPendingDeleteChapterIdx(null);
+        }}
+        onCancel={() => setPendingDeleteChapterIdx(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingDeleteLesson !== null}
+        title="Delete populated sub-lesson?"
+        description="This sub-lesson contains materials or notes. Deleting it will permanently remove them from this draft."
+        confirmLabel="Delete Sub-Lesson"
+        onConfirm={() => {
+          if (pendingDeleteLesson) {
+            performRemoveLesson(
+              pendingDeleteLesson.chapterIdx,
+              pendingDeleteLesson.lessonIdx
+            );
+          }
+          setPendingDeleteLesson(null);
+        }}
+        onCancel={() => setPendingDeleteLesson(null)}
+      />
+
       {pendingNavPath && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 backdrop-blur-xs"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop-modal)] p-4 backdrop-blur-xs"
           onClick={() => setPendingNavPath(null)}
         >
           <div
+            ref={unsavedDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Unsaved changes"
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 shadow-xl dark:border-slate-700/80 dark:bg-[#121926]"
+            className="w-full max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 shadow-xl"
           >
             <div className="mb-3 flex items-center gap-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-700 dark:bg-amber-400/15 dark:text-amber-300">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]">
                 <AlertTriangle className="h-5 w-5" />
               </div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-lg font-bold text-[var(--text-primary)]">
                 Unsaved changes
               </h2>
             </div>
 
-            <p className="mb-6 text-sm text-slate-600 dark:text-slate-300">
-              You have unsaved edits to <strong className="font-semibold text-slate-900 dark:text-slate-100">{draft.code || 'this course'}</strong>. Would you like to save your changes or discard them before leaving?
+            <p className="mb-6 text-sm text-[var(--text-secondary)]">
+              You have unsaved edits to <strong className="font-semibold text-[var(--text-primary)]">{draft.code || 'this course'}</strong>. Would you like to save your changes or discard them before leaving?
             </p>
 
             <div className="flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setPendingNavPath(null)}
-                className="inline-flex h-9 items-center rounded-md border border-slate-300 bg-white px-3.5 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 sm:text-sm dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                className="inline-flex h-9 items-center rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-3.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] sm:text-sm"
               >
                 Keep Editing
               </button>
@@ -1461,9 +1695,13 @@ export function CourseEditorPage() {
                 onClick={() => {
                   const target = pendingNavPath;
                   setPendingNavPath(null);
-                  navigate(target);
+                  if (target === '__BACK__') {
+                    navigate(-1);
+                  } else {
+                    navigate(target);
+                  }
                 }}
-                className="inline-flex h-9 items-center rounded-md border border-red-200 bg-white px-3.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50 sm:text-sm dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
+                className="inline-flex h-9 items-center rounded-md border border-[var(--status-danger-border)] bg-[var(--surface-1)] px-3.5 text-xs font-medium text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 sm:text-sm"
               >
                 Discard Edits
               </button>
@@ -1474,7 +1712,7 @@ export function CourseEditorPage() {
                   setPendingNavPath(null);
                   handleSave(target);
                 }}
-                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-yellow-400 px-3.5 text-xs font-semibold text-black transition-colors hover:bg-yellow-500 sm:text-sm"
+                className="inline-flex h-9 items-center gap-1.5 rounded-md bg-[var(--cta-bg)] px-3.5 text-xs font-semibold text-[var(--cta-text)] transition-colors hover:bg-[var(--cta-bg-hover)] sm:text-sm"
               >
                 <Save className="h-3.5 w-3.5" />
                 Save &amp; Leave

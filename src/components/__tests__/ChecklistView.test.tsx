@@ -24,8 +24,8 @@ describe('ChecklistView', () => {
 
     const skippedBadges = screen.getAllByText('Skipped');
     expect(skippedBadges.length).toBeGreaterThanOrEqual(1);
-    expect(skippedBadges[0].className).toContain('bg-slate-100');
-    expect(skippedBadges[0].className).toContain('text-slate-700');
+    expect(skippedBadges[0].className).toContain('bg-[var(--status-skipped-bg)]');
+    expect(skippedBadges[0].className).toContain('text-[var(--status-skipped-text)]');
 
     // Ensure no teal classes remain anywhere in checklist view
     expect(container.innerHTML).not.toContain('teal');
@@ -84,8 +84,8 @@ describe('ChecklistView', () => {
     expect(container.innerHTML).not.toContain('bg-[#fdff00]');
 
     const ch3TitleBtn = screen.getByRole('button', { name: demoCourse.chapters[2].title });
-    const headerBar = ch3TitleBtn.closest('div[class*="border-l-amber-400"]') as HTMLElement;
-    expect(headerBar).toHaveClass('bg-slate-50', 'border-l-4', 'border-l-amber-400', 'dark:bg-[#1b2436]');
+    const headerBar = ch3TitleBtn.closest('div[class*="border-l-[var(--accent-amber)]"]') as HTMLElement;
+    expect(headerBar).toHaveClass('bg-[var(--surface-2)]', 'border-l-4', 'border-l-[var(--accent-amber)]');
     expect(headerBar.nextElementSibling).toBeNull();
   });
 

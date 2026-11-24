@@ -52,8 +52,8 @@ describe('ChapterDrawer', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'Notes' }));
     expect(screen.getByText(ch1.notes!)).toBeInTheDocument();
 
-    // Switch back to Overview tab to test sub-lessons list
-    fireEvent.click(screen.getByRole('tab', { name: 'Overview' }));
+    // Switch back to Materials tab to test sub-lessons list
+    fireEvent.click(screen.getByRole('tab', { name: 'Materials' }));
 
     // Clicking the small checkmark button beside a sublesson toggles done without navigating
     const toggleLessonBtn = screen.getByRole('button', {
@@ -168,8 +168,12 @@ describe('ChapterDrawer', () => {
     const prereqChip = within(prereqSection).getByRole('button', {
       name: /1\. Optional Warmup/i,
     });
-    expect(prereqChip).toHaveClass('border-slate-300', 'bg-slate-100', 'text-slate-700');
-    expect(prereqChip).not.toHaveClass('border-emerald-300', 'bg-emerald-50');
+    expect(prereqChip).toHaveClass(
+      'border-[var(--status-skipped-border)]',
+      'bg-[var(--status-skipped-bg)]',
+      'text-[var(--status-skipped-text)]'
+    );
+    expect(prereqChip).not.toHaveClass('border-[var(--status-done-border)]', 'bg-[var(--status-done-bg)]');
     expect(prereqChip.querySelectorAll('svg')).toHaveLength(1);
     expect(prereqChip.querySelector('svg')).toHaveClass('lucide-ban');
   });

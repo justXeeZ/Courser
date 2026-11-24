@@ -105,6 +105,8 @@ describe('AssessmentRunnerModal', () => {
       />
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Start Assignment' }));
+
     await waitFor(() => {
       expect(screen.getByAltText('triangle.png')).toHaveAttribute('src', 'blob:runner-1');
     });
@@ -159,12 +161,25 @@ describe('AssessmentRunnerModal', () => {
       />
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Start Assignment' }));
+
     const checkBtn = screen.getByRole('button', { name: 'Check Answer' });
     expect(checkBtn).toBeDisabled();
 
-    // Toggle hint
+    // Hint is hidden by default and toggles open directly under question header
+    expect(screen.queryByText(/power rule/i)).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: 'Show Hint' }));
-    expect(screen.getByText(/power rule/i)).toBeInTheDocument();
+    const hintText = screen.getByText(/power rule/i);
+    expect(hintText).toBeInTheDocument();
+    const questionHeader = screen.getByText(/Derivative of/i);
+    const firstRadio = screen.getAllByRole('radio')[0];
+    expect(
+      questionHeader.compareDocumentPosition(hintText) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      hintText.compareDocumentPosition(firstRadio) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+
     fireEvent.click(screen.getByRole('button', { name: 'Hide Hint' }));
     expect(screen.queryByText(/power rule/i)).not.toBeInTheDocument();
 
@@ -176,8 +191,9 @@ describe('AssessmentRunnerModal', () => {
     expect(screen.getByText('Correct')).toBeInTheDocument();
     expect(screen.getByText(/Explanation:/)).toBeInTheDocument();
 
-    // Finish Assignment records score once
-    fireEvent.click(screen.getByRole('button', { name: 'Finish Assignment' }));
+    // Review & Submit -> Submit Assignment records score once
+    fireEvent.click(screen.getByRole('button', { name: 'Review & Submit' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Submit Assignment' }));
     expect(screen.getByText('100%')).toBeInTheDocument();
     expect(screen.getByText('Passed')).toBeInTheDocument();
 
@@ -244,13 +260,22 @@ describe('AssessmentRunnerModal', () => {
       />
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Start Exam' }));
+
     // Exam mode hides hints & Check Answer before submission
     expect(screen.queryByRole('button', { name: 'Check Answer' })).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Show Hint/i })).not.toBeInTheDocument();
 
-    // Answer Q1 correctly (2 pts) and flag it
+    // Answer Q1 correctly (2 pts) and flag it with icon-only button
     fireEvent.click(screen.getAllByRole('radio')[1]);
-    fireEvent.click(screen.getByRole('button', { name: /Flag for review/i }));
+    const flagBtn = screen.getByRole('button', { name: 'Flag question' });
+    expect(flagBtn.textContent?.trim()).toBe('');
+    expect(flagBtn).toHaveAttribute('aria-pressed', 'false');
+    fireEvent.click(flagBtn);
+    expect(screen.getByRole('button', { name: 'Unflag question' })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
     expect(screen.getByRole('button', { name: 'Jump to question 1 (flagged)' })).toBeInTheDocument();
 
     // Jump to Q2 and answer partially (only A -> 0 pts for exact-set multi-select)
@@ -265,7 +290,8 @@ describe('AssessmentRunnerModal', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Next' }));
     fireEvent.change(screen.getByLabelText('Your answer'), { target: { value: 'Euler' } });
 
-    // Submit Exam -> 8 / 10 pts = 80% -> Passed (>= 70%)
+    // Review & Submit -> Submit Exam -> 8 / 10 pts = 80% -> Passed (>= 70%)
+    fireEvent.click(screen.getByRole('button', { name: 'Review & Submit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit Exam' }));
     expect(screen.getByText('80%')).toBeInTheDocument();
     expect(screen.getByText('Passed')).toBeInTheDocument();
@@ -280,9 +306,14 @@ describe('AssessmentRunnerModal', () => {
       passed: true,
     });
 
-    // Retake -> submit empty (0%) -> best stays 80, latest becomes 0, attempts becomes 2, passed remains sticky true
+    // Retake -> Overview -> Start Exam -> Review & Submit with unanswered -> ConfirmDialog -> 0% Not Passed
     fireEvent.click(screen.getByRole('button', { name: 'Retake' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Start Exam' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Review & Submit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit Exam' }));
+    // Confirm unanswered submission
+    const confirmBtns = screen.getAllByRole('button', { name: 'Submit Exam' });
+    fireEvent.click(confirmBtns[confirmBtns.length - 1]);
     expect(screen.getByText('0%')).toBeInTheDocument();
     expect(screen.getByText('Not Passed')).toBeInTheDocument();
 
@@ -324,6 +355,12 @@ describe('AssessmentRunnerModal', () => {
         onClose={vi.fn()}
       />
     );
+
+    // Timer does not tick during Overview phase
+    act(() => {
+      vi.advanceTimersByTime(10_000);
+    });
+    fireEvent.click(screen.getByRole('button', { name: 'Start Exam' }));
 
     expect(screen.getByLabelText('Time remaining')).toHaveTextContent('01:00');
     fireEvent.click(screen.getAllByRole('radio')[0]);
@@ -376,6 +413,8 @@ describe('AssessmentRunnerModal', () => {
       />
     );
 
+    fireEvent.click(screen.getByRole('button', { name: 'Start Exam' }));
+
     // Answer whichever question appeared first
     const firstHeader = screen.getByText(/Alpha\?|Beta\?/).textContent;
     fireEvent.change(screen.getByLabelText('Your answer'), {
@@ -387,7 +426,45 @@ describe('AssessmentRunnerModal', () => {
       target: { value: secondHeader?.includes('Alpha') ? 'alpha' : 'beta' },
     });
 
+    fireEvent.click(screen.getByRole('button', { name: 'Review & Submit' }));
     fireEvent.click(screen.getByRole('button', { name: 'Submit Exam' }));
     expect(screen.getByText('100%')).toBeInTheDocument();
+  });
+
+  it('guards closing mid-attempt with ConfirmDialog', () => {
+    const onClose = vi.fn();
+    const resource: LessonResource = {
+      title: 'Guard Quiz',
+      kind: 'exam',
+      assessment: {
+        mode: 'exam',
+        questions: [
+          {
+            id: 'q1',
+            type: 'true-false',
+            header: { text: 'Guard Q' },
+            correctIndices: [0],
+          },
+        ],
+      },
+    };
+
+    renderWithProgress(
+      <AssessmentRunnerModal
+        isOpen
+        courseSlug="cs101"
+        itemId="cs101-guard"
+        resource={resource}
+        onClose={onClose}
+      />
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: 'Start Exam' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Close assessment' }));
+    expect(screen.getByText('Leave assessment?')).toBeInTheDocument();
+    expect(onClose).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Assessment' }));
+    expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

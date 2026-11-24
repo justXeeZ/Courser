@@ -9,8 +9,8 @@ import {
   GitFork,
   ListChecks,
   Pencil,
+  Save,
   Trash2,
-  Upload,
 } from 'lucide-react';
 import { formatCourseTerm, type CourseTree } from '@/types/course';
 
@@ -46,13 +46,13 @@ export function CourseHeader({
   const termLabel = formatCourseTerm(course);
 
   return (
-    <section className="overflow-x-clip border-b border-slate-200 bg-white dark:border-slate-800 dark:bg-[#121926]">
+    <section className="overflow-x-clip border-b border-[var(--border-subtle)] bg-[var(--surface-1)]">
       <div className="mx-auto max-w-5xl px-4 pt-5 sm:px-6 sm:pt-7">
         {/* Top Row: Back link + Action buttons */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
           <Link
             to="/"
-            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm font-medium text-slate-600 transition-colors hover:text-slate-900 dark:text-slate-400 dark:hover:text-white"
+            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap text-sm font-medium text-[var(--text-secondary)] transition-colors hover:text-[var(--text-primary)]"
           >
             <ArrowLeft className="h-4 w-4" />
             All Courses
@@ -72,10 +72,11 @@ export function CourseHeader({
                 to={`/course/${course.slug}/edit`}
                 title="Edit Course"
                 aria-label="Edit Course"
-                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-slate-300 bg-white px-2 text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
               >
                 <Pencil className="h-3.5 w-3.5 shrink-0" />
-                <span className={REVEAL_LABEL_CLASS}>Edit Course</span>
+                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Edit</span>}
+                <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Edit Course</span>
               </Link>
 
               <button
@@ -83,10 +84,11 @@ export function CourseHeader({
                 onClick={onOpenExport}
                 title="Export Course"
                 aria-label="Export Course"
-                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-slate-300 bg-white px-2 text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
               >
                 <FileArchive className="h-3.5 w-3.5 shrink-0" />
-                <span className={REVEAL_LABEL_CLASS}>Export Course</span>
+                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Export</span>}
+                <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Export Course</span>
               </button>
 
               <button
@@ -94,10 +96,11 @@ export function CourseHeader({
                 onClick={onOpenBackup}
                 title="Backup Progress"
                 aria-label="Backup Progress"
-                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-slate-300 bg-white px-2 text-slate-700 transition-colors hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
               >
-                <Upload className="h-3.5 w-3.5 shrink-0" />
-                <span className={REVEAL_LABEL_CLASS}>Backup Progress</span>
+                <Save className="h-3.5 w-3.5 shrink-0" />
+                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Backup</span>}
+                <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Backup Progress</span>
               </button>
 
               <button
@@ -105,10 +108,11 @@ export function CourseHeader({
                 onClick={onDownloadSvg}
                 title="Download SVG"
                 aria-label="Download SVG"
-                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-yellow-400 bg-yellow-400 px-2 text-black transition-colors hover:bg-yellow-500"
+                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--cta-border)] bg-[var(--cta-bg)] px-2 text-[var(--cta-text)] transition-colors hover:bg-[var(--cta-bg-hover)]"
               >
                 <Download className="h-3.5 w-3.5 shrink-0" />
-                <span className={REVEAL_LABEL_CLASS}>Download SVG</span>
+                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">SVG</span>}
+                <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Download SVG</span>
               </button>
 
               <button
@@ -116,10 +120,11 @@ export function CourseHeader({
                 onClick={onRequestDelete}
                 title="Delete Course"
                 aria-label="Delete Course"
-                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-red-200 bg-white px-2 text-red-600 transition-colors hover:bg-red-50 dark:border-red-900/60 dark:bg-[#1b2436] dark:text-red-400 dark:hover:bg-red-950/50"
+                className="group/btn inline-flex h-8 shrink-0 items-center rounded-md border border-[var(--status-danger-border)] bg-[var(--surface-1)] px-2 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
               >
                 <Trash2 className="h-3.5 w-3.5 shrink-0" />
-                <span className={REVEAL_LABEL_CLASS}>Delete Course</span>
+                {actionsExpanded && <span className="ml-1 text-xs font-medium sm:hidden">Delete</span>}
+                <span className={`hidden sm:inline ${REVEAL_LABEL_CLASS}`}>Delete Course</span>
               </button>
             </div>
 
@@ -148,8 +153,8 @@ export function CourseHeader({
               aria-label={bookmarked ? 'Remove from bookmarks' : 'Bookmark course'}
               className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md border transition-colors ${
                 bookmarked
-                  ? 'border-amber-400 bg-amber-50 text-amber-600 dark:border-yellow-500/70 dark:bg-yellow-950/40 dark:text-yellow-400'
-                  : 'border-slate-300 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-400 dark:hover:bg-slate-700 dark:hover:text-slate-200'
+                  ? 'border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] text-[var(--accent-amber)]'
+                  : 'border-[var(--border-strong)] bg-[var(--surface-2)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]'
               }`}
             >
               <Bookmark className="h-4 w-4" fill={bookmarked ? 'currentColor' : 'none'} />
@@ -159,11 +164,11 @@ export function CourseHeader({
 
         {/* Course Title & Metadata */}
         <div className="mb-5">
-          <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+          <div className="mb-1.5 flex flex-wrap items-center gap-2 text-xs font-medium text-[var(--text-muted)]">
             <span className="rounded bg-[var(--solid-bg)] px-2 py-0.5 font-mono font-semibold text-[var(--solid-text)]">
               {course.code}
             </span>
-            <span className="rounded bg-slate-100 px-2 py-0.5 text-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
+            <span className="rounded bg-[var(--surface-warm-muted)] px-2 py-0.5 text-[var(--text-secondary)]">
               {course.department}
             </span>
             {termLabel && (
@@ -175,14 +180,16 @@ export function CourseHeader({
             {course.credits && (
               <>
                 <span>·</span>
-                <span>{course.credits} Credits</span>
+                <span>
+                  {course.credits} {course.credits === 1 ? 'Credit' : 'Credits'}
+                </span>
               </>
             )}
           </div>
-          <h1 className="mb-1.5 text-2xl font-bold tracking-tight text-slate-900 sm:text-5xl dark:text-slate-100">
+          <h1 className="mb-1.5 text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-5xl">
             {course.title}
           </h1>
-          <p className="max-w-3xl text-sm text-slate-600 sm:text-base dark:text-slate-400">
+          <p className="max-w-3xl text-sm text-[var(--text-secondary)] sm:text-base">
             {course.description}
           </p>
         </div>
@@ -196,8 +203,8 @@ export function CourseHeader({
             onClick={() => onChangeTab('tree')}
             className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors ${
               activeTab === 'tree'
-                ? 'border-slate-900 text-slate-900 dark:border-yellow-400 dark:text-white'
-                : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'border-[var(--accent-purple)] text-[var(--text-primary)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             <GitFork className="h-4 w-4" />
@@ -210,8 +217,8 @@ export function CourseHeader({
             onClick={() => onChangeTab('checklist')}
             className={`inline-flex items-center gap-1.5 border-b-2 pb-3 text-sm font-medium transition-colors ${
               activeTab === 'checklist'
-                ? 'border-slate-900 text-slate-900 dark:border-yellow-400 dark:text-white'
-                : 'border-transparent text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200'
+                ? 'border-[var(--accent-purple)] text-[var(--text-primary)]'
+                : 'border-transparent text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
             }`}
           >
             <ListChecks className="h-4 w-4" />

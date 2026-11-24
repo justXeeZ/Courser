@@ -1,11 +1,12 @@
-# Agent Instructions — College Course Trees
+# Agent Instructions — Courser
 
-College Course Trees is a local-first React + TypeScript web app for building and studying college course syllabi as interactive roadmap.sh-style chapter and sub-lesson prerequisite trees.
+**Courser** (`c.`) is a local-first React + TypeScript web app for building and studying college course syllabi as interactive roadmap.sh-style chapter and sub-lesson prerequisite trees.
 
 ## 1. Repository Commands
 Run from the repository root:
 - `npm run dev` — start local Vite dev server (stop any dev server you started before finishing)
 - `npm run typecheck` — run `tsc --noEmit`
+- `npm run lint` — run ESLint (`eslint .`)
 - `npm run test` — run Vitest test suite (`vitest run`)
 - `npm run build` — run `tsc -b && vite build`
 
@@ -22,9 +23,9 @@ Read only the document that matches your task:
 
 | Task Area | Document to Read |
 |---|---|
-| UI, theming, layout, reusable components, copy tone, accessibility, or new pages | [`docs/design.md`](./docs/design.md) |
-| Data schemas, IDs, progress math, file validation/GC, storage keys, import/export, or non-goals | [`docs/data-model.md`](./docs/data-model.md) |
-| Adding, renaming, or removing a feature, schema field, resource kind, route, or UI label | [`docs/change-protocol.md`](./docs/change-protocol.md) |
+| UI, theming, layout, reusable components, copy tone, accessibility, or new pages | [`DESIGN.md`](./DESIGN.md) |
+| Data schemas, IDs, progress math, file validation/GC, storage keys, import/export, or non-goals | [`DATA_MODEL.md`](./DATA_MODEL.md) |
+| Adding, renaming, or removing a feature, schema field, resource kind, route, or UI label | [`CHANGE_PROTOCOL.md`](./CHANGE_PROTOCOL.md) |
 | Milestone roadmap and planned future work | [`PLAN.md`](./PLAN.md) |
 | Resolving known inconsistencies and open design questions | [`ISSUES.md`](./ISSUES.md) |
 

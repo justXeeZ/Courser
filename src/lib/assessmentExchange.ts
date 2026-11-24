@@ -161,10 +161,18 @@ export async function buildAssessmentExport(
   };
 }
 
+const MAX_ASSESSMENT_JSON_CHARS = 50 * 1024 * 1024; // 50 MB guard
+
 export async function parseAssessmentImport(
   jsonText: string,
   courseCode?: string
 ): Promise<AssessmentImportResult> {
+  if (jsonText.length > MAX_ASSESSMENT_JSON_CHARS) {
+    return {
+      ok: false,
+      error: 'Assessment JSON exceeds the 50 MB import size limit.',
+    };
+  }
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(jsonText);

@@ -176,7 +176,7 @@ describe('CourseTreeCanvas', () => {
 
     const doneBadge = ch3Group.querySelector('[data-status-badge="done"]');
     expect(doneBadge).not.toBeNull();
-    expect(doneBadge?.querySelector('circle')).toHaveAttribute('fill', '#16a34a');
+    expect(doneBadge?.querySelector('circle')).toHaveAttribute('fill', '#15803d');
 
     const ch4Group = container.querySelector(`g[data-node-id="${leafCh4.id}"]`) as SVGGElement;
     const learningBadge = ch4Group.querySelector('[data-status-badge="learning"]');
@@ -212,7 +212,7 @@ describe('CourseTreeCanvas', () => {
     const ch2Group = container.querySelector(`g[data-node-id="${ch2.id}"]`) as SVGGElement;
     expect(ch2Group.textContent).toContain('1/1');
     const ch2Pills = ch2Group.querySelectorAll('rect[rx="10"]');
-    expect(ch2Pills[0]).toHaveAttribute('fill', '#16a34a');
+    expect(ch2Pills[0]).toHaveAttribute('fill', '#15803d');
   });
 
   it('handles Shift+Click and context menu on leaf chapters & lessons, and ignores context menu on multi-lesson chapters', () => {
@@ -248,5 +248,41 @@ describe('CourseTreeCanvas', () => {
     const ch1Group = container.querySelector(`g[data-node-id="${ch1.id}"]`) as SVGGElement;
     fireEvent.contextMenu(ch1Group);
     expect(onContextMenuLesson).toHaveBeenCalledTimes(1);
+  });
+
+  it('updates zoom on two-finger pinch and disables width transition while pinching', () => {
+    const { container } = render(
+      <CourseTreeCanvas
+        layout={layout}
+        statuses={{}}
+        onSelectLesson={vi.fn()}
+        onSelectChapter={vi.fn()}
+        onQuickToggleDone={vi.fn()}
+        onContextMenuLesson={vi.fn()}
+      />
+    );
+
+    const canvasContainer = container.querySelector('.touch-none') as HTMLDivElement;
+    const zoomWrapper = canvasContainer.firstElementChild as HTMLDivElement;
+    expect(zoomWrapper.className).toContain('transition-[width,max-width,min-width]');
+
+    fireEvent.touchStart(canvasContainer, {
+      touches: [
+        { clientX: 0, clientY: 0 },
+        { clientX: 100, clientY: 0 },
+      ],
+    });
+    expect(zoomWrapper.className).not.toContain('transition-[width,max-width,min-width]');
+
+    fireEvent.touchMove(canvasContainer, {
+      touches: [
+        { clientX: 0, clientY: 0 },
+        { clientX: 150, clientY: 0 },
+      ],
+    });
+    expect(screen.getByText('150%')).toBeInTheDocument();
+
+    fireEvent.touchEnd(canvasContainer, { touches: [] });
+    expect(zoomWrapper.className).toContain('transition-[width,max-width,min-width]');
   });
 });

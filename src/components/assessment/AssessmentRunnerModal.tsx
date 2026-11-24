@@ -1,16 +1,23 @@
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import {
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock,
   Flag,
   HelpCircle,
+  ListChecks,
+  Play,
   RotateCcw,
   X,
   XCircle,
 } from 'lucide-react';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ResourceBadge } from '@/components/ResourceBadge';
 import { RichMathText } from '@/components/RichMathText';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { getFile } from '@/lib/fileStore';
+import { isSafeHttpUrl } from '@/lib/materialValidation';
 import { useProgress } from '@/store/useProgressStore';
 import type {
   AssessmentData,
@@ -47,17 +54,8 @@ export interface GradedAssessmentResult {
   questionGrades: QuestionGrade[];
 }
 
-function isSafeHttpUrl(raw?: string): boolean {
-  if (!raw) return false;
-  const trimmed = raw.trim();
-  if (!/^https?:\/\//i.test(trimmed)) return false;
-  try {
-    const parsed = new URL(trimmed);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
+type RunnerPhase = 'overview' | 'active' | 'review' | 'results';
+type ResultFilter = 'all' | 'incorrect' | 'unanswered' | 'flagged';
 
 function getTrueFalseOptions(q: AssessmentQuestion): string[] {
   return q.options && q.options.length === 2 ? q.options : ['True', 'False'];
@@ -163,6 +161,10 @@ function formatTimer(seconds: number): string {
   return hrs > 0 ? `${hrs}:${mm}:${ss}` : `${mm}:${ss}`;
 }
 
+function formatPointsLabel(points: number): string {
+  return points === 1 ? '1 pt' : `${points} pts`;
+}
+
 function formatUserAnswerLabel(
   q: AssessmentQuestion,
   answer: UserAnswer
@@ -256,14 +258,14 @@ function QuestionHeaderImage({
   if (imageFile) {
     if (missing) {
       return (
-        <p className="text-xs text-amber-700 dark:text-amber-300">
+        <p className="text-xs text-[var(--status-warning-text)]">
           Image &ldquo;{imageFile.name}&rdquo; unavailable in local storage.
         </p>
       );
     }
     if (!objectUrl) {
       return (
-        <p className="text-xs text-slate-500 dark:text-slate-400">
+        <p className="text-xs text-[var(--text-muted)]">
           Loading image...
         </p>
       );
@@ -272,7 +274,7 @@ function QuestionHeaderImage({
       <img
         src={objectUrl}
         alt={imageFile.name}
-        className="max-h-64 rounded-lg border border-slate-200 object-contain dark:border-slate-700"
+        className="max-h-64 rounded-lg border border-[var(--border-subtle)] object-contain"
       />
     );
   }
@@ -282,7 +284,7 @@ function QuestionHeaderImage({
       <img
         src={imageUrl.trim()}
         alt="Question illustration"
-        className="max-h-64 rounded-lg border border-slate-200 object-contain dark:border-slate-700"
+        className="max-h-64 rounded-lg border border-[var(--border-subtle)] object-contain"
       />
     );
   }
@@ -301,15 +303,20 @@ export function AssessmentRunnerModal({
   const { recordAssessmentScore } = useProgress();
   const assessment = resource.assessment;
 
+  const [phase, setPhase] = useState<RunnerPhase>('overview');
   const [orderedQuestions, setOrderedQuestions] = useState<AssessmentQuestion[]>([]);
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [answers, setAnswers] = useState<Record<string, UserAnswer>>({});
   const [checkedIds, setCheckedIds] = useState<Record<string, boolean>>({});
   const [hintOpenIds, setHintOpenIds] = useState<Record<string, boolean>>({});
   const [flaggedIds, setFlaggedIds] = useState<Set<string>>(() => new Set());
-  const [submitted, setSubmitted] = useState<boolean>(false);
   const [gradedResult, setGradedResult] = useState<GradedAssessmentResult | null>(null);
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
+  const [instructionsOpen, setInstructionsOpen] = useState<boolean>(false);
+  const [navOpenMobile, setNavOpenMobile] = useState<boolean>(false);
+  const [resultFilter, setResultFilter] = useState<ResultFilter>('all');
+  const [confirmLeaveOpen, setConfirmLeaveOpen] = useState<boolean>(false);
+  const [confirmUnansweredOpen, setConfirmUnansweredOpen] = useState<boolean>(false);
   const scoreRecordedRef = useRef<boolean>(false);
 
   const initAttempt = useCallback(() => {
@@ -317,19 +324,24 @@ export function AssessmentRunnerModal({
     const questions = assessment.shuffleQuestions
       ? shuffleArray(assessment.questions)
       : [...assessment.questions];
+    setPhase('overview');
     setOrderedQuestions(questions);
     setCurrentIndex(0);
     setAnswers({});
     setCheckedIds({});
     setHintOpenIds({});
     setFlaggedIds(new Set());
-    setSubmitted(false);
     setGradedResult(null);
     setSecondsLeft(
       assessment.mode === 'exam' && assessment.timeLimitMinutes
         ? assessment.timeLimitMinutes * 60
         : null
     );
+    setInstructionsOpen(false);
+    setNavOpenMobile(false);
+    setResultFilter('all');
+    setConfirmLeaveOpen(false);
+    setConfirmUnansweredOpen(false);
     scoreRecordedRef.current = false;
   }, [assessment]);
 
@@ -338,23 +350,30 @@ export function AssessmentRunnerModal({
     initAttempt();
   }, [isOpen, courseSlug, itemId, resource, assessment, initAttempt]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  const handleRequestClose = useCallback(() => {
+    if (phase === 'active' || phase === 'review') {
+      setConfirmLeaveOpen(true);
+      return;
+    }
+    onClose();
+  }, [phase, onClose]);
+
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocus({
+    isOpen,
+    containerRef: dialogRef,
+    onEscape: handleRequestClose,
+  });
 
   const finalizeSubmission = useCallback(() => {
     if (!assessment || scoreRecordedRef.current) return;
     scoreRecordedRef.current = true;
     const result = gradeAssessment(assessment, answers, orderedQuestions);
     setGradedResult(result);
-    setSubmitted(true);
+    setPhase('results');
+    setConfirmUnansweredOpen(false);
+    setConfirmLeaveOpen(false);
     recordAssessmentScore(
       courseSlug,
       itemId,
@@ -364,13 +383,13 @@ export function AssessmentRunnerModal({
     );
   }, [assessment, answers, orderedQuestions, recordAssessmentScore, courseSlug, itemId, resource.title]);
 
-  // Countdown tick in exam mode
+  // Countdown tick in exam mode ONLY while active or in pre-submit review
   useEffect(() => {
     if (
       !isOpen ||
       !assessment ||
       assessment.mode !== 'exam' ||
-      submitted ||
+      (phase !== 'active' && phase !== 'review') ||
       secondsLeft === null ||
       secondsLeft <= 0
     ) {
@@ -382,19 +401,33 @@ export function AssessmentRunnerModal({
     }, 1000);
 
     return () => window.clearInterval(timerId);
-  }, [isOpen, assessment, submitted, secondsLeft]);
+  }, [isOpen, assessment, phase, secondsLeft]);
 
   // Auto-submit at 00:00 using current render's answers (no stale closure)
   useEffect(() => {
     if (
       isOpen &&
       assessment?.mode === 'exam' &&
-      !submitted &&
+      (phase === 'active' || phase === 'review') &&
       secondsLeft === 0
     ) {
       finalizeSubmission();
     }
-  }, [isOpen, assessment, submitted, secondsLeft, finalizeSubmission]);
+  }, [isOpen, assessment, phase, secondsLeft, finalizeSubmission]);
+
+  const totalPoints = useMemo(
+    () => orderedQuestions.reduce((sum, q) => sum + (q.points ?? 1), 0),
+    [orderedQuestions]
+  );
+
+  const answeredCount = useMemo(
+    () =>
+      orderedQuestions.filter((q) => isQuestionAnswered(q, answers[q.id])).length,
+    [orderedQuestions, answers]
+  );
+
+  const unansweredCount = orderedQuestions.length - answeredCount;
+  const flaggedCount = flaggedIds.size;
 
   if (!isOpen || !assessment || orderedQuestions.length === 0) return null;
 
@@ -413,19 +446,83 @@ export function AssessmentRunnerModal({
       ? getTrueFalseOptions(currentQuestion)
       : (currentQuestion.options ?? []);
 
+  const progressPercent =
+    orderedQuestions.length > 0
+      ? Math.round((answeredCount / orderedQuestions.length) * 100)
+      : 0;
+
+  const handleSubmitFromReview = () => {
+    if (unansweredCount > 0) {
+      setConfirmUnansweredOpen(true);
+      return;
+    }
+    finalizeSubmission();
+  };
+
+  const renderNavigatorPills = () => (
+    <div className="grid grid-cols-5 gap-1.5 sm:grid-cols-6 lg:grid-cols-4">
+      {orderedQuestions.map((q, idx) => {
+        const answered = isQuestionAnswered(q, answers[q.id]);
+        const flagged = isExam && flaggedIds.has(q.id);
+        const checked = !isExam && Boolean(checkedIds[q.id]);
+        const checkedGrade = checked ? gradeQuestion(q, answers[q.id]) : null;
+        const isCurrent = idx === currentIndex;
+
+        let pillColor =
+          'border-[var(--border-subtle)] bg-[var(--surface-inset)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]';
+        if (checkedGrade) {
+          pillColor = checkedGrade.isCorrect
+            ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
+            : 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]';
+        } else if (flagged) {
+          pillColor =
+            'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]';
+        } else if (answered) {
+          pillColor =
+            'border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)] text-[var(--accent-purple-text)]';
+        }
+
+        return (
+          <button
+            key={q.id}
+            type="button"
+            aria-label={`Jump to question ${idx + 1}${flagged ? ' (flagged)' : ''}`}
+            aria-current={isCurrent ? 'step' : undefined}
+            onClick={() => {
+              setCurrentIndex(idx);
+              setNavOpenMobile(false);
+            }}
+            className={`inline-flex h-8 items-center justify-center gap-0.5 rounded-md border px-1.5 font-mono text-xs font-semibold transition-colors ${pillColor} ${
+              isCurrent ? 'ring-2 ring-[var(--border-focus)] ring-offset-1 ring-offset-[var(--surface-1)]' : ''
+            }`}
+          >
+            <span>{idx + 1}</span>
+            {flagged && <Flag className="h-2.5 w-2.5 fill-current" />}
+          </button>
+        );
+      })}
+    </div>
+  );
+
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 dark:bg-black/75"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop-modal)] p-2 sm:p-4"
       role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) {
+          handleRequestClose();
+        }
+      }}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="flex max-h-[92vh] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#121926] dark:text-slate-50"
+        className="flex max-h-[92dvh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)] shadow-2xl"
       >
         {/* Top Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-slate-100 px-4 py-3 dark:border-slate-700 dark:bg-[#1b2436]">
+        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
           <div className="flex min-w-0 items-center gap-2.5">
             <ResourceBadge kind={resource.kind} />
             <h2 id={titleId} className="truncate text-sm font-bold sm:text-base">
@@ -434,45 +531,662 @@ export function AssessmentRunnerModal({
           </div>
 
           <div className="flex items-center gap-2.5">
-            {isExam && secondsLeft !== null && !submitted && (
-              <div
-                aria-label="Time remaining"
-                className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-xs font-semibold ${
-                  secondsLeft <= 60
-                    ? 'border-red-300 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-950/50 dark:text-red-300'
-                    : 'border-slate-300 bg-white text-slate-800 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100'
-                }`}
-              >
-                <Clock className="h-3.5 w-3.5" />
-                {formatTimer(secondsLeft)}
-              </div>
-            )}
-
-            {!submitted && (
-              <button
-                type="button"
-                onClick={finalizeSubmission}
-                className="rounded-md bg-yellow-400 px-3 py-1.5 text-xs font-semibold text-black hover:bg-yellow-500"
-              >
-                {isExam ? 'Submit Exam' : 'Finish Assignment'}
-              </button>
-            )}
+            {isExam &&
+              secondsLeft !== null &&
+              (phase === 'active' || phase === 'review') && (
+                <div
+                  aria-label="Time remaining"
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 font-mono text-xs font-semibold ${
+                    secondsLeft <= 60
+                      ? 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]'
+                      : 'border-[var(--border-subtle)] bg-[var(--surface-inset)] text-[var(--text-primary)]'
+                  }`}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  {formatTimer(secondsLeft)}
+                </div>
+              )}
 
             <button
               type="button"
-              onClick={onClose}
+              onClick={handleRequestClose}
               aria-label="Close assessment"
-              className="rounded-md p-1.5 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-700"
+              className="rounded-md p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
             >
               <X className="h-4 w-4" />
             </button>
           </div>
         </div>
 
-        {/* Submitted Results Screen */}
-        {submitted && gradedResult ? (
+        {/* Phase 1: Pre-Start Overview */}
+        {phase === 'overview' && (
+          <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-8">
+            <div className="mx-auto max-w-2xl space-y-6">
+              <div className="space-y-2">
+                <p className="font-mono text-xs font-semibold uppercase tracking-wider text-[var(--accent-purple-text)]">
+                  {isExam ? 'Timed Exam Overview' : 'Practice Assignment Overview'}
+                </p>
+                <h3 className="text-xl font-bold text-[var(--text-primary)] sm:text-2xl">
+                  {resource.title}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
+                  <div className="text-[11px] font-medium text-[var(--text-muted)]">
+                    Questions
+                  </div>
+                  <div className="mt-1 font-mono text-lg font-bold text-[var(--text-primary)]">
+                    {orderedQuestions.length}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
+                  <div className="text-[11px] font-medium text-[var(--text-muted)]">
+                    Total Points
+                  </div>
+                  <div className="mt-1 font-mono text-lg font-bold text-[var(--text-primary)]">
+                    {formatPointsLabel(totalPoints)}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
+                  <div className="text-[11px] font-medium text-[var(--text-muted)]">
+                    Pass Score
+                  </div>
+                  <div className="mt-1 font-mono text-lg font-bold text-[var(--text-primary)]">
+                    {assessment.passingScorePercent ?? 70}%
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
+                  <div className="text-[11px] font-medium text-[var(--text-muted)]">
+                    Time Limit
+                  </div>
+                  <div className="mt-1 font-mono text-lg font-bold text-[var(--text-primary)]">
+                    {isExam && assessment.timeLimitMinutes
+                      ? `${assessment.timeLimitMinutes} min`
+                      : 'Untimed'}
+                  </div>
+                </div>
+              </div>
+
+              {assessment.instructions?.trim() && (
+                <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-4 text-sm text-[var(--text-secondary)]">
+                  <div className="mb-1.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Instructions
+                  </div>
+                  <RichMathText text={assessment.instructions} as="div" />
+                </div>
+              )}
+
+              <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-inset)] p-4 text-xs text-[var(--text-secondary)]">
+                {isExam ? (
+                  <p>
+                    Exam mode: hints and instant answer checking are disabled until submission.
+                    You can flag questions for review and jump between questions before submitting.
+                    {assessment.timeLimitMinutes
+                      ? ' The timer starts when you click Start Exam.'
+                      : ''}
+                  </p>
+                ) : (
+                  <p>
+                    Assignment mode: you can reveal hints and check each answer as you go before
+                    submitting your final score.
+                  </p>
+                )}
+              </div>
+
+              <div className="flex justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPhase('active')}
+                  className="inline-flex items-center gap-2 rounded-lg bg-[var(--cta-bg)] px-5 py-2 text-sm font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+                >
+                  <Play className="h-4 w-4 fill-current" />
+                  {isExam ? 'Start Exam' : 'Start Assignment'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Phase 2: Active Question View */}
+        {phase === 'active' && (
+          <div className="flex min-h-0 flex-1 flex-col">
+            {/* Progress & Mobile Navigator Bar */}
+            <div className="border-b border-[var(--border-subtle)] bg-[var(--surface-1)] px-4 py-2.5">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div className="flex items-center gap-3">
+                  <span className="font-mono text-xs font-semibold text-[var(--text-secondary)]">
+                    Question {currentIndex + 1} of {orderedQuestions.length}
+                  </span>
+                  <span className="text-xs text-[var(--text-muted)]">
+                    {answeredCount}/{orderedQuestions.length} answered
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {assessment.instructions?.trim() && (
+                    <button
+                      type="button"
+                      onClick={() => setInstructionsOpen((v) => !v)}
+                      aria-expanded={instructionsOpen}
+                      className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                    >
+                      Instructions
+                      {instructionsOpen ? (
+                        <ChevronUp className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      )}
+                    </button>
+                  )}
+
+                  <button
+                    type="button"
+                    onClick={() => setNavOpenMobile((v) => !v)}
+                    aria-expanded={navOpenMobile}
+                    className="inline-flex items-center gap-1 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] lg:hidden"
+                  >
+                    <ListChecks className="h-3.5 w-3.5" />
+                    Questions
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-[var(--surface-2)]">
+                <div
+                  className="h-full rounded-full bg-[var(--cta-bg)] transition-all duration-200"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+
+              {instructionsOpen && assessment.instructions?.trim() && (
+                <div className="mt-2.5 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3 text-xs text-[var(--text-secondary)]">
+                  <RichMathText text={assessment.instructions} as="div" />
+                </div>
+              )}
+
+              {navOpenMobile && (
+                <div className="mt-3 border-t border-[var(--border-subtle)] pt-3 lg:hidden">
+                  {renderNavigatorPills()}
+                </div>
+              )}
+            </div>
+
+            {/* Main 2-Column Body */}
+            <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_240px]">
+              {/* Left: Question Card */}
+              <div className="min-h-0 space-y-4 overflow-y-auto p-4 sm:p-6">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-mono text-xs font-semibold text-[var(--text-muted)]">
+                    Question {currentIndex + 1} of {orderedQuestions.length} ·{' '}
+                    {formatPointsLabel(currentQuestion.points ?? 1)}
+                  </span>
+
+                  <div className="flex items-center gap-2">
+                    {!isExam && currentQuestion.hint?.trim() && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setHintOpenIds((prev) => ({
+                            ...prev,
+                            [currentQuestion.id]: !prev[currentQuestion.id],
+                          }))
+                        }
+                        aria-expanded={isHintOpen}
+                        className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-2.5 py-1 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+                      >
+                        <HelpCircle className="h-3.5 w-3.5 text-[var(--status-warning-text)]" />
+                        {isHintOpen ? 'Hide Hint' : 'Show Hint'}
+                      </button>
+                    )}
+
+                    {isExam && (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setFlaggedIds((prev) => {
+                            const next = new Set(prev);
+                            if (next.has(currentQuestion.id)) {
+                              next.delete(currentQuestion.id);
+                            } else {
+                              next.add(currentQuestion.id);
+                            }
+                            return next;
+                          })
+                        }
+                        aria-label={isFlagged ? 'Unflag question' : 'Flag question'}
+                        aria-pressed={isFlagged}
+                        title={isFlagged ? 'Unflag question' : 'Flag question'}
+                        className={`inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors ${
+                          isFlagged
+                            ? 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
+                            : 'border-[var(--border-subtle)] bg-[var(--surface-inset)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
+                        }`}
+                      >
+                        <Flag className={`h-4 w-4 ${isFlagged ? 'fill-current' : ''}`} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Question Header */}
+                <div className="space-y-3">
+                  <QuestionHeaderImage
+                    imageFile={currentQuestion.header.imageFile}
+                    imageUrl={currentQuestion.header.imageUrl}
+                  />
+                  {currentQuestion.header.text && (
+                    <RichMathText
+                      text={currentQuestion.header.text}
+                      as="div"
+                      className="text-base font-medium leading-relaxed text-[var(--text-primary)]"
+                    />
+                  )}
+                </div>
+
+                {/* Hint Panel directly under question header (hidden by default) */}
+                {!isExam && isHintOpen && currentQuestion.hint?.trim() && (
+                  <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3 text-xs text-[var(--status-warning-text)]">
+                    <span className="font-semibold">Hint: </span>
+                    <RichMathText text={currentQuestion.hint} />
+                  </div>
+                )}
+
+                {/* Choices / Input */}
+                {(currentQuestion.type === 'mcq' ||
+                  currentQuestion.type === 'true-false') && (
+                  <div className="space-y-2">
+                    {optionsForCurrent.map((opt, idx) => {
+                      const selected = currentAnswer === idx;
+                      const isOptionCorrect = currentQuestion.correctIndices?.[0] === idx;
+                      const keycap = String.fromCharCode(65 + idx);
+                      let cardStyle =
+                        'border-[var(--border-subtle)] bg-[var(--surface-inset)] hover:bg-[var(--surface-hover)]';
+                      let keycapStyle =
+                        'border-[var(--border-subtle)] bg-[var(--surface-2)] text-[var(--text-secondary)]';
+                      if (isChecked && isOptionCorrect) {
+                        cardStyle =
+                          'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]';
+                        keycapStyle =
+                          'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]';
+                      } else if (isChecked && selected && !isOptionCorrect) {
+                        cardStyle =
+                          'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]';
+                        keycapStyle =
+                          'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]';
+                      } else if (selected) {
+                        cardStyle =
+                          'border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)]';
+                        keycapStyle =
+                          'border-[var(--recommended-border)] bg-[var(--cta-bg)] text-[var(--cta-text)]';
+                      }
+
+                      return (
+                        <label
+                          key={idx}
+                          className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${cardStyle}`}
+                        >
+                          <input
+                            type="radio"
+                            name={`answer-${currentQuestion.id}`}
+                            checked={selected}
+                            disabled={isChecked}
+                            onChange={() =>
+                              setAnswers((prev) => ({
+                                ...prev,
+                                [currentQuestion.id]: idx,
+                              }))
+                            }
+                            className="sr-only"
+                          />
+                          <span
+                            aria-hidden="true"
+                            className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border font-mono text-xs font-bold ${keycapStyle}`}
+                          >
+                            {keycap}
+                          </span>
+                          <RichMathText text={opt} className="flex-1 pt-0.5" />
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {currentQuestion.type === 'multi-select' && (
+                  <div className="space-y-2">
+                    {optionsForCurrent.map((opt, idx) => {
+                      const selectedArr = Array.isArray(currentAnswer) ? currentAnswer : [];
+                      const selected = selectedArr.includes(idx);
+                      const isOptionCorrect = (
+                        currentQuestion.correctIndices ?? []
+                      ).includes(idx);
+                      const keycap = String.fromCharCode(65 + idx);
+
+                      let cardStyle =
+                        'border-[var(--border-subtle)] bg-[var(--surface-inset)] hover:bg-[var(--surface-hover)]';
+                      let keycapStyle =
+                        'border-[var(--border-subtle)] bg-[var(--surface-2)] text-[var(--text-secondary)]';
+                      if (isChecked && isOptionCorrect) {
+                        cardStyle =
+                          'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]';
+                        keycapStyle =
+                          'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]';
+                      } else if (isChecked && selected && !isOptionCorrect) {
+                        cardStyle =
+                          'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]';
+                        keycapStyle =
+                          'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]';
+                      } else if (selected) {
+                        cardStyle =
+                          'border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)]';
+                        keycapStyle =
+                          'border-[var(--recommended-border)] bg-[var(--cta-bg)] text-[var(--cta-text)]';
+                      }
+
+                      return (
+                        <label
+                          key={idx}
+                          className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${cardStyle}`}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selected}
+                            disabled={isChecked}
+                            onChange={() =>
+                              setAnswers((prev) => {
+                                const prevArr = Array.isArray(prev[currentQuestion.id])
+                                  ? (prev[currentQuestion.id] as number[])
+                                  : [];
+                                const nextArr = prevArr.includes(idx)
+                                  ? prevArr.filter((i) => i !== idx)
+                                  : [...prevArr, idx].sort((a, b) => a - b);
+                                return {
+                                  ...prev,
+                                  [currentQuestion.id]: nextArr,
+                                };
+                              })
+                            }
+                            className="mt-1 h-4 w-4 shrink-0 rounded accent-[var(--cta-bg)]"
+                          />
+                          <span
+                            aria-hidden="true"
+                            className={`mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded border font-mono text-xs font-bold ${keycapStyle}`}
+                          >
+                            {keycap}
+                          </span>
+                          <RichMathText text={opt} className="flex-1 pt-0.5" />
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {currentQuestion.type === 'short-answer' && (
+                  <div>
+                    <input
+                      type="text"
+                      aria-label="Your answer"
+                      disabled={isChecked}
+                      value={typeof currentAnswer === 'string' ? currentAnswer : ''}
+                      onChange={(e) =>
+                        setAnswers((prev) => ({
+                          ...prev,
+                          [currentQuestion.id]: e.target.value,
+                        }))
+                      }
+                      placeholder="Type your answer..."
+                      className="w-full rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-2 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:outline-none"
+                    />
+                  </div>
+                )}
+
+                {/* Assignment Mode Controls: Check Answer & Instant Feedback */}
+                {!isExam && (
+                  <div className="space-y-3 pt-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={
+                          isChecked || !isQuestionAnswered(currentQuestion, currentAnswer)
+                        }
+                        onClick={() =>
+                          setCheckedIds((prev) => ({
+                            ...prev,
+                            [currentQuestion.id]: true,
+                          }))
+                        }
+                        className="rounded-md bg-[var(--solid-bg)] px-3.5 py-1.5 text-xs font-semibold text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)] disabled:opacity-45"
+                      >
+                        Check Answer
+                      </button>
+                    </div>
+
+                    {isChecked && currentGrade && (
+                      <div
+                        className={`rounded-lg border p-3 text-xs ${
+                          currentGrade.isCorrect
+                            ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
+                            : 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 font-semibold">
+                          {currentGrade.isCorrect ? (
+                            <CheckCircle2 className="h-4 w-4" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
+                          {currentGrade.isCorrect ? 'Correct' : 'Incorrect'}
+                        </div>
+                        {!currentGrade.isCorrect && (
+                          <div className="mt-1">
+                            <span className="font-semibold">Accepted / Correct: </span>
+                            <RichMathText text={formatCorrectAnswerLabel(currentQuestion)} />
+                          </div>
+                        )}
+                        {currentQuestion.explanation?.trim() && (
+                          <div className="mt-1.5 border-t border-current/15 pt-1.5">
+                            <span className="font-semibold">Explanation: </span>
+                            <RichMathText text={currentQuestion.explanation} />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Right: Desktop Question Navigator Sidebar */}
+              <aside className="hidden border-l border-[var(--border-subtle)] bg-[var(--surface-2)] p-4 lg:flex lg:flex-col lg:gap-4 lg:overflow-y-auto">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                    Question Navigator
+                  </h3>
+                  <p className="mt-0.5 text-[11px] text-[var(--text-secondary)]">
+                    {answeredCount} answered · {unansweredCount} remaining
+                    {isExam && flaggedCount > 0 ? ` · ${flaggedCount} flagged` : ''}
+                  </p>
+                </div>
+
+                {renderNavigatorPills()}
+
+                <div className="mt-auto space-y-1.5 border-t border-[var(--border-subtle)] pt-3 text-[11px] text-[var(--text-muted)]">
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-sm border border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)]" />
+                    <span>Answered / Active</span>
+                  </div>
+                  {isExam && (
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-sm border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)]" />
+                      <span>Flagged for review</span>
+                    </div>
+                  )}
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-sm border border-[var(--border-subtle)] bg-[var(--surface-inset)]" />
+                    <span>Unanswered</span>
+                  </div>
+                </div>
+              </aside>
+            </div>
+
+            {/* Sticky Footer Navigation */}
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={currentIndex === 0}
+                  onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
+                  className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-45"
+                >
+                  Previous
+                </button>
+
+                <button
+                  type="button"
+                  disabled={currentIndex >= orderedQuestions.length - 1}
+                  onClick={() =>
+                    setCurrentIndex((i) => Math.min(orderedQuestions.length - 1, i + 1))
+                  }
+                  className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-45"
+                >
+                  Next
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPhase('review')}
+                className="rounded-md bg-[var(--cta-bg)] px-4 py-1.5 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+              >
+                Review &amp; Submit
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Phase 3: Pre-Submit Review Screen */}
+        {phase === 'review' && (
+          <div className="flex min-h-0 flex-1 flex-col">
+            <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
+              <div>
+                <h3 className="text-base font-bold text-[var(--text-primary)]">
+                  Review Before Submitting
+                </h3>
+                <p className="mt-0.5 text-xs text-[var(--text-secondary)]">
+                  Check your progress below. Click any question to return and edit your answer.
+                </p>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-lg border border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)] p-3">
+                  <div className="text-[11px] font-medium text-[var(--accent-purple-text)]">
+                    Answered
+                  </div>
+                  <div className="mt-0.5 font-mono text-lg font-bold text-[var(--accent-purple-text)]">
+                    {answeredCount}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
+                  <div className="text-[11px] font-medium text-[var(--text-muted)]">
+                    Unanswered
+                  </div>
+                  <div className="mt-0.5 font-mono text-lg font-bold text-[var(--text-primary)]">
+                    {unansweredCount}
+                  </div>
+                </div>
+                <div className="rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] p-3">
+                  <div className="text-[11px] font-medium text-[var(--status-warning-text)]">
+                    Flagged
+                  </div>
+                  <div className="mt-0.5 font-mono text-lg font-bold text-[var(--status-warning-text)]">
+                    {isExam ? flaggedCount : 0}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {orderedQuestions.map((q, idx) => {
+                  const answered = isQuestionAnswered(q, answers[q.id]);
+                  const flagged = isExam && flaggedIds.has(q.id);
+                  return (
+                    <div
+                      key={q.id}
+                      className="flex items-center justify-between gap-3 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-inset)] p-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-xs font-bold text-[var(--text-primary)]">
+                            Q{idx + 1}
+                          </span>
+                          <span
+                            className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                              answered
+                                ? 'bg-[var(--accent-purple-soft-bg)] text-[var(--accent-purple-text)]'
+                                : 'bg-[var(--surface-2)] text-[var(--text-muted)]'
+                            }`}
+                          >
+                            {answered ? 'Answered' : 'Unanswered'}
+                          </span>
+                          {flagged && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[var(--status-warning-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--status-warning-text)]">
+                              <Flag className="h-2.5 w-2.5 fill-current" />
+                              Flagged
+                            </span>
+                          )}
+                        </div>
+                        {q.header.text && (
+                          <p className="mt-1 truncate text-xs text-[var(--text-secondary)]">
+                            {q.header.text}
+                          </p>
+                        )}
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCurrentIndex(idx);
+                          setPhase('active');
+                        }}
+                        className="shrink-0 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
+                      >
+                        Go to Q{idx + 1}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 border-t border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
+              <button
+                type="button"
+                onClick={() => setPhase('active')}
+                className="rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
+              >
+                Back to Questions
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSubmitFromReview}
+                className="rounded-md bg-[var(--cta-bg)] px-4 py-1.5 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+              >
+                {isExam ? 'Submit Exam' : 'Submit Assignment'}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Phase 4: Submitted Results Screen */}
+        {phase === 'results' && gradedResult && (
           <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
-            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 sm:p-5 dark:border-slate-700 dark:bg-[#1b2436]">
+            <div className="rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-4 sm:p-5">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <div className="flex items-center gap-2.5">
@@ -480,10 +1194,10 @@ export function AssessmentRunnerModal({
                       {gradedResult.scorePercent}%
                     </span>
                     <span
-                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                      className={`inline-flex items-center gap-1 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${
                         gradedResult.passed
-                          ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
-                          : 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300'
+                          ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
+                          : 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
                       }`}
                     >
                       {gradedResult.passed ? (
@@ -494,7 +1208,7 @@ export function AssessmentRunnerModal({
                       {gradedResult.passed ? 'Passed' : 'Not Passed'}
                     </span>
                   </div>
-                  <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+                  <p className="mt-1 text-xs text-[var(--text-secondary)]">
                     Score: {gradedResult.earnedPoints} / {gradedResult.totalPoints} pts · Pass
                     threshold: {gradedResult.passThreshold}%
                   </p>
@@ -504,7 +1218,7 @@ export function AssessmentRunnerModal({
                   <button
                     type="button"
                     onClick={initAttempt}
-                    className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:hover:bg-slate-800"
+                    className="inline-flex items-center gap-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-inset)] px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] hover:bg-[var(--surface-hover)]"
                   >
                     <RotateCcw className="h-3.5 w-3.5" />
                     Retake
@@ -512,7 +1226,7 @@ export function AssessmentRunnerModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 dark:bg-slate-700 dark:hover:bg-slate-600"
+                    className="rounded-md bg-[var(--cta-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
                   >
                     Close
                   </button>
@@ -521,396 +1235,151 @@ export function AssessmentRunnerModal({
             </div>
 
             <div className="space-y-3">
-              <h3 className="text-sm font-bold text-slate-800 dark:text-slate-100">
-                Question Review
-              </h3>
-              {gradedResult.questionGrades.map((grade, idx) => {
-                const userLabel = formatUserAnswerLabel(grade.question, grade.userAnswer);
-                const correctLabel = formatCorrectAnswerLabel(grade.question);
-                return (
-                  <div
-                    key={grade.question.id}
-                    className="rounded-lg border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-[#1b2436]/40"
-                  >
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-bold text-slate-500 dark:text-slate-400">
-                        Question {idx + 1} · {grade.earnedPoints}/{grade.maxPoints} pts
-                      </span>
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
-                          !grade.answered
-                            ? 'bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200'
-                            : grade.isCorrect
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
-                              : 'bg-red-100 text-red-800 dark:bg-red-500/20 dark:text-red-300'
-                        }`}
-                      >
-                        {!grade.answered
-                          ? 'Unanswered'
-                          : grade.isCorrect
-                            ? 'Correct'
-                            : 'Incorrect'}
-                      </span>
-                    </div>
-
-                    <div className="mt-2 space-y-2">
-                      <QuestionHeaderImage
-                        imageFile={grade.question.header.imageFile}
-                        imageUrl={grade.question.header.imageUrl}
-                      />
-                      {grade.question.header.text && (
-                        <RichMathText
-                          text={grade.question.header.text}
-                          as="div"
-                          className="text-sm font-medium text-slate-900 dark:text-slate-100"
-                        />
-                      )}
-                    </div>
-
-                    <div className="mt-3 space-y-1 text-xs">
-                      <div>
-                        <span className="font-semibold text-slate-600 dark:text-slate-300">
-                          Your answer:{' '}
-                        </span>
-                        <RichMathText text={userLabel} />
-                      </div>
-                      <div>
-                        <span className="font-semibold text-emerald-700 dark:text-emerald-300">
-                          Correct answer:{' '}
-                        </span>
-                        <RichMathText text={correctLabel} />
-                      </div>
-                      {grade.question.explanation?.trim() && (
-                        <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 p-2.5 text-slate-700 dark:border-slate-700 dark:bg-[#0d131f] dark:text-slate-200">
-                          <span className="font-semibold">Explanation: </span>
-                          <RichMathText text={grade.question.explanation} />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        ) : (
-          /* Active Question View */
-          <div className="flex min-h-0 flex-1 flex-col">
-            {assessment.instructions?.trim() && (
-              <div className="border-b border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-700 dark:border-slate-700 dark:bg-[#1b2436]/50 dark:text-slate-300">
-                <RichMathText text={assessment.instructions} as="div" />
-              </div>
-            )}
-
-            {/* Jumpable Question Navigator */}
-            <div className="flex flex-wrap items-center gap-1.5 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-slate-700 dark:bg-[#121926]">
-              {orderedQuestions.map((q, idx) => {
-                const answered = isQuestionAnswered(q, answers[q.id]);
-                const flagged = isExam && flaggedIds.has(q.id);
-                const checked = !isExam && Boolean(checkedIds[q.id]);
-                const checkedGrade = checked ? gradeQuestion(q, answers[q.id]) : null;
-                const isCurrent = idx === currentIndex;
-
-                let pillColor =
-                  'border-slate-300 bg-white text-slate-700 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200';
-                if (checkedGrade) {
-                  pillColor = checkedGrade.isCorrect
-                    ? 'border-emerald-400 bg-emerald-50 text-emerald-800 dark:border-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-200'
-                    : 'border-red-400 bg-red-50 text-red-800 dark:border-red-600 dark:bg-red-950/40 dark:text-red-200';
-                } else if (flagged) {
-                  pillColor =
-                    'border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-500 dark:bg-amber-950/40 dark:text-amber-200';
-                } else if (answered) {
-                  pillColor =
-                    'border-blue-300 bg-blue-50 text-blue-800 dark:border-blue-700 dark:bg-blue-950/40 dark:text-blue-200';
-                }
-
-                return (
-                  <button
-                    key={q.id}
-                    type="button"
-                    aria-label={`Jump to question ${idx + 1}${flagged ? ' (flagged)' : ''}`}
-                    onClick={() => setCurrentIndex(idx)}
-                    className={`inline-flex h-7 min-w-7 items-center justify-center rounded-md border px-2 font-mono text-xs font-semibold ${pillColor} ${
-                      isCurrent ? 'ring-2 ring-blue-500' : ''
-                    }`}
-                  >
-                    {idx + 1}
-                    {flagged && <Flag className="ml-1 h-2.5 w-2.5 fill-current" />}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Question Body */}
-            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto p-4 sm:p-6">
               <div className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-mono text-xs font-semibold text-slate-500 dark:text-slate-400">
-                  Question {currentIndex + 1} of {orderedQuestions.length} ·{' '}
-                  {currentQuestion.points ?? 1} pt
-                </span>
-
-                {isExam && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setFlaggedIds((prev) => {
-                        const next = new Set(prev);
-                        if (next.has(currentQuestion.id)) {
-                          next.delete(currentQuestion.id);
-                        } else {
-                          next.add(currentQuestion.id);
-                        }
-                        return next;
-                      })
-                    }
-                    className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium ${
-                      isFlagged
-                        ? 'border-amber-400 bg-amber-50 text-amber-800 dark:border-amber-500 dark:bg-amber-950/40 dark:text-amber-200'
-                        : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <Flag className={`h-3.5 w-3.5 ${isFlagged ? 'fill-current' : ''}`} />
-                    {isFlagged ? 'Flagged' : 'Flag for review'}
-                  </button>
-                )}
-              </div>
-
-              {/* Header */}
-              <div className="space-y-3">
-                <QuestionHeaderImage
-                  imageFile={currentQuestion.header.imageFile}
-                  imageUrl={currentQuestion.header.imageUrl}
-                />
-                {currentQuestion.header.text && (
-                  <RichMathText
-                    text={currentQuestion.header.text}
-                    as="div"
-                    className="text-base font-medium leading-relaxed text-slate-900 dark:text-slate-50"
-                  />
-                )}
-              </div>
-
-              {/* Choices / Input */}
-              {(currentQuestion.type === 'mcq' ||
-                currentQuestion.type === 'true-false') && (
-                <div className="space-y-2">
-                  {optionsForCurrent.map((opt, idx) => {
-                    const selected = currentAnswer === idx;
-                    const isOptionCorrect = currentQuestion.correctIndices?.[0] === idx;
-                    let cardStyle =
-                      'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-[#1b2436]/40 dark:hover:border-slate-600';
-                    if (isChecked && isOptionCorrect) {
-                      cardStyle =
-                        'border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/30';
-                    } else if (isChecked && selected && !isOptionCorrect) {
-                      cardStyle =
-                        'border-red-500 bg-red-50 dark:border-red-500 dark:bg-red-950/30';
-                    } else if (selected) {
-                      cardStyle =
-                        'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30';
-                    }
-
-                    return (
-                      <label
-                        key={idx}
-                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${cardStyle}`}
-                      >
-                        <input
-                          type="radio"
-                          name={`answer-${currentQuestion.id}`}
-                          checked={selected}
-                          disabled={isChecked}
-                          onChange={() =>
-                            setAnswers((prev) => ({
-                              ...prev,
-                              [currentQuestion.id]: idx,
-                            }))
-                          }
-                          className="mt-0.5 h-4 w-4 shrink-0"
-                        />
-                        <RichMathText text={opt} className="flex-1" />
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-
-              {currentQuestion.type === 'multi-select' && (
-                <div className="space-y-2">
-                  {optionsForCurrent.map((opt, idx) => {
-                    const selectedArr = Array.isArray(currentAnswer) ? currentAnswer : [];
-                    const selected = selectedArr.includes(idx);
-                    const isOptionCorrect = (
-                      currentQuestion.correctIndices ?? []
-                    ).includes(idx);
-
-                    let cardStyle =
-                      'border-slate-200 bg-white hover:border-slate-300 dark:border-slate-700 dark:bg-[#1b2436]/40 dark:hover:border-slate-600';
-                    if (isChecked && isOptionCorrect) {
-                      cardStyle =
-                        'border-emerald-500 bg-emerald-50 dark:border-emerald-500 dark:bg-emerald-950/30';
-                    } else if (isChecked && selected && !isOptionCorrect) {
-                      cardStyle =
-                        'border-red-500 bg-red-50 dark:border-red-500 dark:bg-red-950/30';
-                    } else if (selected) {
-                      cardStyle =
-                        'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-950/30';
-                    }
-
-                    return (
-                      <label
-                        key={idx}
-                        className={`flex cursor-pointer items-start gap-3 rounded-lg border p-3 text-sm transition-colors ${cardStyle}`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={selected}
-                          disabled={isChecked}
-                          onChange={() =>
-                            setAnswers((prev) => {
-                              const prevArr = Array.isArray(prev[currentQuestion.id])
-                                ? (prev[currentQuestion.id] as number[])
-                                : [];
-                              const nextArr = prevArr.includes(idx)
-                                ? prevArr.filter((i) => i !== idx)
-                                : [...prevArr, idx].sort((a, b) => a - b);
-                              return {
-                                ...prev,
-                                [currentQuestion.id]: nextArr,
-                              };
-                            })
-                          }
-                          className="mt-0.5 h-4 w-4 shrink-0 rounded"
-                        />
-                        <RichMathText text={opt} className="flex-1" />
-                      </label>
-                    );
-                  })}
-                </div>
-              )}
-
-              {currentQuestion.type === 'short-answer' && (
-                <div>
-                  <input
-                    type="text"
-                    aria-label="Your answer"
-                    disabled={isChecked}
-                    value={typeof currentAnswer === 'string' ? currentAnswer : ''}
-                    onChange={(e) =>
-                      setAnswers((prev) => ({
-                        ...prev,
-                        [currentQuestion.id]: e.target.value,
-                      }))
-                    }
-                    placeholder="Type your answer..."
-                    className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
-                  />
-                </div>
-              )}
-
-              {/* Assignment Mode Controls: Hint & Check Answer */}
-              {!isExam && (
-                <div className="space-y-3 pt-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    {currentQuestion.hint?.trim() && (
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setHintOpenIds((prev) => ({
-                            ...prev,
-                            [currentQuestion.id]: !prev[currentQuestion.id],
-                          }))
-                        }
-                        className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200 dark:hover:bg-slate-800"
-                      >
-                        <HelpCircle className="h-3.5 w-3.5" />
-                        {isHintOpen ? 'Hide Hint' : 'Show Hint'}
-                      </button>
-                    )}
-
+                <h3 className="text-sm font-bold text-[var(--text-primary)]">
+                  Question Review
+                </h3>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {(
+                    [
+                      {
+                        key: 'all',
+                        label: `All (${gradedResult.questionGrades.length})`,
+                      },
+                      {
+                        key: 'incorrect',
+                        label: `Incorrect (${gradedResult.questionGrades.filter((g) => g.answered && !g.isCorrect).length})`,
+                      },
+                      {
+                        key: 'unanswered',
+                        label: `Unanswered (${gradedResult.questionGrades.filter((g) => !g.answered).length})`,
+                      },
+                      ...(isExam
+                        ? [
+                            {
+                              key: 'flagged' as const,
+                              label: `Flagged (${gradedResult.questionGrades.filter((g) => flaggedIds.has(g.question.id)).length})`,
+                            },
+                          ]
+                        : []),
+                    ] as { key: ResultFilter; label: string }[]
+                  ).map((pill) => (
                     <button
+                      key={pill.key}
                       type="button"
-                      disabled={
-                        isChecked || !isQuestionAnswered(currentQuestion, currentAnswer)
-                      }
-                      onClick={() =>
-                        setCheckedIds((prev) => ({
-                          ...prev,
-                          [currentQuestion.id]: true,
-                        }))
-                      }
-                      className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-800 disabled:opacity-45 dark:bg-slate-700 dark:hover:bg-slate-600"
-                    >
-                      Check Answer
-                    </button>
-                  </div>
-
-                  {isHintOpen && currentQuestion.hint?.trim() && (
-                    <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
-                      <span className="font-semibold">Hint: </span>
-                      <RichMathText text={currentQuestion.hint} />
-                    </div>
-                  )}
-
-                  {isChecked && currentGrade && (
-                    <div
-                      className={`rounded-lg border p-3 text-xs ${
-                        currentGrade.isCorrect
-                          ? 'border-emerald-300 bg-emerald-50 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-200'
-                          : 'border-red-300 bg-red-50 text-red-900 dark:border-red-700 dark:bg-red-950/30 dark:text-red-200'
+                      aria-pressed={resultFilter === pill.key}
+                      onClick={() => setResultFilter(pill.key)}
+                      className={`rounded-full border px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                        resultFilter === pill.key
+                          ? 'border-[var(--recommended-border)] bg-[var(--accent-purple-soft-bg)] text-[var(--accent-purple-text)]'
+                          : 'border-[var(--border-subtle)] bg-[var(--surface-inset)] text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]'
                       }`}
                     >
-                      <div className="flex items-center gap-1.5 font-semibold">
-                        {currentGrade.isCorrect ? (
-                          <CheckCircle2 className="h-4 w-4" />
-                        ) : (
-                          <XCircle className="h-4 w-4" />
-                        )}
-                        {currentGrade.isCorrect ? 'Correct' : 'Incorrect'}
-                      </div>
-                      {!currentGrade.isCorrect && (
-                        <div className="mt-1">
-                          <span className="font-semibold">Accepted / Correct: </span>
-                          <RichMathText text={formatCorrectAnswerLabel(currentQuestion)} />
-                        </div>
-                      )}
-                      {currentQuestion.explanation?.trim() && (
-                        <div className="mt-1.5 border-t border-current/15 pt-1.5">
-                          <span className="font-semibold">Explanation: </span>
-                          <RichMathText text={currentQuestion.explanation} />
-                        </div>
-                      )}
-                    </div>
-                  )}
+                      {pill.label}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
 
-            {/* Footer Navigation */}
-            <div className="flex items-center justify-between border-t border-slate-200 bg-slate-50 px-4 py-3 dark:border-slate-700 dark:bg-[#1b2436]">
-              <button
-                type="button"
-                disabled={currentIndex === 0}
-                onClick={() => setCurrentIndex((i) => Math.max(0, i - 1))}
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-45 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                Previous
-              </button>
+              {gradedResult.questionGrades
+                .map((grade, idx) => ({ grade, idx }))
+                .filter(({ grade }) => {
+                  if (resultFilter === 'incorrect') return grade.answered && !grade.isCorrect;
+                  if (resultFilter === 'unanswered') return !grade.answered;
+                  if (resultFilter === 'flagged') return flaggedIds.has(grade.question.id);
+                  return true;
+                })
+                .map(({ grade, idx }) => {
+                  const userLabel = formatUserAnswerLabel(grade.question, grade.userAnswer);
+                  const correctLabel = formatCorrectAnswerLabel(grade.question);
+                  return (
+                    <div
+                      key={grade.question.id}
+                      className="rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-inset)] p-4"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-mono text-xs font-bold text-[var(--text-muted)]">
+                          Question {idx + 1} · {grade.earnedPoints}/{grade.maxPoints} pts
+                        </span>
+                        <span
+                          className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${
+                            !grade.answered
+                              ? 'border-[var(--border-subtle)] bg-[var(--surface-2)] text-[var(--text-secondary)]'
+                              : grade.isCorrect
+                                ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
+                                : 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]'
+                          }`}
+                        >
+                          {!grade.answered
+                            ? 'Unanswered'
+                            : grade.isCorrect
+                              ? 'Correct'
+                              : 'Incorrect'}
+                        </span>
+                      </div>
 
-              <button
-                type="button"
-                disabled={currentIndex >= orderedQuestions.length - 1}
-                onClick={() =>
-                  setCurrentIndex((i) => Math.min(orderedQuestions.length - 1, i + 1))
-                }
-                className="rounded-md border border-slate-300 bg-white px-3 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-45 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                Next
-              </button>
+                      <div className="mt-2 space-y-2">
+                        <QuestionHeaderImage
+                          imageFile={grade.question.header.imageFile}
+                          imageUrl={grade.question.header.imageUrl}
+                        />
+                        {grade.question.header.text && (
+                          <RichMathText
+                            text={grade.question.header.text}
+                            as="div"
+                            className="text-sm font-medium text-[var(--text-primary)]"
+                          />
+                        )}
+                      </div>
+
+                      <div className="mt-3 space-y-1 text-xs">
+                        <div>
+                          <span className="font-semibold text-[var(--text-secondary)]">
+                            Your answer:{' '}
+                          </span>
+                          <RichMathText text={userLabel} />
+                        </div>
+                        <div>
+                          <span className="font-semibold text-[var(--status-done-text)]">
+                            Correct answer:{' '}
+                          </span>
+                          <RichMathText text={correctLabel} />
+                        </div>
+                        {grade.question.explanation?.trim() && (
+                          <div className="mt-2 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] p-2.5 text-[var(--text-secondary)]">
+                            <span className="font-semibold">Explanation: </span>
+                            <RichMathText text={grade.question.explanation} />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           </div>
         )}
       </div>
+
+      <ConfirmDialog
+        open={confirmUnansweredOpen}
+        title="Submit with unanswered questions?"
+        description={`You still have ${unansweredCount} unanswered ${unansweredCount === 1 ? 'question' : 'questions'}. Submit anyway?`}
+        confirmLabel={isExam ? 'Submit Exam' : 'Submit Assignment'}
+        onConfirm={finalizeSubmission}
+        onCancel={() => setConfirmUnansweredOpen(false)}
+      />
+
+      <ConfirmDialog
+        open={confirmLeaveOpen}
+        title="Leave assessment?"
+        description="Your in-progress answers will be lost if you close now."
+        confirmLabel="Leave Assessment"
+        onConfirm={() => {
+          setConfirmLeaveOpen(false);
+          onClose();
+        }}
+        onCancel={() => setConfirmLeaveOpen(false)}
+      />
     </div>
   );
 }

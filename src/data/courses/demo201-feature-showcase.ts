@@ -9,7 +9,7 @@ export const demo201FeatureShowcase: CourseTree = {
   semester: 1,
   credits: 4,
   description:
-    'Course A — A comprehensive feature overview that showcases the entire application: all 10 material kinds (including audio), recommended pinning, interactive LaTeX exams and assignments, From → To week ranges (Week 1-3, Week 11), top-right Ch1 and Ch2 / L1 drawer tags, bounded 2D tree panning with 50%–250% zoom, left/right/auto branch placement, cross-chapter prerequisites, a six-lesson chapter, long titles, and direct milestone chapters.',
+    'A comprehensive feature overview that showcases the entire application: all 10 material kinds (including audio), recommended pinning, interactive LaTeX exams and assignments, From → To week ranges (Week 1-3, Week 11), top-right Ch1 and Ch2 / L1 drawer tags, bounded 2D tree panning with 50%–250% zoom, left/right/auto branch placement, cross-chapter prerequisites, a six-lesson chapter, long titles, and direct milestone chapters.',
   chapters: [
     {
       id: 'demo201-ch1-foundations-core-layouts',
@@ -40,7 +40,7 @@ export const demo201FeatureShowcase: CourseTree = {
           summary:
             'Introduces the feature showcase layout with lecture slides, a recommended walkthrough video, and an audio summary, plus the top-right Ch1 / L1 tag inside the Lesson Overview drawer.',
           notes:
-            'Notice how this opening lesson sits on the left branch, displays a sky-blue Ch1 / L1 badge at the top right of its drawer, and includes an audio lecture summary alongside slides and video.',
+            'Notice how this opening lesson sits on the left branch, displays a burnt-peach Ch1 / L1 badge at the top right of its drawer, and includes an audio lecture summary alongside slides and video.',
           side: 'left',
           resources: [
             {
@@ -56,7 +56,7 @@ export const demo201FeatureShowcase: CourseTree = {
             },
             {
               title: 'Episode 01 Audio Summary: Big-O Intuition',
-              url: 'https://example.edu/demo201/audio/episode-01-big-o.mp3',
+              url: 'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3',
               kind: 'audio',
             },
           ],

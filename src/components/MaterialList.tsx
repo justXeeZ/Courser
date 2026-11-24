@@ -100,7 +100,7 @@ export function MaterialList({
   };
 
   const rowBaseClass =
-    'group flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-slate-50 dark:hover:bg-slate-700/60';
+    'group flex w-full items-center gap-2.5 px-3 py-2.5 text-left transition-colors hover:bg-[var(--surface-hover)]';
 
   const renderResourceItem = (res: LessonResource, idx: number) => {
     if (res.assessment) {
@@ -128,9 +128,9 @@ export function MaterialList({
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-1.5">
                 <span
-                  className={`truncate text-sm font-medium text-slate-900 dark:text-slate-100 ${
+                  className={`truncate text-sm font-medium text-[var(--text-primary)] ${
                     onOpenAssessment
-                      ? 'underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400'
+                      ? 'underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)]'
                       : ''
                   }`}
                 >
@@ -138,8 +138,8 @@ export function MaterialList({
                 </span>
               </div>
 
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-600 dark:text-slate-400">
-                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-[#121926] dark:text-slate-200">
+              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-secondary)]">
+                <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-warm-muted)] px-1.5 py-0.5 font-medium text-[var(--text-secondary)]">
                   <ClipboardCheck className="h-3 w-3" />
                   {modeLabel}
                 </span>
@@ -147,24 +147,24 @@ export function MaterialList({
                   {qCount} {qCount === 1 ? 'question' : 'questions'}
                 </span>
                 {assessment.timeLimitMinutes && (
-                  <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-[#121926] dark:text-slate-300">
+                  <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-warm-muted)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-secondary)]">
                     <Clock className="h-3 w-3" />
                     {assessment.timeLimitMinutes} min
                   </span>
                 )}
                 {score && (
                   <span
-                    className={`rounded px-1.5 py-0.5 font-mono text-[11px] font-semibold ${
+                    className={`rounded border px-1.5 py-0.5 font-mono text-[11px] font-semibold ${
                       score.passed
-                        ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/20 dark:text-emerald-300'
-                        : 'bg-amber-100 text-amber-900 dark:bg-amber-500/20 dark:text-amber-300'
+                        ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
+                        : 'border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]'
                     }`}
                   >
                     Best: {score.bestScorePercent}%
                   </span>
                 )}
                 {!onOpenAssessment && (
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400">
+                  <span className="text-[11px] text-[var(--text-muted)]">
                     Available in course view
                   </span>
                 )}
@@ -194,22 +194,22 @@ export function MaterialList({
             className={`${rowBaseClass} disabled:opacity-60`}
           >
             <ResourceBadge kind={res.kind} />
-            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-1">
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-2">
+              <span className="min-w-0 w-full truncate text-sm font-medium text-[var(--text-primary)] underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)] sm:w-auto sm:flex-1">
                 {res.title}
               </span>
               <div
                 data-testid="uploaded-file-details"
-                className="flex shrink-0 items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400"
+                className="flex shrink-0 items-center gap-1.5 text-xs text-[var(--text-muted)]"
               >
-                <span className="inline-flex items-center gap-1 rounded bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:bg-[#121926] dark:text-slate-300">
+                <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-warm-muted)] px-1.5 py-0.5 font-medium text-[var(--text-secondary)]">
                   <FileText className="h-3 w-3" />
                   File
                 </span>
                 <span className="max-w-[120px] truncate" title={file.name}>
                   {file.name}
                 </span>
-                <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[11px] text-slate-600 dark:bg-[#121926] dark:text-slate-300">
+                <span className="rounded bg-[var(--surface-warm-muted)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-secondary)]">
                   {formatBytes(file.sizeBytes)}
                 </span>
               </div>
@@ -217,7 +217,7 @@ export function MaterialList({
             <Eye
               aria-hidden="true"
               data-testid="uploaded-viewer-icon"
-              className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400"
+              className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)] group-hover:text-[var(--accent-purple)]"
             />
           </button>
         </li>
@@ -228,13 +228,13 @@ export function MaterialList({
     if (!safeUrl) {
       return (
         <li key={`invalid-${res.title}-${idx}`}>
-          <div className="flex items-start gap-2.5 bg-red-50/60 px-3 py-2.5 text-left dark:bg-red-950/30">
+          <div className="flex items-start gap-2.5 bg-[var(--status-danger-bg)] px-3 py-2.5 text-left">
             <ResourceBadge kind={res.kind} />
             <div className="min-w-0 flex-1">
-              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+              <span className="text-sm font-medium text-[var(--text-primary)]">
                 {res.title}
               </span>
-              <div className="mt-1 flex items-center gap-1 text-xs text-red-700 dark:text-red-300">
+              <div className="mt-1 flex items-center gap-1 text-xs text-[var(--status-danger-text)]">
                 <AlertCircle className="h-3.5 w-3.5 shrink-0" />
                 <span>Invalid or unsupported URL</span>
               </div>
@@ -255,14 +255,14 @@ export function MaterialList({
             className={rowBaseClass}
           >
             <ResourceBadge kind={res.kind} />
-            <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-              <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
+            <div className="flex min-w-0 flex-1 flex-col items-start gap-0.5 sm:flex-row sm:items-center sm:justify-between sm:gap-2">
+              <span className="min-w-0 w-full truncate text-sm font-medium text-[var(--text-primary)] underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)] sm:w-auto sm:flex-1">
                 {res.title}
               </span>
               <span
                 title={safeUrl}
                 data-testid="external-resource-url"
-                className="max-w-[140px] shrink-0 truncate font-mono text-[11px] text-slate-500 sm:max-w-[200px] dark:text-slate-400"
+                className="max-w-[140px] shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)] sm:max-w-[200px]"
               >
                 {displayUrl}
               </span>
@@ -270,7 +270,7 @@ export function MaterialList({
             <ExternalLink
               aria-hidden="true"
               data-testid="external-resource-icon"
-              className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400"
+              className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)] group-hover:text-[var(--accent-purple)]"
             />
           </button>
         </li>
@@ -287,13 +287,13 @@ export function MaterialList({
         >
           <ResourceBadge kind={res.kind} />
           <div className="flex min-w-0 flex-1 items-center justify-between gap-2">
-            <span className="min-w-0 flex-1 truncate text-sm font-medium text-slate-900 underline decoration-slate-300 underline-offset-2 group-hover:text-blue-700 group-hover:decoration-blue-500 dark:text-slate-100 dark:decoration-slate-600 dark:group-hover:text-blue-400 dark:group-hover:decoration-blue-400">
+            <span className="min-w-0 flex-1 truncate text-sm font-medium text-[var(--text-primary)] underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)]">
               {res.title}
             </span>
             <span
               title={safeUrl}
               data-testid="external-resource-url"
-              className="max-w-[140px] shrink-0 truncate font-mono text-[11px] text-slate-500 sm:max-w-[200px] dark:text-slate-400"
+              className="max-w-[140px] shrink-0 truncate font-mono text-[11px] text-[var(--text-muted)] sm:max-w-[200px]"
             >
               {displayUrl}
             </span>
@@ -301,7 +301,7 @@ export function MaterialList({
           <ExternalLink
             aria-hidden="true"
             data-testid="external-resource-icon"
-            className="h-3.5 w-3.5 shrink-0 text-slate-400 group-hover:text-blue-600 dark:text-slate-400 dark:group-hover:text-blue-400"
+            className="h-3.5 w-3.5 shrink-0 text-[var(--text-muted)] group-hover:text-[var(--accent-purple)]"
           />
         </a>
       </li>
@@ -313,7 +313,7 @@ export function MaterialList({
       {fileError && (
         <div
           role="alert"
-          className="flex items-center gap-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/50 dark:text-red-300"
+          className="flex items-center gap-2 rounded-md border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-3 py-2 text-xs text-[var(--status-danger-text)]"
         >
           <AlertCircle className="h-4 w-4 shrink-0" />
           <span>{fileError}</span>
@@ -322,7 +322,7 @@ export function MaterialList({
 
       <div
         data-testid="materials-card"
-        className="overflow-hidden rounded-lg border border-slate-200 bg-white dark:border-slate-700/80 dark:bg-[#1b2436]"
+        className="overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)]"
       >
         {recommendedResources.length > 0 && (
           <div
@@ -335,7 +335,7 @@ export function MaterialList({
                 Recommended
               </h4>
             </div>
-            <ul className="divide-y divide-slate-200/80 dark:divide-slate-700/80">
+            <ul className="divide-y divide-[var(--border-subtle)]">
               {recommendedResources.map((res, idx) => renderResourceItem(res, idx))}
             </ul>
           </div>
@@ -343,9 +343,9 @@ export function MaterialList({
 
         {regularResources.length > 0 && (
           <ul
-            className={`divide-y divide-slate-200 dark:divide-slate-700/80 ${
+            className={`divide-y divide-[var(--border-subtle)] ${
               recommendedResources.length > 0
-                ? 'border-t border-slate-200 dark:border-slate-700/80'
+                ? 'border-t border-[var(--border-subtle)]'
                 : ''
             }`}
           >

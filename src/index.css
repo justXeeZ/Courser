@@ -5,28 +5,63 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --surface-canvas: #f8fafc;
-  --surface-1: #ffffff;
-  --surface-2: #f1f5f9;
+  --surface-canvas: #f7f5f0;
+  --surface-1: #fdfcfa;
+  --surface-2: #efede8;
   --surface-inset: #ffffff;
-  --border-subtle: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --text-primary: #0f172a;
-  --text-secondary: #475569;
-  --text-muted: #64748b;
+  --surface-hover: #e8e4dc;
+  --surface-warm-muted: #efede8;
+  --surface-warm-hover: #e5e1d8;
+  --border-subtle: #e5e1d8;
+  --border-warm-subtle: #e5e1d8;
+  --border-strong: #767067;
+  --border-focus: #7e22ce;
+  --text-primary: #1c1917;
+  --text-secondary: #4a453e;
+  --text-muted: #5c564e;
+  --solid-bg: #1c1917;
+  --solid-bg-hover: #292524;
+  --solid-text: #ffffff;
+  --cta-bg: #7e22ce;
+  --cta-bg-hover: #6b21a8;
+  --cta-border: #7e22ce;
+  --cta-text: #ffffff;
+  --accent-purple: #7e22ce;
+  --accent-purple-text: #6b21a8;
+  --accent-purple-soft-bg: #f3e8ff;
   --recommended-bg: rgba(147, 51, 234, 0.045);
-  --recommended-border: #a855f7;
+  --recommended-border: #9333ea;
   --recommended-accent: #6b21a8;
   --recommended-label-bg: #f3e8ff;
-  --solid-bg: #0f172a;
-  --solid-bg-hover: #1e293b;
-  --solid-text: #ffffff;
   --tag-amber-bg: #fde68a;
-  --tag-amber-border: #d97706;
+  --tag-amber-border: #b45309;
   --tag-amber-text: #451a03;
-  --tag-blue-bg: #bfdbfe;
-  --tag-blue-border: #3b82f6;
-  --tag-blue-text: #1e3a8a;
+  --accent-amber: #b45309;
+  --tag-peach-bg: #fad2c6;
+  --tag-peach-border: #ad3c1a;
+  --tag-peach-text: #6b240f;
+  --accent-peach: #ad3c1a;
+  --status-done-bg: #dcfce7;
+  --status-done-border: #15803d;
+  --status-done-text: #14532d;
+  --accent-done: #15803d;
+  --status-learning-bg: #f3e8ff;
+  --status-learning-border: #7e22ce;
+  --status-learning-text: #581c87;
+  --status-learning-icon: #7e22ce;
+  --status-skipped-bg: #efede8;
+  --status-skipped-border: #767067;
+  --status-skipped-text: #3f3b36;
+  --status-danger-bg: #fef2f2;
+  --status-danger-border: #dc2626;
+  --status-danger-text: #b91c1c;
+  --danger-solid-bg: #dc2626;
+  --danger-solid-hover: #b91c1c;
+  --status-warning-bg: #fff7ed;
+  --status-warning-border: #c2410c;
+  --status-warning-text: #9a3412;
+  --backdrop-modal: rgba(0, 0, 0, 0.5);
+  --backdrop-drawer: rgba(0, 0, 0, 0.4);
 }
 
 .dark {
@@ -34,24 +69,59 @@
   --surface-1: #121926;
   --surface-2: #1b2436;
   --surface-inset: #0d131f;
+  --surface-hover: #242f45;
+  --surface-warm-muted: #2e2b28;
+  --surface-warm-hover: #383430;
   --border-subtle: #263248;
-  --border-strong: #3b4a62;
+  --border-warm-subtle: #3b3733;
+  --border-strong: #7c766e;
+  --border-focus: #c084fc;
   --text-primary: #f8fafc;
   --text-secondary: #cbd5e1;
-  --text-muted: #94a3b8;
-  --recommended-bg: rgba(168, 85, 247, 0.08);
-  --recommended-border: rgba(192, 132, 252, 0.55);
-  --recommended-accent: #e9d5ff;
-  --recommended-label-bg: rgba(147, 51, 234, 0.25);
+  --text-muted: #a6a097;
   --solid-bg: #e2e8f0;
   --solid-bg-hover: #f8fafc;
   --solid-text: #0f172a;
-  --tag-amber-bg: rgba(251, 191, 36, 0.15);
-  --tag-amber-border: transparent;
+  --cta-bg: #9333ea;
+  --cta-bg-hover: #7e22ce;
+  --cta-border: #a855f7;
+  --cta-text: #ffffff;
+  --accent-purple: #c084fc;
+  --accent-purple-text: #d8b4fe;
+  --accent-purple-soft-bg: rgba(168, 85, 247, 0.16);
+  --recommended-bg: rgba(168, 85, 247, 0.1);
+  --recommended-border: rgba(192, 132, 252, 0.75);
+  --recommended-accent: #e9d5ff;
+  --recommended-label-bg: rgba(147, 51, 234, 0.28);
+  --tag-amber-bg: rgba(251, 191, 36, 0.16);
+  --tag-amber-border: rgba(251, 191, 36, 0.55);
   --tag-amber-text: #fcd34d;
-  --tag-blue-bg: rgba(96, 165, 250, 0.15);
-  --tag-blue-border: transparent;
-  --tag-blue-text: #93c5fd;
+  --accent-amber: #fbbf24;
+  --tag-peach-bg: rgba(233, 116, 81, 0.18);
+  --tag-peach-border: #E97451;
+  --tag-peach-text: #f7b5a0;
+  --accent-peach: #E97451;
+  --status-done-bg: rgba(22, 163, 74, 0.22);
+  --status-done-border: #22c55e;
+  --status-done-text: #86efac;
+  --accent-done: #4ade80;
+  --status-learning-bg: rgba(147, 51, 234, 0.22);
+  --status-learning-border: #a855f7;
+  --status-learning-text: #e9d5ff;
+  --status-learning-icon: #c084fc;
+  --status-skipped-bg: #2e2b28;
+  --status-skipped-border: #7c766e;
+  --status-skipped-text: #e7e5e4;
+  --status-danger-bg: rgba(127, 29, 29, 0.42);
+  --status-danger-border: #ef4444;
+  --status-danger-text: #fca5a5;
+  --danger-solid-bg: #dc2626;
+  --danger-solid-hover: #b91c1c;
+  --status-warning-bg: rgba(249, 115, 22, 0.16);
+  --status-warning-border: rgba(251, 146, 60, 0.75);
+  --status-warning-text: #fdba74;
+  --backdrop-modal: rgba(0, 0, 0, 0.75);
+  --backdrop-drawer: rgba(0, 0, 0, 0.6);
 }
 
 @layer base {
@@ -73,12 +143,13 @@
 }
 
 .dashed-box {
-  border-width: 1px;
+  border-width: 1.5px;
   border-style: dashed;
+  border-color: var(--border-strong);
 }
 
 .recommended-group-box {
-  border: 1px dashed var(--recommended-border);
+  border: 1.5px dashed var(--recommended-border);
   background-color: var(--recommended-bg);
 }
 
@@ -130,6 +201,26 @@
 .dark .roadmap-svg g.node-highlighted > rect.node-rect {
   stroke: #2b78e4 !important;
   stroke-width: 3.4 !important;
+}
+
+.roadmap-svg g[role="button"]:focus-visible {
+  outline: none;
+}
+
+.roadmap-svg g[role="button"]:focus-visible > rect.node-rect {
+  stroke: var(--border-focus) !important;
+  stroke-width: 3.4 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* KaTeX legibility in Light & Dark modes */

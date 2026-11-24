@@ -17,6 +17,7 @@ import {
   Wrench,
 } from 'lucide-react';
 import { AssessmentBuilderModal } from '@/components/assessment/AssessmentBuilderModal';
+import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ResourceBadge } from '@/components/ResourceBadge';
 import { buildAssessmentExport, parseAssessmentImport } from '@/lib/assessmentExchange';
 import { deriveFileId, slugify } from '@/lib/courseIds';
@@ -209,7 +210,14 @@ export function MaterialsEditor({
     onChange(nextResources);
   };
 
-  const handleSwitchMode = (index: number, key: string, nextMode: ResourceMode) => {
+  const [pendingModeSwitch, setPendingModeSwitch] = useState<{
+    index: number;
+    key: string;
+    nextMode: ResourceMode;
+    what: string;
+  } | null>(null);
+
+  const performSwitchMode = (index: number, key: string, nextMode: ResourceMode) => {
     setModes((prev) => ({ ...prev, [key]: nextMode }));
     setFeedbackByRow((prev) => {
       const next = { ...prev };
@@ -246,6 +254,32 @@ export function MaterialsEditor({
         assessment: current.assessment,
       });
     }
+  };
+
+  const handleSwitchMode = (index: number, key: string, nextMode: ResourceMode) => {
+    const current = resources[index];
+    if (!current) return;
+    const currentMode = getMode(key, current);
+    if (currentMode === nextMode) return;
+    if (currentMode === 'interactive' && current.assessment) {
+      setPendingModeSwitch({
+        index,
+        key,
+        nextMode,
+        what: `interactive assessment (${current.assessment.questions.length} question${current.assessment.questions.length === 1 ? '' : 's'})`,
+      });
+      return;
+    }
+    if (currentMode === 'upload' && current.file) {
+      setPendingModeSwitch({
+        index,
+        key,
+        nextMode,
+        what: `uploaded file ("${current.file.name}")`,
+      });
+      return;
+    }
+    performSwitchMode(index, key, nextMode);
   };
 
   const handleKindChange = (index: number, key: string, nextKind: ResourceKind) => {
@@ -402,7 +436,16 @@ export function MaterialsEditor({
       return;
     }
 
-    const result = await parseAssessmentImport(rawText, courseCode);
+    let result;
+    try {
+      result = await parseAssessmentImport(rawText, courseCode);
+    } catch {
+      setImportErrorByRow((prev) => ({
+        ...prev,
+        [key]: 'Failed to import assessment data. Please check browser storage availability.',
+      }));
+      return;
+    }
     if (!result.ok) {
       setImportErrorByRow((prev) => ({ ...prev, [key]: result.error }));
       return;
@@ -665,7 +708,7 @@ export function MaterialsEditor({
                         onClick={() => handleRemoveMaterial(rIdx)}
                         title="Delete material"
                         aria-label="Remove material"
-                        className="rounded border border-red-200 bg-white p-1 text-red-600 hover:bg-red-50 dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
+                        className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                       >
                         <Trash2 className="h-3 w-3" />
                       </button>
@@ -942,7 +985,7 @@ export function MaterialsEditor({
                         {importError && (
                           <p
                             role="alert"
-                            className="rounded border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+                            className="rounded border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-2.5 py-1.5 text-xs text-[var(--status-danger-text)]"
                           >
                             {importError}
                           </p>
@@ -975,7 +1018,7 @@ export function MaterialsEditor({
                     {feedback.error && (
                       <div
                         role="alert"
-                        className="flex items-start gap-1.5 rounded border border-red-200 bg-red-50 px-2.5 py-1.5 text-xs text-red-700 dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+                        className="flex items-start gap-1.5 rounded border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-2.5 py-1.5 text-xs text-[var(--status-danger-text)]"
                       >
                         <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         <span>{feedback.error}</span>
@@ -985,7 +1028,7 @@ export function MaterialsEditor({
                     {feedback.warning && (
                       <div
                         role="status"
-                        className="flex items-start gap-1.5 rounded border border-amber-300 bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:border-amber-500/40 dark:bg-amber-400/10 dark:text-amber-200"
+                        className="flex items-start gap-1.5 rounded border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-2.5 py-1.5 text-xs text-[var(--status-warning-text)]"
                       >
                         <AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                         <span>{feedback.warning}</span>
@@ -1010,10 +1053,10 @@ export function MaterialsEditor({
   return (
     <div className="border-t border-slate-200 pt-2.5 dark:border-slate-700/80">
       <div className="mb-2 flex items-center justify-between gap-2">
-        <span className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
+        <h3 className="inline-flex items-center gap-1 text-xs font-medium text-slate-700 dark:text-slate-300">
           <Link2 className="h-3.5 w-3.5" />
           {titleLabel} ({resources.length})
-        </span>
+        </h3>
         <button
           type="button"
           onClick={handleAddMaterial}
@@ -1114,6 +1157,28 @@ export function MaterialsEditor({
           setBuilderRowIndex(null);
         }}
         onClose={() => setBuilderRowIndex(null)}
+      />
+
+      <ConfirmDialog
+        open={pendingModeSwitch !== null}
+        title="Discard current material payload?"
+        description={
+          pendingModeSwitch
+            ? `Switching mode will remove the ${pendingModeSwitch.what} from this material row.`
+            : ''
+        }
+        confirmLabel="Switch Mode"
+        onConfirm={() => {
+          if (pendingModeSwitch) {
+            performSwitchMode(
+              pendingModeSwitch.index,
+              pendingModeSwitch.key,
+              pendingModeSwitch.nextMode
+            );
+          }
+          setPendingModeSwitch(null);
+        }}
+        onCancel={() => setPendingModeSwitch(null)}
       />
     </div>
   );

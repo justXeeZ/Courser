@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { ResourceBadge } from '@/components/ResourceBadge';
 import { RichMathText } from '@/components/RichMathText';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import {
   buildAssessmentExport,
   parseAssessmentImport,
@@ -313,6 +314,19 @@ export function AssessmentBuilderModal({
   const [importError, setImportError] = useState<string | null>(null);
   const [statusBanner, setStatusBanner] = useState<string | null>(null);
   const downloadTimeoutRef = useRef<number | null>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocus({
+    isOpen,
+    containerRef: dialogRef,
+    onEscape: () => {
+      if (importOpen) {
+        setImportOpen(false);
+      } else {
+        onClose();
+      }
+    },
+  });
 
   useEffect(() => {
     if (!isOpen) return;
@@ -336,20 +350,6 @@ export function AssessmentBuilderModal({
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (!isOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape') return;
-      if (importOpen) {
-        setImportOpen(false);
-      } else {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, importOpen, onClose]);
 
   const activeIndex = Math.min(selectedIndex, Math.max(0, draft.questions.length - 1));
   const activeQuestion = draft.questions[activeIndex];
@@ -531,6 +531,30 @@ export function AssessmentBuilderModal({
     }
   };
 
+  const formatZodIssuePath = (path: readonly (string | number)[]): string => {
+    if (path.length === 0) return 'Assessment';
+    if (path[0] === 'questions' && typeof path[1] === 'number') {
+      const qNum = `Question ${path[1] + 1}`;
+      const field = path.slice(2).join('.');
+      const labels: Record<string, string> = {
+        'header.text': 'Prompt',
+        'header.imageUrl': 'Image URL',
+        options: 'Options',
+        correctIndices: 'Correct Answer',
+        acceptedAnswers: 'Accepted Answers',
+        points: 'Points',
+      };
+      return field ? `${qNum} (${labels[field] ?? field})` : qNum;
+    }
+    const topLabels: Record<string, string> = {
+      timeLimitMinutes: 'Time Limit',
+      passingScorePercent: 'Passing Score',
+      instructions: 'Instructions',
+    };
+    const key = String(path[0]);
+    return topLabels[key] ?? key;
+  };
+
   const validateNormalized = (): AssessmentData | null => {
     const normalized = normalizeAssessmentDraft(draft);
     const parsed = AssessmentSchema.safeParse(normalized);
@@ -539,8 +563,8 @@ export function AssessmentBuilderModal({
       if (issue?.path[0] === 'questions' && typeof issue.path[1] === 'number') {
         setSelectedIndex(issue.path[1]);
       }
-      const pathStr = issue?.path?.length ? issue.path.join('.') : 'assessment';
-      setValidationError(`${pathStr}: ${issue?.message ?? 'Invalid assessment data.'}`);
+      const label = formatZodIssuePath(issue?.path ?? []);
+      setValidationError(`${label}: ${issue?.message ?? 'Invalid assessment data.'}`);
       return null;
     }
     setValidationError(null);
@@ -563,12 +587,18 @@ export function AssessmentBuilderModal({
     if (!valid) return;
 
     const warnings: string[] = [];
-    const envelope = await buildAssessmentExport({
-      title: draftTitle.trim() || undefined,
-      kind: valid.mode,
-      assessment: valid,
-      onWarning: (msg) => warnings.push(msg),
-    });
+    let envelope;
+    try {
+      envelope = await buildAssessmentExport({
+        title: draftTitle.trim() || undefined,
+        kind: valid.mode,
+        assessment: valid,
+        onWarning: (msg) => warnings.push(msg),
+      });
+    } catch {
+      setStatusBanner('Failed to export assessment JSON.');
+      return;
+    }
     if (warnings.length > 0) {
       setStatusBanner(warnings.join(' '));
     }
@@ -592,7 +622,13 @@ export function AssessmentBuilderModal({
 
   const handleApplyImport = async () => {
     setImportError(null);
-    const result = await parseAssessmentImport(importText, courseCode);
+    let result;
+    try {
+      result = await parseAssessmentImport(importText, courseCode);
+    } catch {
+      setImportError('Failed to import assessment data.');
+      return;
+    }
     if (!result.ok) {
       setImportError(result.error);
       return;
@@ -637,6 +673,7 @@ export function AssessmentBuilderModal({
       role="presentation"
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -689,7 +726,7 @@ export function AssessmentBuilderModal({
             <button
               type="button"
               onClick={handleSave}
-              className="rounded-md bg-yellow-400 px-3.5 py-1.5 text-xs font-semibold text-black hover:bg-yellow-500"
+              className="rounded-md bg-[var(--cta-bg)] px-3.5 py-1.5 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
             >
               Save
             </button>
@@ -907,49 +944,44 @@ export function AssessmentBuilderModal({
                 return (
                   <div
                     key={q.id}
-                    onClick={() => setSelectedIndex(idx)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        setSelectedIndex(idx);
-                      }
-                    }}
-                    className={`cursor-pointer rounded-lg border p-2.5 text-left transition-colors ${
+                    className={`rounded-lg border p-2.5 text-left transition-colors ${
                       isSelected
-                        ? 'border-blue-500 bg-white shadow-xs dark:border-blue-400 dark:bg-[#121926]'
-                        : 'border-slate-200 bg-white/70 hover:bg-white dark:border-slate-700 dark:bg-[#121926]/60 dark:hover:bg-[#121926]'
+                        ? 'border-[var(--recommended-border)] bg-[var(--surface-1)] shadow-xs'
+                        : 'border-[var(--border-subtle)] bg-[var(--surface-1)]/70 hover:bg-[var(--surface-1)]'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs font-bold text-slate-600 dark:text-slate-300">
-                          #{idx + 1}
-                        </span>
-                        <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[10px] font-semibold text-slate-700 dark:bg-slate-700 dark:text-slate-200">
-                          {QUESTION_TYPE_LABELS[q.type]}
+                    <button
+                      type="button"
+                      onClick={() => setSelectedIndex(idx)}
+                      aria-current={isSelected ? 'true' : undefined}
+                      className="w-full text-left"
+                    >
+                      <div className="flex items-center justify-between gap-1.5">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-xs font-bold text-[var(--text-secondary)]">
+                            #{idx + 1}
+                          </span>
+                          <span className="rounded bg-[var(--surface-2)] px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-secondary)]">
+                            {QUESTION_TYPE_LABELS[q.type]}
+                          </span>
+                        </div>
+                        <span className="font-mono text-[11px] text-[var(--text-muted)]">
+                          {q.points ?? 1} pt
                         </span>
                       </div>
-                      <span className="font-mono text-[11px] text-slate-500 dark:text-slate-400">
-                        {q.points ?? 1} pt
-                      </span>
-                    </div>
 
-                    <p className="mt-1 truncate text-xs text-slate-700 dark:text-slate-200">
-                      {preview}
-                    </p>
+                      <p className="mt-1 truncate text-xs text-[var(--text-primary)]">
+                        {preview}
+                      </p>
+                    </button>
 
                     <div className="mt-2 flex items-center justify-end gap-1">
                       <button
                         type="button"
                         aria-label={`Move question ${idx + 1} up`}
                         disabled={idx === 0}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMoveQuestion(idx, -1);
-                        }}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-35 dark:text-slate-400 dark:hover:bg-slate-800"
+                        onClick={() => handleMoveQuestion(idx, -1)}
+                        className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-35"
                       >
                         <ArrowUp className="h-3.5 w-3.5" />
                       </button>
@@ -957,22 +989,16 @@ export function AssessmentBuilderModal({
                         type="button"
                         aria-label={`Move question ${idx + 1} down`}
                         disabled={idx === draft.questions.length - 1}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMoveQuestion(idx, 1);
-                        }}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-35 dark:text-slate-400 dark:hover:bg-slate-800"
+                        onClick={() => handleMoveQuestion(idx, 1)}
+                        className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] disabled:opacity-35"
                       >
                         <ArrowDown className="h-3.5 w-3.5" />
                       </button>
                       <button
                         type="button"
                         aria-label={`Duplicate question ${idx + 1}`}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDuplicateQuestion(idx);
-                        }}
-                        className="rounded p-1 text-slate-500 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
+                        onClick={() => handleDuplicateQuestion(idx)}
+                        className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--surface-hover)]"
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </button>
@@ -980,11 +1006,8 @@ export function AssessmentBuilderModal({
                         type="button"
                         aria-label={`Delete question ${idx + 1}`}
                         disabled={draft.questions.length <= 1}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDeleteQuestion(idx);
-                        }}
-                        className="rounded p-1 text-red-600 hover:bg-red-50 disabled:opacity-35 dark:text-red-400 dark:hover:bg-red-950/40"
+                        onClick={() => handleDeleteQuestion(idx)}
+                        className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-35"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -1105,7 +1128,7 @@ export function AssessmentBuilderModal({
                         },
                       }));
                     }}
-                    className="inline-flex items-center gap-1 rounded border border-red-200 px-2 py-0.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-400 dark:hover:bg-red-950/40"
+                    className="inline-flex items-center gap-1 rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] px-2 py-0.5 text-xs font-medium text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
                   >
                     <Trash2 className="h-3 w-3" />
                     Remove Image
@@ -1137,7 +1160,7 @@ export function AssessmentBuilderModal({
                 </div>
 
                 <label className="block text-xs font-medium text-slate-600 dark:text-slate-300">
-                  Or Image URL (https://)
+                  Or Image URL (http(s)://)
                   <input
                     type="url"
                     aria-label="Question image URL"
@@ -1271,13 +1294,13 @@ export function AssessmentBuilderModal({
                               };
                             })
                           }
-                          className="rounded p-1 text-red-600 hover:bg-red-50 disabled:opacity-35 dark:text-red-400 dark:hover:bg-red-950/40"
+                          className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-35"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </div>
                       {hasMath && (
-                        <div className="ml-6 rounded bg-slate-50 px-2 py-1 text-xs dark:bg-[#0d131f]">
+                        <div className="ml-6 rounded bg-[var(--surface-inset)] px-2 py-1 text-xs">
                           <RichMathText text={opt} />
                         </div>
                       )}
@@ -1402,7 +1425,7 @@ export function AssessmentBuilderModal({
                           ),
                         }))
                       }
-                      className="rounded p-1 text-red-600 hover:bg-red-50 disabled:opacity-35 dark:text-red-400 dark:hover:bg-red-950/40"
+                      className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 disabled:opacity-35"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>

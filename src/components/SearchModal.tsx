@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { Search, X, BookOpen, GitFork, Layers } from 'lucide-react';
 import { useCourses } from '@/store/useCourseStore';
+import { useNavigationGuard } from '@/context/NavigationGuardContext';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { formatCourseTerm } from '@/types/course';
 
 interface SearchModalProps {
@@ -20,24 +21,25 @@ interface SearchHit {
 export function SearchModal({ open, onClose }: SearchModalProps) {
   const { courses } = useCourses();
   const [query, setQuery] = useState('');
+  const [activeIndex, setActiveIndex] = useState(0);
+  const dialogRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const navigate = useNavigate();
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
+  const { navigateWithGuard } = useNavigationGuard();
+
+  useDialogFocus({
+    isOpen: open,
+    containerRef: dialogRef,
+    initialFocusRef: inputRef,
+    onEscape: onClose,
+  });
 
   useEffect(() => {
     if (open) {
       setQuery('');
-      setTimeout(() => inputRef.current?.focus(), 0);
+      setActiveIndex(0);
     }
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', handleKey);
-    return () => window.removeEventListener('keydown', handleKey);
-  }, [open, onClose]);
 
   const results = useMemo<SearchHit[]>(() => {
     const q = query.trim().toLowerCase();
@@ -52,6 +54,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
         course.title.toLowerCase().includes(q) ||
         course.code.toLowerCase().includes(q) ||
         course.department.toLowerCase().includes(q) ||
+        course.description.toLowerCase().includes(q) ||
         (termLabel?.toLowerCase().includes(q) ?? false);
 
       const courseMeta = `${course.code} · ${course.department}${
@@ -110,80 +113,127 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     return [...courseHits, ...chapterHits, ...lessonHits].slice(0, 18);
   }, [query, courses]);
 
+  useEffect(() => {
+    setActiveIndex(0);
+  }, [results]);
+
+  useEffect(() => {
+    const activeEl = itemRefs.current[activeIndex];
+    if (activeEl && typeof activeEl.scrollIntoView === 'function') {
+      activeEl.scrollIntoView({ block: 'nearest' });
+    }
+  }, [activeIndex]);
+
   if (!open) return null;
 
   const handleSelect = (to: string) => {
-    navigate(to);
     onClose();
+    navigateWithGuard(to);
+  };
+
+  const handleInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (results.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev + 1) % results.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveIndex((prev) => (prev - 1 + results.length) % results.length);
+    } else if (e.key === 'Enter') {
+      const chosen = results[activeIndex] ?? results[0];
+      if (chosen) {
+        e.preventDefault();
+        handleSelect(chosen.to);
+      }
+    }
   };
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/50 px-4 pt-20 dark:bg-black/70"
+      className="fixed inset-0 z-50 flex items-start justify-center bg-[var(--backdrop-modal)] px-4 pt-20"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Search courses, chapters, and lessons"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-lg overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
+        className="w-full max-w-lg overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)] shadow-2xl"
       >
-        <div className="flex items-center gap-2 border-b border-slate-200 px-3.5 py-3 dark:border-slate-700/80">
-          <Search className="h-4 w-4 text-slate-400 dark:text-slate-400" />
+        <div className="flex items-center gap-2 border-b border-[var(--border-subtle)] px-3.5 py-3 focus-within:ring-2 focus-within:ring-[var(--border-focus)] focus-within:ring-inset">
+          <Search className="h-4 w-4 text-[var(--text-muted)]" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleInputKeyDown}
             placeholder="Search courses, departments, chapters, or lessons..."
-            className="flex-1 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder-slate-500"
+            className="flex-1 bg-transparent text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:outline-none"
           />
           <button
             type="button"
             onClick={onClose}
             aria-label="Close search"
-            className="rounded p-1 text-slate-500 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-400 dark:hover:bg-[#1b2436] dark:hover:text-white"
+            className="rounded p-1 text-[var(--text-muted)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="max-h-80 overflow-y-auto p-2">
+          <div className="sr-only" role="status" aria-live="polite">
+            {results.length === 0
+              ? 'No matching courses, chapters, or lessons found.'
+              : `${results.length} result${results.length === 1 ? '' : 's'} available.`}
+          </div>
           {results.length === 0 ? (
-            <p className="px-3 py-6 text-center text-xs text-slate-500 dark:text-slate-400">
+            <p className="px-3 py-6 text-center text-xs text-[var(--text-muted)]">
               No matching courses, chapters, or lessons found.
             </p>
           ) : (
             <ul className="space-y-1">
-              {results.map((hit) => (
-                <li key={hit.key}>
-                  <button
-                    type="button"
-                    onClick={() => handleSelect(hit.to)}
-                    className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors hover:bg-slate-100 dark:hover:bg-[#1b2436]"
-                  >
-                    {hit.kind === 'course' ? (
-                      <GitFork className="h-4 w-4 shrink-0 text-amber-600 dark:text-yellow-400" />
-                    ) : hit.kind === 'chapter' ? (
-                      <Layers className="h-4 w-4 shrink-0 text-amber-700 dark:text-amber-300" />
-                    ) : (
-                      <BookOpen className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {hit.title}
+              {results.map((hit, idx) => {
+                const isActive = idx === activeIndex;
+                return (
+                  <li key={hit.key}>
+                    <button
+                      ref={(el) => {
+                        itemRefs.current[idx] = el;
+                      }}
+                      type="button"
+                      onClick={() => handleSelect(hit.to)}
+                      onMouseEnter={() => setActiveIndex(idx)}
+                      data-active={isActive ? 'true' : undefined}
+                      className={`flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left transition-colors ${
+                        isActive
+                          ? 'bg-[var(--surface-hover)]'
+                          : 'hover:bg-[var(--surface-hover)]'
+                      }`}
+                    >
+                      {hit.kind === 'course' ? (
+                        <GitFork className="h-4 w-4 shrink-0 text-[var(--accent-purple)]" />
+                      ) : hit.kind === 'chapter' ? (
+                        <Layers className="h-4 w-4 shrink-0 text-[var(--accent-amber)]" />
+                      ) : (
+                        <BookOpen className="h-4 w-4 shrink-0 text-[var(--accent-peach)]" />
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-[var(--text-primary)]">
+                          {hit.title}
+                        </div>
+                        <div className="truncate text-xs text-[var(--text-secondary)]">
+                          {hit.subtitle}
+                        </div>
                       </div>
-                      <div className="truncate text-xs text-slate-600 dark:text-slate-400">
-                        {hit.subtitle}
-                      </div>
-                    </div>
-                    <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 capitalize dark:bg-[#1b2436] dark:text-slate-300">
-                      {hit.kind}
-                    </span>
-                  </button>
-                </li>
-              ))}
+                      <span className="rounded bg-[var(--surface-warm-muted)] px-1.5 py-0.5 text-[11px] text-[var(--text-secondary)] capitalize">
+                        {hit.kind}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

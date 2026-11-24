@@ -1,5 +1,13 @@
-import { useEffect, useRef, useState, type MouseEvent, type RefObject, type TouchEvent } from 'react';
-import { ZoomIn, ZoomOut, RotateCcw } from 'lucide-react';
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MouseEvent,
+  type RefObject,
+  type SyntheticEvent,
+  type TouchEvent,
+} from 'react';
+import { ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
 import { isLeafChapter } from '@/lib/courseItems';
 import { ROADMAP_COLORS } from '@/lib/theme';
 import { NODE_LINE_HEIGHT, type TreeLayout } from '@/lib/layoutTree';
@@ -48,7 +56,7 @@ function renderStatusCornerBadge(status: LessonStatus, x: number, y: number) {
           cx={8}
           cy={8}
           r={9}
-          fill="#16a34a"
+          fill={ROADMAP_COLORS.statusDoneBadgeFill}
           stroke="#ffffff"
           strokeWidth={1.5}
         />
@@ -71,7 +79,7 @@ function renderStatusCornerBadge(status: LessonStatus, x: number, y: number) {
           cx={8}
           cy={8}
           r={8}
-          fill="#7c3aed"
+          fill={ROADMAP_COLORS.statusLearningBadgeFill}
           stroke="#ffffff"
           strokeWidth={1.5}
         />
@@ -86,7 +94,7 @@ function renderStatusCornerBadge(status: LessonStatus, x: number, y: number) {
         cx={8}
         cy={8}
         r={8}
-        fill="#64748b"
+        fill={ROADMAP_COLORS.statusSkippedFill}
         stroke="#ffffff"
         strokeWidth={1.5}
       />
@@ -122,6 +130,7 @@ export function CourseTreeCanvas({
   const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [hoveredItemId, setHoveredItemId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [isPinching, setIsPinching] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const zoomWrapperRef = useRef<HTMLDivElement | null>(null);
   const pinchStateRef = useRef<{
@@ -145,8 +154,19 @@ export function CourseTreeCanvas({
     return 0;
   };
 
+  const getFitZoom = () => {
+    const cw = scrollContainerRef.current?.clientWidth ?? 0;
+    if (cw > 0 && cw < layout.width) {
+      return Math.max(0.5, Math.min(1, Number(((cw - 16) / layout.width).toFixed(2))));
+    }
+    return 1;
+  };
+
   useEffect(() => {
-    setPan({ x: getCenteredPanX(1), y: 0 });
+    const isNarrowMobile = typeof window !== 'undefined' && window.innerWidth < 640;
+    const initialZoom = isNarrowMobile ? getFitZoom() : 1;
+    setZoom(initialZoom);
+    setPan({ x: getCenteredPanX(initialZoom), y: 0 });
   }, [layout.width]);
 
   const clampPan = (rawX: number, rawY: number, targetZoom = zoom) => {
@@ -259,6 +279,7 @@ export function CourseTreeCanvas({
           startDist: dist,
           startZoom: zoom,
         };
+        setIsPinching(true);
       }
       return;
     }
@@ -291,6 +312,7 @@ export function CourseTreeCanvas({
   const handleContainerTouchEnd = (e: TouchEvent<HTMLDivElement>) => {
     if (e.touches.length < 2) {
       pinchStateRef.current.active = false;
+      setIsPinching(false);
     }
     if (e.touches.length === 0) {
       endContainerDrag();
@@ -336,7 +358,7 @@ export function CourseTreeCanvas({
     onSelectChapter?.(chapter);
   };
 
-  const openNodeContextMenu = (e: MouseEvent<SVGGElement>, itemId: string) => {
+  const openNodeContextMenu = (e: SyntheticEvent<SVGGElement>, itemId: string) => {
     e.preventDefault();
     const rect = e.currentTarget.getBoundingClientRect();
     onContextMenuLesson(itemId, {
@@ -360,6 +382,20 @@ export function CourseTreeCanvas({
           aria-label="Zoom out"
         >
           <ZoomOut className="h-3.5 w-3.5" />
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const fit = getFitZoom();
+            setZoom(fit);
+            setPan({ x: getCenteredPanX(fit), y: 0 });
+          }}
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-slate-300 bg-white px-2 text-xs font-medium text-slate-700 transition-colors hover:bg-slate-100 sm:hidden dark:border-slate-700 dark:bg-[#121926] dark:text-slate-200 dark:hover:bg-[#1b2436]"
+          title="Fit tree to screen"
+          aria-label="Fit tree to screen"
+        >
+          <Maximize2 className="h-3 w-3" />
+          Fit
         </button>
         <button
           type="button"
@@ -404,7 +440,7 @@ export function CourseTreeCanvas({
       >
         <div
           ref={zoomWrapperRef}
-          className="mx-auto transition-[width,max-width,min-width] duration-200 ease-out"
+          className={`mx-auto ${isPinching ? '' : 'transition-[width,max-width,min-width] duration-200 ease-out'}`}
           style={{
             width: `${Math.round(zoom * 100)}%`,
             minWidth: `${Math.round(Math.min(layout.width, 640) * zoom)}px`,
@@ -454,7 +490,11 @@ export function CourseTreeCanvas({
                 const allSkipped = stats.required === 0 && stats.skipped > 0;
                 const allDone = !allSkipped && stats.required > 0 && stats.done === stats.required;
                 const badgeText = `${stats.done}/${stats.required}`;
-                const badgeFill = allSkipped ? '#64748b' : allDone ? '#16a34a' : '#0f172b';
+                const badgeFill = allSkipped
+                  ? ROADMAP_COLORS.statusSkippedFill
+                  : allDone
+                    ? ROADMAP_COLORS.statusDoneBadgeFill
+                    : ROADMAP_COLORS.statusDefaultBadgeFill;
                 const badgeWidth = Math.max(36, badgeText.length * 8 + 14);
 
                 return (
@@ -489,7 +529,15 @@ export function CourseTreeCanvas({
                       setHoveredItemId((prev) => (prev === node.id ? null : prev))
                     }
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (isLeaf && e.shiftKey && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        onQuickToggleDone(node.id);
+                      } else if (
+                        isLeaf &&
+                        (e.key === 'm' || e.key === 'M' || (e.shiftKey && e.key === 'F10'))
+                      ) {
+                        openNodeContextMenu(e, node.id);
+                      } else if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         onSelectChapter?.(node.chapter);
                       }
@@ -612,7 +660,16 @@ export function CourseTreeCanvas({
                       onLeaveLesson?.(node.id);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
+                      if (e.shiftKey && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        onQuickToggleDone(node.id);
+                      } else if (
+                        e.key === 'm' ||
+                        e.key === 'M' ||
+                        (e.shiftKey && e.key === 'F10')
+                      ) {
+                        openNodeContextMenu(e, node.id);
+                      } else if (e.key === 'Enter' || e.key === ' ') {
                         e.preventDefault();
                         onSelectLesson(node.id);
                       }

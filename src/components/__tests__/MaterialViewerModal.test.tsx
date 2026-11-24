@@ -482,7 +482,7 @@ describe('MaterialViewerModal', () => {
     expect(extIframe).toHaveAttribute('src', 'https://www.notion.so/course-notes-123');
     expect(extIframe).toHaveAttribute(
       'sandbox',
-      'allow-scripts allow-same-origin allow-forms allow-popups'
+      'allow-scripts allow-forms allow-popups'
     );
     expect(extIframe).toHaveAttribute('referrerpolicy', 'no-referrer');
     expect(screen.queryByTestId('external-embed-fallback-banner')).not.toBeInTheDocument();

@@ -27,7 +27,7 @@ export function CourseCard({
     <div className="group relative">
       <Link
         to={`/course/${course.slug}`}
-        className="flex min-h-[78px] flex-col justify-between rounded-lg border border-slate-200 bg-white p-3.5 pr-20 text-slate-700 shadow-xs transition-colors hover:border-slate-300 hover:text-slate-900 dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-300 dark:hover:border-slate-500 dark:hover:bg-[#1b2436]/70 dark:hover:text-slate-100"
+        className="flex min-h-[78px] flex-col justify-between rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-3.5 pr-32 text-[var(--text-secondary)] shadow-xs transition-colors hover:border-[var(--border-strong)] hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] sm:pr-20"
       >
         <div>
           <div className="mb-1 flex flex-wrap items-center gap-1.5">
@@ -35,32 +35,32 @@ export function CourseCard({
               {course.code}
             </span>
             {termLabel && (
-              <span className="rounded-full border border-slate-200 bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-700 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300">
+              <span className="rounded-full border border-[var(--border-subtle)] bg-[var(--surface-warm-muted)] px-2 py-0.5 text-[11px] font-medium text-[var(--text-secondary)]">
                 {termLabel}
               </span>
             )}
           </div>
-          <div className="text-sm font-semibold text-slate-900 group-hover:text-black dark:font-medium dark:text-slate-100 dark:group-hover:text-white">
+          <div className="text-sm font-semibold text-[var(--text-primary)] dark:font-medium">
             {course.title}
           </div>
         </div>
 
-        <div className="mt-2.5 flex items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+        <div className="mt-2.5 flex items-center justify-between gap-2 text-[11px] text-[var(--text-muted)]">
           <span>
             {chapterCount} {chapterCount === 1 ? 'chapter' : 'chapters'} · {itemCount}{' '}
             {itemCount === 1 ? 'item' : 'items'}
           </span>
           {hasProgress && (
-            <span className="font-mono font-semibold text-emerald-700 dark:text-emerald-400">
+            <span className="font-mono font-semibold text-[var(--accent-done)]">
               {stats.percentDone}%
             </span>
           )}
         </div>
 
         {hasProgress && (
-          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-[#1b2436]">
+          <div className="mt-1.5 h-1 w-full overflow-hidden rounded-full bg-[var(--surface-2)]">
             <div
-              className="h-full rounded-full bg-amber-500 transition-all duration-300 dark:bg-yellow-400"
+              className="h-full rounded-full bg-[var(--accent-amber)] transition-all duration-300"
               style={{ width: `${stats.percentDone}%` }}
             />
           </div>
@@ -68,12 +68,12 @@ export function CourseCard({
       </Link>
 
       {/* Top-right sibling action buttons (never trigger card navigation) */}
-      <div className="absolute top-2 right-2 z-10 flex items-center gap-0.5">
+      <div className="absolute top-1.5 right-1.5 z-10 flex items-center gap-1.5 sm:top-2 sm:right-2 sm:gap-1">
         <Link
           to={`/course/${course.slug}/edit`}
           aria-label={`Edit ${course.title}`}
           title="Edit course"
-          className="rounded p-1 text-slate-500 opacity-60 transition-opacity group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-900 hover:!opacity-100 dark:text-slate-400 dark:opacity-50 dark:hover:bg-[#1b2436] dark:hover:text-white"
+          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1 text-[var(--text-muted)] opacity-75 transition-opacity group-hover:opacity-100 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:!opacity-100 sm:min-h-0 sm:min-w-0"
         >
           <Pencil className="h-3.5 w-3.5" />
         </Link>
@@ -82,7 +82,7 @@ export function CourseCard({
           onClick={onRequestDelete}
           aria-label={`Delete ${course.title}`}
           title="Delete course"
-          className="rounded p-1 text-slate-500 opacity-60 transition-opacity group-hover:opacity-100 hover:bg-red-50 hover:text-red-600 hover:!opacity-100 dark:text-slate-400 dark:opacity-50 dark:hover:bg-[#1b2436] dark:hover:text-red-400"
+          className="inline-flex min-h-10 min-w-10 items-center justify-center rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] opacity-80 transition-colors group-hover:opacity-100 hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white hover:!opacity-100 focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2 sm:min-h-0 sm:min-w-0"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>
@@ -91,10 +91,10 @@ export function CourseCard({
           onClick={onToggleBookmark}
           aria-label={bookmarked ? `Remove ${course.title} bookmark` : `Bookmark ${course.title}`}
           title={bookmarked ? 'Remove bookmark' : 'Bookmark course'}
-          className={`rounded p-1 transition-opacity ${
+          className={`inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1 transition-opacity sm:min-h-0 sm:min-w-0 ${
             bookmarked
-              ? 'text-amber-500 opacity-100 dark:text-yellow-400'
-              : 'text-slate-500 opacity-60 group-hover:opacity-100 hover:bg-slate-100 hover:text-slate-900 hover:!opacity-100 dark:text-slate-400 dark:opacity-50 dark:hover:bg-[#1b2436] dark:hover:text-white'
+              ? 'text-[var(--accent-amber)] opacity-100'
+              : 'text-[var(--text-muted)] opacity-75 group-hover:opacity-100 hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)] hover:!opacity-100'
           }`}
         >
           <Bookmark className="h-4 w-4" fill={bookmarked ? 'currentColor' : 'none'} />

@@ -73,7 +73,8 @@ export const math201LinearAlgebra: CourseTree = {
 - **`year` & `semester`**: Optional structured fields (`year`: integer `1..10`, `semester`: `1 | 2`). Omit either or both when unscheduled.
 - **Direct milestone chapters (`lessons: []`)**: A chapter with zero sub-lessons is treated as a single trackable item (`1` item in progress fractions) and supports optional `notes`, `prerequisites`, and `resources`.
 - **ID uniqueness & prerequisites**: All chapter (`<coursePrefix>-ch<order>-<slug>`) and lesson (`<coursePrefix>-ch<chapterOrder>-l<lessonOrder>-<slug>`) `id` values share a single uniqueness namespace per course and must start with `<coursePrefix>-` (lowercase alphanumeric characters of `code`, e.g. `math201-`). Both chapters and lessons can declare `prerequisites` referencing any chapter or lesson ID in the same course (no self-references).
-- **Materials (`LessonResource`)**: Each resource must provide **exactly one** of `url`, `file` (`StoredFileRef`), or `assessment` (`AssessmentData`), and may optionally set `recommended: true` to pin the material to the top of the list.
+- **Week ranges (`weekRange`)**: Format as `'Week 1'` or `'Week 1-3'` (ASCII hyphen `-`).
+- **Materials (`LessonResource`)**: Each resource must provide **exactly one** of `url` (`http(s)://`), `file` (`StoredFileRef`), or `assessment` (`AssessmentData`), and may optionally set `recommended: true` to pin the material into the purple `1.5px dashed` **Recommended** container at the top of the list. External `https://` URLs open in the sandboxed in-app webpage viewer (`allow-scripts allow-forms allow-popups`, `referrerPolicy="no-referrer"`), while `http://` URLs route to the safe new-tab fallback card.
 
 ## 2. Register the Course
 Import and add it to `COURSES` in `src/data/courses/index.ts` alongside the bundled seed courses (`guide101QuickStart` and `demo201FeatureShowcase`):

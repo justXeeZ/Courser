@@ -1,4 +1,4 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AssessmentScoreRecordSchema,
   PROGRESS_STORAGE_KEY,
@@ -164,16 +164,39 @@ interface ProgressContextValue {
   importProgressJson: (raw: string) => { ok: true } | { ok: false; error: string };
   getCourseStats: (course: CourseTree) => ProgressStats;
   getChapterStats: (courseSlug: string, chapter: Chapter) => ProgressStats;
+  persistError: string | null;
+  dismissPersistError: () => void;
 }
 
 const ProgressContext = createContext<ProgressContextValue | null>(null);
 
 export function ProgressProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<ProgressState>(() => localProgressRepository.loadProgress());
+  const [persistError, setPersistError] = useState<string | null>(null);
+  const skipNextSaveRef = useRef(false);
 
   useEffect(() => {
-    localProgressRepository.saveProgress(state);
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
+    }
+    const result = localProgressRepository.saveProgress(state);
+    setPersistError(result && !result.ok ? result.error : null);
   }, [state]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleStorage = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (event.key !== null && event.key !== PROGRESS_STORAGE_KEY) return;
+      skipNextSaveRef.current = true;
+      setState(localProgressRepository.loadProgress());
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+
+  const dismissPersistError = useCallback(() => setPersistError(null), []);
 
   const getCourseStatuses = useCallback(
     (courseSlug: string) => state.statuses[courseSlug] ?? {},
@@ -449,6 +472,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       importProgressJson,
       getCourseStats,
       getChapterStats,
+      persistError,
+      dismissPersistError,
     }),
     [
       state,
@@ -467,6 +492,8 @@ export function ProgressProvider({ children }: { children: ReactNode }) {
       importProgressJson,
       getCourseStats,
       getChapterStats,
+      persistError,
+      dismissPersistError,
     ]
   );
 

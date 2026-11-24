@@ -4,6 +4,19 @@ import type { CourseTree, LessonResource } from '@/types/course';
 export const FILE_DB_NAME = 'college_course_trees';
 export const FILE_DB_VERSION = 1;
 export const FILE_STORE_NAME = 'files';
+export const EDITOR_LEASE_STORAGE_KEY = 'college_course_trees_editor_lease';
+export const EDITOR_LEASE_TTL_MS = 60_000;
+
+export function hasActiveEditorLease(): boolean {
+  try {
+    const raw = window.localStorage.getItem(EDITOR_LEASE_STORAGE_KEY);
+    if (!raw) return false;
+    const ts = Number(raw);
+    return Number.isFinite(ts) && Date.now() - ts < EDITOR_LEASE_TTL_MS;
+  } catch {
+    return false;
+  }
+}
 
 const INLINE_TAB_MIME_TYPES = new Set([
   'application/pdf',
@@ -42,7 +55,7 @@ const INLINE_EXTENSION_MIME_FALLBACKS: Record<string, string> = {
 
 const TEXT_CODE_MIME_TYPES = new Set(['application/json']);
 
-const TEXT_CODE_EXTENSIONS = new Set([
+export const TEXT_CODE_EXTENSIONS = new Set([
   '.txt',
   '.md',
   '.csv',

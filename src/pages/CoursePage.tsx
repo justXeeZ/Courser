@@ -2,8 +2,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { X, Download, Upload, CheckCircle2, AlertCircle } from 'lucide-react';
 import { BRAND } from '@/config/brand';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { findCourseItem } from '@/lib/courseItems';
 import { layoutCourseTree } from '@/lib/layoutTree';
+import { ROADMAP_COLORS } from '@/lib/theme';
 import { useCourses } from '@/store/useCourseStore';
 import { useProgress } from '@/store/useProgressStore';
 import { CourseHeader, type CourseViewTab } from '@/components/CourseHeader';
@@ -75,6 +77,7 @@ export function CoursePage() {
     return () => clearHoverCloseTimer();
   }, []);
   const [backupModalOpen, setBackupModalOpen] = useState(false);
+  const [confirmRestoreOpen, setConfirmRestoreOpen] = useState(false);
   const [exportModalOpen, setExportModalOpen] = useState(false);
   const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
   const [activeViewerMaterial, setActiveViewerMaterial] = useState<LessonResource | null>(null);
@@ -86,31 +89,29 @@ export function CoursePage() {
   const [importNotice, setImportNotice] = useState<{ ok: boolean; text: string } | null>(null);
 
   const svgRef = useRef<SVGSVGElement | null>(null);
+  const backupDialogRef = useRef<HTMLDivElement | null>(null);
+
+  useDialogFocus({
+    isOpen: backupModalOpen && !confirmRestoreOpen,
+    containerRef: backupDialogRef,
+    onEscape: () => setBackupModalOpen(false),
+  });
 
   useEffect(() => {
     setActiveViewerMaterial(null);
     setActiveAssessmentMaterial(null);
     setBackupModalOpen(false);
+    setConfirmRestoreOpen(false);
     setExportModalOpen(false);
     setConfirmDeleteOpen(false);
     setContextMenu(null);
   }, [slug]);
 
-  useEffect(() => {
-    if (!backupModalOpen) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setBackupModalOpen(false);
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [backupModalOpen]);
-
   const hasSubModalOpen = Boolean(
     activeViewerMaterial ||
       activeAssessmentMaterial ||
       backupModalOpen ||
+      confirmRestoreOpen ||
       exportModalOpen ||
       confirmDeleteOpen
   );
@@ -119,12 +120,12 @@ export function CoursePage() {
 
   if (!course || !layout) {
     return (
-      <main className="min-h-[calc(100vh-64px)] bg-slate-50 px-4 py-16 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
-        <div className="mx-auto max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center shadow-xs dark:border-slate-700/80 dark:bg-[#121926]">
-          <h1 className="mb-2 text-xl font-bold text-slate-900 dark:text-slate-100">
+      <main id="main-content" className="min-h-[calc(100vh-64px)] bg-[var(--surface-canvas)] px-4 py-16 text-[var(--text-primary)]">
+        <div className="mx-auto max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-6 text-center shadow-xs">
+          <h1 className="mb-2 text-xl font-bold text-[var(--text-primary)]">
             Course Not Found
           </h1>
-          <p className="mb-5 text-sm text-slate-600 dark:text-slate-400">
+          <p className="mb-5 text-sm text-[var(--text-secondary)]">
             We could not find a course tree matching <code className="font-mono">{slug}</code>.
           </p>
           <Link
@@ -183,12 +184,13 @@ export function CoursePage() {
     const styleTag = document.createElementNS('http://www.w3.org/2000/svg', 'style');
     styleTag.textContent = `
       text { font-family: "Balsamiq Sans", ui-sans-serif, system-ui, sans-serif; }
-      g.node-done > rect.node-rect { fill: #cbcbcb; }
-      g.node-done > text.node-label { fill: #000000; text-decoration: line-through; }
-      g.node-learning > rect.node-rect { fill: #dad1fd; }
-      g.node-learning > text.node-label { fill: #000000; text-decoration: underline; }
-      g.node-skipped > rect.node-rect { fill: #64748b; }
-      g.node-skipped > text.node-label { fill: #ffffff; text-decoration: line-through; }
+      g.node-done > rect.node-rect { fill: ${ROADMAP_COLORS.statusDoneFill}; }
+      g.node-done > text.node-label { fill: ${ROADMAP_COLORS.nodeText}; text-decoration: line-through; }
+      g.node-learning > rect.node-rect { fill: ${ROADMAP_COLORS.statusLearningFill}; }
+      g.node-learning > text.node-label { fill: ${ROADMAP_COLORS.nodeText}; text-decoration: underline; }
+      g.node-skipped > rect.node-rect { fill: ${ROADMAP_COLORS.statusSkippedFill}; }
+      g.node-skipped > text.node-label { fill: ${ROADMAP_COLORS.statusSkippedText}; text-decoration: line-through; }
+      g.node-highlighted > rect.node-rect { stroke: ${ROADMAP_COLORS.edgeBlue}; stroke-width: 3.4; }
     `;
     clone.prepend(styleTag);
 
@@ -214,6 +216,11 @@ export function CoursePage() {
   };
 
   const handleImportSubmit = () => {
+    setConfirmRestoreOpen(true);
+  };
+
+  const handleConfirmRestore = () => {
+    setConfirmRestoreOpen(false);
     const result = importProgressJson(importText);
     if (result.ok) {
       setImportNotice({ ok: true, text: 'Progress restored successfully.' });
@@ -224,7 +231,7 @@ export function CoursePage() {
   };
 
   return (
-    <main className="min-h-[calc(100vh-64px)] bg-slate-50 text-slate-900 dark:bg-[#0b0f17] dark:text-slate-100">
+    <main id="main-content" className="min-h-[calc(100vh-64px)] bg-[var(--surface-canvas)] text-[var(--text-primary)]">
       <CourseHeader
         course={course}
         bookmarked={isBookmarked(course.slug)}
@@ -387,30 +394,31 @@ export function CoursePage() {
       {/* Export / Import Progress Modal */}
       {backupModalOpen && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 dark:bg-black/70"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop-modal)] p-4"
           onClick={() => setBackupModalOpen(false)}
         >
           <div
+            ref={backupDialogRef}
             role="dialog"
             aria-modal="true"
             aria-label="Backup and Restore Progress"
             onClick={(e) => e.stopPropagation()}
-            className="w-full max-w-md rounded-xl border border-slate-200 bg-white p-5 text-slate-900 shadow-xl dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
+            className="w-full max-w-md rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 text-[var(--text-primary)] shadow-xl"
           >
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+              <h2 className="text-base font-bold text-[var(--text-primary)]">
                 Backup &amp; Restore Progress
               </h2>
               <button
                 type="button"
                 onClick={() => setBackupModalOpen(false)}
                 aria-label="Close backup dialog"
-                className="rounded-md bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700"
+                className="rounded-md bg-[var(--surface-2)] p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
-            <p className="mb-4 text-xs text-slate-600 dark:text-slate-300">
+            <p className="mb-4 text-xs text-[var(--text-secondary)]">
               Your progress is saved locally in this browser. Export a JSON backup to transfer
               across devices or keep a semester copy.
             </p>
@@ -418,16 +426,16 @@ export function CoursePage() {
             <button
               type="button"
               onClick={handleExportJsonFile}
-              className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-yellow-400 px-3 py-2 text-sm font-medium text-black hover:bg-yellow-500"
+              className="mb-4 inline-flex w-full items-center justify-center gap-2 rounded-md bg-[var(--cta-bg)] px-3 py-2 text-sm font-medium text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
             >
               <Download className="h-4 w-4" />
               Download Progress JSON
             </button>
 
-            <div className="border-t border-slate-200 pt-3 dark:border-slate-700/80">
+            <div className="border-t border-[var(--border-subtle)] pt-3">
               <label
                 htmlFor="import-progress-json"
-                className="mb-1.5 block text-xs font-medium text-slate-700 dark:text-slate-300"
+                className="mb-1.5 block text-xs font-medium text-[var(--text-secondary)]"
               >
                 Restore from JSON
               </label>
@@ -435,16 +443,20 @@ export function CoursePage() {
                 id="import-progress-json"
                 rows={4}
                 value={importText}
-                onChange={(e) => setImportText(e.target.value)}
+                onChange={(e) => {
+                  setImportText(e.target.value);
+                  setImportNotice(null);
+                }}
                 placeholder='Paste exported JSON here (e.g. {"version":1,...})'
-                className="mb-2 w-full rounded-md border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                className="mb-2 w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] p-2 font-mono text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none"
               />
               {importNotice && (
                 <div
-                  className={`mb-2 flex items-center gap-1.5 rounded px-2.5 py-1.5 text-xs ${
+                  role={importNotice.ok ? 'status' : 'alert'}
+                  className={`mb-2 flex items-center gap-1.5 rounded border px-2.5 py-1.5 text-xs ${
                     importNotice.ok
-                      ? 'bg-emerald-50 text-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
-                      : 'bg-red-50 text-red-700 dark:bg-red-950/50 dark:text-red-300'
+                      ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
+                      : 'border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] text-[var(--status-danger-text)]'
                   }`}
                 >
                   {importNotice.ok ? (
@@ -468,6 +480,15 @@ export function CoursePage() {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmRestoreOpen}
+        title="Restore progress from JSON?"
+        description="This will overwrite your current saved progress, bookmarks, and assessment scores across all courses."
+        confirmLabel="Restore Progress"
+        onConfirm={handleConfirmRestore}
+        onCancel={() => setConfirmRestoreOpen(false)}
+      />
 
       <ConfirmDialog
         open={confirmDeleteOpen}

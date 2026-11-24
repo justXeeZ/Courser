@@ -1,3 +1,4 @@
+import { Ban, BookOpen, CheckCircle2 } from 'lucide-react';
 import type { ProgressStats } from '@/store/useProgressStore';
 import type { StatusFilter } from '@/components/CourseTreeCanvas';
 
@@ -17,37 +18,41 @@ const FILTER_OPTIONS: { id: StatusFilter; label: string }[] = [
 
 export function ProgressStrip({ stats, statusFilter, onChangeFilter }: ProgressStripProps) {
   return (
-    <div className="mx-auto mb-5 w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-xs text-slate-700 shadow-xs sm:flex sm:items-center sm:justify-between sm:gap-4 dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-200">
+    <div className="mx-auto mb-5 w-full rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] px-3 py-2.5 text-xs text-[var(--text-secondary)] shadow-xs sm:flex sm:items-center sm:justify-between sm:gap-4">
       <div className="flex flex-wrap items-center justify-center gap-2.5 sm:justify-start">
-        <span className="inline-flex items-center rounded bg-yellow-400 px-2 py-0.5 font-mono text-xs font-bold text-black">
+        <span className="inline-flex items-center gap-1 rounded border border-[var(--status-done-border)] bg-[var(--status-done-bg)] px-2 py-0.5 font-mono text-xs font-bold text-[var(--status-done-text)]">
+          <CheckCircle2 className="h-3.5 w-3.5 text-[var(--accent-done)]" />
           {stats.percentDone}% DONE
         </span>
-        <span className="font-medium text-slate-900 dark:text-slate-100">
+        <span className="font-medium text-[var(--text-primary)]">
           {stats.done} of {stats.required} Required Items Done
         </span>
         {stats.learning > 0 && (
-          <span className="rounded bg-violet-100 px-1.5 py-0.5 font-medium text-violet-800 dark:bg-violet-950/60 dark:text-violet-300">
+          <span className="inline-flex items-center gap-1 rounded border border-[var(--status-learning-border)] bg-[var(--status-learning-bg)] px-1.5 py-0.5 font-medium text-[var(--status-learning-text)]">
+            <BookOpen className="h-3 w-3 text-[var(--status-learning-icon)]" />
             {stats.learning} Learning
           </span>
         )}
         {stats.skipped > 0 && (
-          <span className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300">
+          <span className="inline-flex items-center gap-1 rounded border border-[var(--status-skipped-border)] bg-[var(--status-skipped-bg)] px-1.5 py-0.5 font-medium text-[var(--status-skipped-text)]">
+            <Ban className="h-3 w-3" />
             {stats.skipped} Skipped
           </span>
         )}
       </div>
 
       <div className="mt-2 flex flex-wrap items-center justify-center gap-3 sm:mt-0 sm:justify-end">
-        <div className="inline-flex items-center rounded border border-slate-200 bg-slate-100 p-0.5 dark:border-slate-700 dark:bg-[#0d131f]">
+        <div className="inline-flex items-center rounded border border-[var(--border-strong)] bg-[var(--surface-inset)] p-0.5">
           {FILTER_OPTIONS.map((opt) => (
             <button
               key={opt.id}
               type="button"
+              aria-pressed={statusFilter === opt.id}
               onClick={() => onChangeFilter(opt.id)}
               className={`rounded px-2 py-0.5 text-xs font-medium transition-colors ${
                 statusFilter === opt.id
                   ? 'bg-[var(--solid-bg)] font-semibold text-[var(--solid-text)]'
-                  : 'text-slate-600 hover:text-slate-900 dark:text-slate-300 dark:hover:text-white'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
               }`}
             >
               {opt.label}
@@ -55,9 +60,12 @@ export function ProgressStrip({ stats, statusFilter, onChangeFilter }: ProgressS
           ))}
         </div>
 
-        <span className="hidden text-slate-500 lg:inline dark:text-slate-400">
+        <span className="text-[var(--text-muted)] lg:hidden">
+          Tap any node to study &amp; mark progress
+        </span>
+        <span className="hidden text-[var(--text-muted)] lg:inline">
           Click to study · Right-click or{' '}
-          <kbd className="rounded border border-slate-200 bg-slate-100 px-1 text-slate-700 dark:border-slate-700 dark:bg-[#1b2436] dark:text-slate-300">
+          <kbd className="rounded border border-[var(--border-subtle)] bg-[var(--surface-warm-muted)] px-1 text-[var(--text-secondary)]">
             Shift+Click
           </kbd>{' '}
           to mark

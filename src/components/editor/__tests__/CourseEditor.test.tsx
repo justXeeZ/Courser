@@ -143,8 +143,9 @@ describe('CourseEditorPage & editor components', () => {
     const storedPptx = await getFile(storedIdsAfterPptx[0]);
     expect(storedPptx?.name).toBe('lecture-01.pptx');
 
-    // 3) Switching Link <-> Upload clears opposite field
+    // 3) Switching Link <-> Upload clears opposite field (after confirming populated upload discard)
     fireEvent.click(lessonScope.getByRole('button', { name: /^Link$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Switch Mode$/i }));
     const urlInput = lessonScope.getByLabelText(/Material URL/i) as HTMLInputElement;
     expect(urlInput.value).toBe('');
     fireEvent.change(urlInput, { target: { value: 'https://example.edu/test' } });
@@ -239,7 +240,7 @@ describe('CourseEditorPage & editor components', () => {
     // Selecting chapter prerequisite applies amber fill
     fireEvent.click(ch1PrereqBtn);
     expect(ch1PrereqBtn).toHaveAttribute('aria-pressed', 'true');
-    expect(ch1PrereqBtn.className).toContain('bg-amber-400');
+    expect(ch1PrereqBtn.className).toContain('bg-[var(--tag-amber-bg)]');
 
     // Toggle back off
     fireEvent.click(ch1PrereqBtn);
@@ -251,18 +252,18 @@ describe('CourseEditorPage & editor components', () => {
     });
     const l1Tag = within(l1PrereqBtn).getByTestId('prereq-tag-lesson');
     expect(l1Tag).toHaveTextContent('Ch1 / L1');
-    expect(l1Tag.className).toContain('bg-[var(--tag-blue-bg)]');
-    expect(l1Tag.className).toContain('text-[var(--tag-blue-text)]');
+    expect(l1Tag.className).toContain('bg-[var(--tag-peach-bg)]');
+    expect(l1Tag.className).toContain('text-[var(--tag-peach-text)]');
     fireEvent.click(l1PrereqBtn);
     expect(l1PrereqBtn).toHaveAttribute('aria-pressed', 'true');
-    expect(l1PrereqBtn.className).toContain('bg-blue-600');
+    expect(l1PrereqBtn.className).toContain('bg-[var(--tag-peach-bg)]');
     fireEvent.click(l1PrereqBtn);
     expect(l1PrereqBtn).toHaveAttribute('aria-pressed', 'false');
 
     // Delete Chapter 2's only lesson -> becomes 0-lesson chapter with updated empty message
     const ch2Scope = within(chapter2Card);
     fireEvent.click(ch2Scope.getByRole('button', { name: /Delete Topic 2\.1/i }));
-    expect(ch2Scope.getByText('No sub-lessons are added yet')).toBeInTheDocument();
+    expect(ch2Scope.getByText(/No sub-lessons added yet/i)).toBeInTheDocument();
   });
 
   it('updates the sticky bar breadcrumb when focusing chapter or lesson fields and falls back on metadata focus', () => {
@@ -549,29 +550,25 @@ describe('CourseEditorPage & editor components', () => {
 
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
     const expandedClasses = headerRow.className;
-    expect(expandedClasses).toContain('bg-slate-100');
-    expect(expandedClasses).toContain('dark:bg-[#1b2436]');
-    expect(expandedClasses).toContain('border-slate-200');
-    expect(expandedClasses).toContain('dark:border-slate-700');
+    expect(expandedClasses).toContain('bg-[var(--surface-2)]');
+    expect(expandedClasses).toContain('border-[var(--border-subtle)]');
     expect(expandedClasses).toContain('border-l-4');
-    expect(expandedClasses).toContain('border-l-blue-500');
-    expect(expandedClasses).toContain('dark:border-l-blue-400');
+    expect(expandedClasses).toContain('border-l-[var(--tag-peach-border)]');
     expect(expandedClasses).not.toContain('#ffe599');
 
     const lessonPosBadge = within(headerRow).getByText('Ch1 / L1');
-    expect(lessonPosBadge.className).toContain('bg-[var(--tag-blue-bg)]');
-    expect(lessonPosBadge.className).toContain('text-[var(--tag-blue-text)]');
-    expect(lessonPosBadge.className).toContain('border-[var(--tag-blue-border)]');
+    expect(lessonPosBadge.className).toContain('bg-[var(--tag-peach-bg)]');
+    expect(lessonPosBadge.className).toContain('text-[var(--tag-peach-text)]');
+    expect(lessonPosBadge.className).toContain('border-[var(--tag-peach-border)]');
     expect(lessonPosBadge.className).not.toContain('bg-slate-900');
 
     fireEvent.click(toggleBtn);
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
     const collapsedClasses = headerRow.className;
 
-    expect(collapsedClasses).toContain('bg-slate-100');
-    expect(collapsedClasses).toContain('dark:bg-[#1b2436]');
-    expect(collapsedClasses).toContain('border-slate-200');
-    expect(collapsedClasses).toContain('dark:border-slate-700');
+    expect(collapsedClasses).toContain('bg-[var(--surface-2)]');
+    expect(collapsedClasses).toContain('border-[var(--border-subtle)]');
+    expect(collapsedClasses).toContain('border-l-[var(--tag-peach-border)]');
     expect(collapsedClasses).not.toContain('#ffe599');
   });
 
@@ -626,7 +623,7 @@ describe('CourseEditorPage & editor components', () => {
     ).toBe('Core Syllabus PDF');
     // Delete button matches chapter/sublesson delete button styling
     const removeBtns = lessonScope.getAllByRole('button', { name: /Remove material/i });
-    expect(removeBtns[0]).toHaveClass('border', 'border-red-200');
+    expect(removeBtns[0]).toHaveClass('border', 'border-[var(--status-danger-border)]');
 
     const stickyBar = screen.getByTestId('editor-sticky-bar');
     fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
@@ -842,8 +839,9 @@ describe('CourseEditorPage & editor components', () => {
     return waitFor(() => {
       expect(lessonScope.getByText(/Exam · 1 question/i)).toBeInTheDocument();
     }).then(() => {
-      // Switch to Link -> clears assessment, switching back to Interactive shows empty state
+      // Switch to Link -> clears assessment (after confirming), switching back to Interactive shows empty state
       fireEvent.click(lessonScope.getByRole('button', { name: /^Link$/i }));
+      fireEvent.click(screen.getByRole('button', { name: /^Switch Mode$/i }));
       fireEvent.click(lessonScope.getByRole('button', { name: /^Interactive$/i }));
       expect(lessonScope.queryByText(/Exam · 1 question/i)).not.toBeInTheDocument();
       expect(
@@ -909,8 +907,8 @@ describe('CourseEditorPage & editor components', () => {
     renderEditor('/editor/new');
 
     const mainEl = document.querySelector('main') as HTMLElement;
-    expect(mainEl.className).toContain('bg-slate-50');
-    expect(mainEl.className).toContain('dark:bg-[#0b0f17]');
+    expect(mainEl.className).toContain('bg-[var(--surface-canvas)]');
+    expect(mainEl.className).toContain('text-[var(--text-primary)]');
     expect(mainEl.innerHTML).not.toContain('#fdff00');
     expect(mainEl.innerHTML).not.toContain('#ffe599');
     expect(mainEl.innerHTML).not.toContain('yellow-950');
@@ -923,9 +921,9 @@ describe('CourseEditorPage & editor components', () => {
     // ImportCourseDialog uses updated Light/Dark dialog & inset classes
     fireEvent.click(screen.getByRole('button', { name: /Import Course/i }));
     const dialog = screen.getByRole('dialog', { name: /Import Course/i });
-    expect(dialog.className).toContain('dark:bg-[#121926]');
+    expect(dialog.className).toContain('bg-[var(--surface-1)]');
     expect(within(dialog).getByLabelText(/^Course JSON$/i).className).toContain(
-      'dark:bg-[#0d131f]'
+      'bg-[var(--surface-inset)]'
     );
   });
 
@@ -944,7 +942,7 @@ describe('CourseEditorPage & editor components', () => {
     const codeInput = screen.getByLabelText(/Course Code/i) as HTMLInputElement;
     const titleInput = screen.getByLabelText(/Course Title/i) as HTMLInputElement;
     const slugInput = screen.getByLabelText(/URL Slug/i) as HTMLInputElement;
-    const descInput = screen.getByLabelText(/Description/i) as HTMLTextAreaElement;
+    const descInput = screen.getAllByLabelText(/Description/i)[0] as HTMLTextAreaElement;
     expect(codeInput.value).toBe('CS101');
     expect(codeInput.placeholder).toBe('e.g. MATH201');
     expect(titleInput.value).toBe('New College Course');
@@ -954,31 +952,27 @@ describe('CourseEditorPage & editor components', () => {
     expect(descInput.value).toContain('Course overview');
     expect(descInput.placeholder).toContain('Course overview');
 
-    // Existing Chapter 1 starts collapsed on initial load
-    expect(screen.getByRole('button', { name: /Expand Chapter 1/i })).toHaveAttribute(
+    // New courses open Chapter 1 and its starter Lesson 1 expanded by default
+    expect(screen.getByRole('button', { name: /Collapse Chapter 1/i })).toHaveAttribute(
       'aria-expanded',
-      'false'
+      'true'
     );
-    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
-
-    // Expand Chapter 1 -> its existing Lesson 1 also starts collapsed
-    fireEvent.click(screen.getByRole('button', { name: /Expand Chapter 1/i }));
     expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
-    expect(screen.queryByLabelText('Sub-Lesson Title')).not.toBeInTheDocument();
+    expect(screen.getAllByLabelText('Sub-Lesson Title')).toHaveLength(1);
 
     // Adding a new Sub-Lesson to Chapter 1 opens it expanded immediately
     fireEvent.click(screen.getByRole('button', { name: /Add Sub-Lesson to Chapter 1/i }));
     const lessonTitleInputs = screen.getAllByLabelText('Sub-Lesson Title') as HTMLInputElement[];
-    expect(lessonTitleInputs).toHaveLength(1);
-    expect(lessonTitleInputs[0].value).toBe('New Sub-Lesson 2');
-    expect(lessonTitleInputs[0].placeholder).toBe('e.g. Course Introduction');
-    const lessonSummaryInput = screen.getByLabelText('Lesson Summary') as HTMLTextAreaElement;
-    expect(lessonSummaryInput.placeholder).toContain('Brief summary');
+    expect(lessonTitleInputs).toHaveLength(2);
+    expect(lessonTitleInputs[1].value).toBe('New Sub-Lesson 2');
+    expect(lessonTitleInputs[1].placeholder).toBe('e.g. Course Introduction');
+    const lessonSummaryInputs = screen.getAllByLabelText('Lesson Summary') as HTMLTextAreaElement[];
+    expect(lessonSummaryInputs[1].placeholder).toContain('Brief summary');
 
     // Adding a new Chapter opens both the new chapter and its initial sub-lesson expanded
     fireEvent.click(screen.getByRole('button', { name: /Add Chapter/i }));
     expect(screen.getByLabelText('Chapter 2 title')).toBeInTheDocument();
-    expect(screen.getAllByLabelText('Sub-Lesson Title')).toHaveLength(2);
+    expect(screen.getAllByLabelText('Sub-Lesson Title')).toHaveLength(3);
   });
 
   it('formats From and To week range inputs (empty, single week, equal From/To, multi-week) and disables To when From is empty', () => {
@@ -1039,24 +1033,24 @@ describe('CourseEditorPage & editor components', () => {
     // Chapter starts with 0 resources -> chapter-resource-count-tag is not rendered
     expect(ch1Scope.queryByTestId('chapter-resource-count-tag')).not.toBeInTheDocument();
 
-    // Sublesson starts with 0 resources -> lesson-resource-count-tag is rendered in light blue right after derived ID
+    // Sublesson starts with 0 materials -> lesson-resource-count-tag is rendered in burnt peach right after derived ID
     const lessonTag = ch1Scope.getByTestId('lesson-resource-count-tag');
-    expect(lessonTag).toHaveTextContent('0 resources');
-    expect(lessonTag.className).toContain('bg-[var(--tag-blue-bg)]');
-    expect(lessonTag.className).toContain('text-[var(--tag-blue-text)]');
-    expect(lessonTag.className).toContain('border-[var(--tag-blue-border)]');
+    expect(lessonTag).toHaveTextContent('0 materials');
+    expect(lessonTag.className).toContain('bg-[var(--tag-peach-bg)]');
+    expect(lessonTag.className).toContain('text-[var(--tag-peach-text)]');
+    expect(lessonTag.className).toContain('border-[var(--tag-peach-border)]');
     expect(lessonTag.previousElementSibling).toHaveTextContent('cs101-ch1-l1-course-introduction');
 
-    // Add a resource to Lesson 1 -> updates live to "1 resource"
+    // Add a material to Lesson 1 -> updates live to "1 material"
     const lessonCard = chapter1Card.querySelector('[data-edit-lesson]') as HTMLElement;
     fireEvent.click(within(lessonCard).getByRole('button', { name: /Add Material/i }));
-    expect(ch1Scope.getByTestId('lesson-resource-count-tag')).toHaveTextContent('1 resource');
+    expect(ch1Scope.getByTestId('lesson-resource-count-tag')).toHaveTextContent('1 material');
 
-    // Add a resource to Chapter 1 -> chapter-resource-count-tag appears in amber with "1 resource"
+    // Add a material to Chapter 1 -> chapter-resource-count-tag appears in amber with "1 material"
     const chapterMaterialsBtn = ch1Scope.getAllByRole('button', { name: /Add Material/i })[0];
     fireEvent.click(chapterMaterialsBtn);
     const chapterResTag = ch1Scope.getByTestId('chapter-resource-count-tag');
-    expect(chapterResTag).toHaveTextContent('1 resource');
+    expect(chapterResTag).toHaveTextContent('1 material');
     expect(chapterResTag.className).toContain('bg-[var(--tag-amber-bg)]');
     expect(chapterResTag.className).toContain('text-[var(--tag-amber-text)]');
     expect(chapterResTag.className).toContain('border-[var(--tag-amber-border)]');
@@ -1081,10 +1075,10 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.change(screen.getByLabelText(/Course Title/i), { target: { value: '' } });
     fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
 
-    // Only 1 top-level banner alert exists (inside EditorStickyBar) — no duplicate summary banner at top of page
+    // 1 top-level banner alert inside EditorStickyBar + 1 inline field alert (no duplicate summary banner at top of page)
     const bannerAlerts = screen.getAllByText(/Course Metadata: Please enter a Course Title\./i);
-    expect(bannerAlerts).toHaveLength(1);
-    expect(stickyBar).toContainElement(bannerAlerts[0]);
+    expect(bannerAlerts).toHaveLength(2);
+    expect(within(stickyBar).getByText(/Course Metadata: Please enter a Course Title\./i)).toBeInTheDocument();
 
     // When sticky error banner is visible, --editor-sticky-bar-height increases to push sticky headers down
     expect(mainEl.style.getPropertyValue('--editor-sticky-bar-height')).toBe('92px');
@@ -1156,7 +1150,9 @@ describe('CourseEditorPage & editor components', () => {
 
     renderEditor('/editor/new');
 
-    // Chapter 1 and Lesson 1 start collapsed
+    // Collapse Chapter 1 and Lesson 1 first so we can verify Preview click re-expands them
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /Collapse all/i }));
     expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
 
     // Switch to Live Tree Preview and click Lesson 1 node
@@ -1174,7 +1170,6 @@ describe('CourseEditorPage & editor components', () => {
     expect(scrollIntoViewMock).toHaveBeenCalled();
 
     // Collapse all, switch to Live Tree Preview, and click Chapter 1 node
-    const stickyBar = screen.getByTestId('editor-sticky-bar');
     fireEvent.click(within(stickyBar).getByRole('button', { name: /Collapse all/i }));
     fireEvent.click(screen.getByRole('tab', { name: /Live Tree Preview/i }));
     const chapterNode = document.querySelector(
@@ -1191,9 +1186,11 @@ describe('CourseEditorPage & editor components', () => {
     renderEditor('/editor/new');
 
     const chapterHeader = document.querySelector('[data-sticky-header="chapter"]') as HTMLElement;
-    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
+    expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
 
-    // Clicking the outer chapter header container expands Chapter 1
+    // Clicking the outer chapter header container collapses Chapter 1, and clicking again expands it
+    fireEvent.click(chapterHeader);
+    expect(screen.queryByLabelText('Chapter 1 title')).not.toBeInTheDocument();
     fireEvent.click(chapterHeader);
     expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
 
@@ -1202,14 +1199,43 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.click(moveDownBtn);
     expect(screen.getByLabelText('Chapter 1 title')).toBeInTheDocument();
 
-    // Clicking the outer sublesson header row expands Lesson 1
+    // Clicking the outer sublesson header row collapses Lesson 1, and clicking again expands it
     const lessonHeader = document.querySelector('[data-sticky-header="lesson"]') as HTMLElement;
+    expect(screen.getByLabelText('Sub-Lesson Title')).toBeInTheDocument();
+    fireEvent.click(lessonHeader);
     expect(screen.queryByLabelText('Sub-Lesson Title')).not.toBeInTheDocument();
     fireEvent.click(lessonHeader);
     expect(screen.getByLabelText('Sub-Lesson Title')).toBeInTheDocument();
+  });
 
-    // Clicking the outer sublesson header row again collapses Lesson 1
-    fireEvent.click(lessonHeader);
-    expect(screen.queryByLabelText('Sub-Lesson Title')).not.toBeInTheDocument();
+  it('validates duplicate slug, min-length fields, To < From week ranges, and guards beforeunload when dirty', () => {
+    renderEditor('/editor/new');
+
+    // Clean state: beforeunload does not preventDefault
+    const cleanEvent = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(cleanEvent);
+    expect(cleanEvent.defaultPrevented).toBe(false);
+
+    // Dirty state: beforeunload calls preventDefault
+    const titleInput = screen.getByLabelText(/Course Title/i);
+    fireEvent.change(titleInput, { target: { value: 'A' } });
+    const dirtyEvent = new Event('beforeunload', { cancelable: true });
+    window.dispatchEvent(dirtyEvent);
+    expect(dirtyEvent.defaultPrevented).toBe(true);
+
+    // Min-length + duplicate slug validation on Save
+    const slugInput = screen.getByLabelText(/URL Slug/i);
+    fireEvent.change(slugInput, { target: { value: 'guide101-quick-start' } });
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
+    expect(screen.getAllByText(/at least 2 characters/i).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText(/already exists/i).length).toBeGreaterThanOrEqual(1);
+
+    // To < From week range validation
+    const fromInput = screen.getByLabelText('Chapter 1 week from');
+    const toInput = screen.getByLabelText('Chapter 1 week to');
+    fireEvent.change(fromInput, { target: { value: '5' } });
+    fireEvent.change(toInput, { target: { value: '2' } });
+    expect(screen.getByText(/To week must be greater than or equal to From week/i)).toBeInTheDocument();
   });
 });

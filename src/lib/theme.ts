@@ -10,7 +10,9 @@ export const ROADMAP_COLORS = {
   statusLearningFill: '#dad1fd',
   statusSkippedFill: '#64748b',
   statusSkippedText: '#ffffff',
-  canvasBg: '#f9fafb',
+  statusDoneBadgeFill: '#15803d',
+  statusLearningBadgeFill: '#7c3aed',
+  statusDefaultBadgeFill: '#0f172b',
   darkNavBg: '#0f172b',
 } as const;
 
@@ -37,15 +39,15 @@ export const RESOURCE_BADGE_STYLES = {
   },
   textbook: {
     label: 'Textbook',
-    className: 'bg-teal-600 text-white dark:bg-teal-500 dark:text-slate-950',
+    className: 'bg-teal-700 text-white dark:bg-teal-500 dark:text-slate-950',
   },
   course: {
     label: 'Course',
-    className: 'bg-red-600 text-white dark:bg-red-500 dark:text-white',
+    className: 'bg-red-600 text-white dark:bg-red-600 dark:text-white',
   },
   official: {
     label: 'Official',
-    className: 'bg-blue-600 text-white dark:bg-blue-500 dark:text-white',
+    className: 'bg-blue-600 text-white dark:bg-blue-600 dark:text-white',
   },
   exam: {
     label: 'Exam',

@@ -100,6 +100,7 @@ export function ChapterDrawer({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (document.querySelectorAll('[role="dialog"]').length > 1) return;
       const target = e.target as HTMLElement | null;
       if (
         target &&
@@ -145,7 +146,7 @@ export function ChapterDrawer({
             : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
         }`}
       >
-        {isLeaf ? 'Materials' : 'Overview'}
+        {isLeaf || resources.length > 0 ? 'Materials' : 'Overview'}
       </button>
       {hasNotes && (
         <button
@@ -247,7 +248,7 @@ export function ChapterDrawer({
         <div className="flex flex-wrap items-center gap-2">
           <span className="font-semibold text-gray-700 dark:text-slate-200">{course.code}</span>
           {chapter.weekRange && (
-            <span className="rounded bg-gray-100 px-1.5 py-0.5 text-gray-600 dark:bg-slate-800 dark:text-slate-300">
+            <span className="rounded bg-[var(--surface-warm-muted)] px-1.5 py-0.5 text-[var(--text-secondary)]">
               {chapter.weekRange}
             </span>
           )}
@@ -260,35 +261,35 @@ export function ChapterDrawer({
         </span>
       </div>
 
-      <h2 className="mb-3 text-2xl font-bold tracking-tight text-gray-900 sm:text-3xl dark:text-slate-100">
+      <h2 className="mb-3 break-words [overflow-wrap:anywhere] text-2xl font-bold tracking-tight text-[var(--text-primary)] sm:text-3xl">
         {chapter.title}
       </h2>
 
-      <p className="mb-5 text-sm leading-relaxed text-gray-700 sm:text-base dark:text-slate-300">
+      <p className="mb-5 text-sm leading-relaxed text-[var(--text-secondary)] sm:text-base">
         {chapter.description}
       </p>
 
       {/* Progress Bar */}
-      <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700/80 dark:bg-[#1b2436]">
+      <div className="mb-5 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
         <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2 text-xs">
-          <span className="font-semibold text-slate-700 dark:text-slate-200">
+          <span className="font-semibold text-[var(--text-primary)]">
             Chapter Progress
           </span>
           <div className="flex items-center gap-2">
             {stats.skipped > 0 && (
-              <span className="rounded border border-slate-300 bg-slate-100 px-1.5 py-0.5 font-medium text-slate-700 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-300">
+              <span className="rounded border border-[var(--status-skipped-border)] bg-[var(--status-skipped-bg)] px-1.5 py-0.5 font-medium text-[var(--status-skipped-text)]">
                 {stats.skipped} skipped
               </span>
             )}
-            <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">
+            <span className="font-mono font-semibold text-[var(--text-primary)]">
               {stats.done}/{stats.required}
             </span>
-            <span className="text-slate-500 dark:text-slate-400">({stats.percentDone}%)</span>
+            <span className="text-[var(--text-muted)]">({stats.percentDone}%)</span>
           </div>
         </div>
-        <div className="h-2 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-[#0d131f]">
+        <div className="h-2 w-full overflow-hidden rounded-full bg-[var(--surface-inset)]">
           <div
-            className="h-full rounded-full bg-emerald-500 transition-all duration-200 dark:bg-emerald-400"
+            className="h-full rounded-full bg-[var(--accent-done)] transition-all duration-200"
             style={{ width: `${stats.percentDone}%` }}
           />
         </div>
@@ -296,9 +297,9 @@ export function ChapterDrawer({
 
       {/* Prerequisites */}
       {prereqItems.length > 0 && (
-        <div className="mb-6 rounded-lg border border-slate-200 bg-slate-50 p-3 dark:border-slate-700/80 dark:bg-[#1b2436]">
-          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-slate-600 uppercase dark:text-slate-300">
-            <GitBranch className="h-3.5 w-3.5 text-blue-600 dark:text-blue-400" />
+        <div className="mb-6 rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
+          <div className="mb-2 flex items-center gap-1.5 text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase">
+            <GitBranch className="h-3.5 w-3.5 text-[var(--accent-purple)]" />
             Recommended Prerequisites
           </div>
           <div className="flex flex-wrap gap-1.5">
@@ -332,18 +333,18 @@ export function ChapterDrawer({
                   key={item.id}
                   type="button"
                   onClick={() => onSelectItem(item.id)}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:border-blue-500 ${
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-xs font-medium transition-colors hover:border-[var(--accent-purple)] ${
                     isDone
-                      ? 'border-emerald-300 bg-emerald-50 text-emerald-800 dark:border-emerald-800 dark:bg-emerald-950/50 dark:text-emerald-300'
+                      ? 'border-[var(--status-done-border)] bg-[var(--status-done-bg)] text-[var(--status-done-text)]'
                       : isSkipped
-                        ? 'border-slate-300 bg-slate-100 text-slate-700 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-300'
-                        : 'border-slate-300 bg-white text-slate-800 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-200'
+                        ? 'border-[var(--status-skipped-border)] bg-[var(--status-skipped-bg)] text-[var(--status-skipped-text)]'
+                        : 'border-[var(--border-strong)] bg-[var(--surface-1)] text-[var(--text-primary)]'
                   }`}
                 >
                   {isDone && (
-                    <CheckCircle2 className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                    <CheckCircle2 className="h-3 w-3 text-[var(--accent-done)]" />
                   )}
-                  {isSkipped && <Ban className="h-3 w-3 text-slate-500 dark:text-slate-400" />}
+                  {isSkipped && <Ban className="h-3 w-3 text-[var(--status-skipped-text)]" />}
                   {title}
                 </button>
               );

@@ -111,7 +111,8 @@ describe('CoursePage integration', () => {
       name: /Interactive Quiz: Asymptotics & Master Theorem/i,
     });
     expect(runner).toBeInTheDocument();
-    // KaTeX math is rendered inside the runner
+    // KaTeX math is rendered inside the runner after starting
+    fireEvent.click(within(runner).getByRole('button', { name: 'Start Exam' }));
     expect(runner.querySelector('.katex')).not.toBeNull();
 
     // Select 2nd radio option ($\Theta(n \log n)$)
@@ -119,8 +120,10 @@ describe('CoursePage integration', () => {
     expect(radios).toHaveLength(4);
     fireEvent.click(radios[1]);
 
-    // Pressing Escape while runner is open closes runner ONLY, keeping LessonDrawer open
+    // Pressing Escape while runner is active opens Leave assessment ConfirmDialog
     fireEvent.keyDown(window, { key: 'Escape' });
+    expect(screen.getByText('Leave assessment?')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Leave Assessment' }));
     expect(
       screen.queryByRole('dialog', { name: /Interactive Quiz: Asymptotics & Master Theorem/i })
     ).not.toBeInTheDocument();
@@ -128,7 +131,7 @@ describe('CoursePage integration', () => {
       screen.getByRole('dialog', { name: 'Asymptotic Notation & Recurrences' })
     ).toBeInTheDocument();
 
-    // Re-open, answer Q1 & submit exam to verify Best score persistence in MaterialList
+    // Re-open, start, answer Q1 & submit exam via Review & Submit -> confirm unanswered
     fireEvent.click(
       within(drawer).getByRole('button', {
         name: /Interactive Quiz: Asymptotics & Master Theorem/i,
@@ -137,10 +140,14 @@ describe('CoursePage integration', () => {
     const reopenedRunner = screen.getByRole('dialog', {
       name: /Interactive Quiz: Asymptotics & Master Theorem/i,
     });
+    fireEvent.click(within(reopenedRunner).getByRole('button', { name: 'Start Exam' }));
     const reopenedRadios = within(reopenedRunner).getAllByRole('radio');
     fireEvent.click(reopenedRadios[1]);
 
+    fireEvent.click(within(reopenedRunner).getByRole('button', { name: 'Review & Submit' }));
     fireEvent.click(within(reopenedRunner).getByRole('button', { name: 'Submit Exam' }));
+    const confirmSubmitBtns = screen.getAllByRole('button', { name: 'Submit Exam' });
+    fireEvent.click(confirmSubmitBtns[confirmSubmitBtns.length - 1]);
     expect(within(reopenedRunner).getByText(/Score: 2 \/ 6 pts/i)).toBeInTheDocument();
 
     fireEvent.click(within(reopenedRunner).getByRole('button', { name: 'Close' }));
@@ -185,7 +192,7 @@ describe('CoursePage integration', () => {
 
     const backupDialog = screen.getByRole('dialog', { name: 'Backup and Restore Progress' });
     expect(backupDialog).toBeInTheDocument();
-    expect(backupDialog.className).toContain('dark:bg-[#121926]');
+    expect(backupDialog.className).toContain('bg-[var(--surface-1)]');
 
     fireEvent.click(within(backupDialog).getByRole('button', { name: /Download Progress JSON/i }));
     await waitFor(() => {
@@ -205,7 +212,7 @@ describe('CoursePage integration', () => {
   it('renders Course Not Found with 4-tier Light/Dark palette for unknown slugs', () => {
     const { container } = renderCoursePage('/course/non-existent-course');
     expect(screen.getByRole('heading', { name: 'Course Not Found' })).toBeInTheDocument();
-    expect(container.querySelector('main')?.className).toContain('dark:bg-[#0b0f17]');
+    expect(container.querySelector('main')?.className).toContain('bg-[var(--surface-canvas)]');
   });
 
   it('shows QuickStatusPill on sublesson hover with grace delay, stays open while hovering pill, and keeps right-click working', () => {

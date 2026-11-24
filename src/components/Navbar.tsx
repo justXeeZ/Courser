@@ -27,13 +27,13 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
             to="/"
             className="flex shrink-0 items-center gap-2.5 text-lg font-medium text-white transition-opacity hover:opacity-90"
           >
-            <span className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-md bg-white font-mono text-lg font-extrabold tracking-tight text-slate-900">
+            <span className="inline-flex h-[30px] w-[30px] items-center justify-center rounded-md bg-white font-mono text-lg font-black tracking-tight text-slate-900">
               {BRAND.mark}
             </span>
             <span className="hidden font-semibold tracking-tight sm:inline">{BRAND.shortName}</span>
           </Link>
 
-          <nav className="flex items-center gap-3 text-sm text-slate-300 sm:gap-5">
+          <nav aria-label="Primary" className="flex items-center gap-3 text-sm text-slate-300 sm:gap-5">
             <Link to="/" className="shrink-0 transition-colors hover:text-white">
               Courses
             </Link>
@@ -57,7 +57,7 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
           <button
             type="button"
             onClick={onOpenSearch}
-            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-slate-700 bg-slate-800/80 px-2.5 text-xs text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-slate-500 bg-slate-800/80 px-2.5 text-xs text-slate-300 transition-colors hover:border-slate-300 hover:text-white"
             aria-label="Search courses and lessons"
           >
             <Search className="h-3.5 w-3.5" />
@@ -72,7 +72,7 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
             onClick={cycleMode}
             title={themeTitle}
             aria-label={themeTitle}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-800/80 text-slate-300 transition-colors hover:border-slate-500 hover:text-white"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-slate-500 bg-slate-800/80 text-slate-300 transition-colors hover:border-slate-300 hover:text-white"
           >
             {mode === 'light' ? (
               <Sun className="h-3.5 w-3.5 text-yellow-400" />
@@ -87,7 +87,7 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
             to="/editor/new"
             aria-label="New Course"
             title="New Course"
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-blue-500 to-blue-700 p-0 text-xs font-medium text-white transition-opacity hover:opacity-90 sm:w-auto sm:px-3.5"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-1 rounded-full bg-gradient-to-r from-purple-700 to-purple-800 p-0 text-xs font-medium text-white transition-opacity hover:opacity-90 sm:w-auto sm:px-3.5"
           >
             <Plus className="h-3.5 w-3.5 shrink-0" />
             <span className="hidden sm:inline">New Course</span>

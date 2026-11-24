@@ -63,8 +63,8 @@ const PADDING_TOP = 36;
 const PADDING_BOTTOM = 48;
 
 export function estimateTextWidth(text: string, fontSize = 17): number {
-  // Conservative width estimate for Balsamiq Sans (roughly 0.56 * fontSize per char)
-  return Math.ceil(text.length * fontSize * 0.56);
+  // Conservative width estimate for bold Balsamiq Sans labels
+  return Math.ceil(text.length * fontSize * 0.6);
 }
 
 function splitOversizedWord(word: string, maxTextWidth: number, fontSize: number): string[] {

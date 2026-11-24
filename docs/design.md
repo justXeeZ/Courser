@@ -12,10 +12,18 @@
   - **Surface-1:** Primary cards, `CourseHeader`, `ProgressStrip`, drawers (`DrawerShell`), and modal dialogs. `ProgressStrip` must use a neutral Surface-1 background in dark mode—never a warm/reddish warning tint.
   - **Surface-2:** Elevated/nested headers and rows (`ChecklistView` chapter headers, `EditorStickyBar`, `ChapterEditorCard` headers, and `LessonEditorCard` headers).
   - **Inset controls:** Form inputs (`input`, `select`, `textarea`), filter pill containers, file dropzones, and code blocks use distinct inset backgrounds and high-contrast borders so inputs never blend into Surface-1 cards in dark mode.
-- **Persistent sticky dark `Navbar` exception:** `src/components/Navbar.tsx` stays sticky at the top (`sticky top-0 z-40`) and dark in **both** Light and Dark modes; `CatalogPage`, `CourseCard`, `SearchModal`, and all other views adapt to the active theme.
+- **Persistent sticky dark `Navbar` exception:** `src/components/Navbar.tsx` stays sticky at the top (`sticky top-0 z-40`) and dark in **both** Light and Dark modes with a Purple (`from-purple-700 to-purple-800`) `+ New Course` CTA; `CatalogPage`, `CourseCard`, `SearchModal`, and all other views adapt to the active theme.
+- **56-token semantic CSS variable palette (`src/index.css`):**
+  - **Light mode:** Warm neutrals (`--surface-canvas: #f7f5f0`, `--surface-1: #fdfcfa`, `--surface-2: #efede8`, `--border-subtle: #e5e1d8`, `--border-strong: #767067`, `--text-muted: #5c564e`).
+  - **Dark mode:** Oxford Blue surfaces (`#0b0f17` / `#121926` / `#1b2436` / `#0d131f`) with warm dark gray muted surfaces (`#2e2b28` / `#383430`).
+  - **Semantic accents:** Purple primary CTAs & Recommended containers (`--cta-bg`, `--accent-purple`, `--recommended-*`), **Amber** chapter tags (`--tag-amber-*`), **Burnt Peach** lesson tags (`--tag-peach-*` anchored on `#E97451` / `#ad3c1a`), Green `Done` / `Passed` (`--status-done-*`), Orange `Warning` / `Flag` / `Not Passed` (`--status-warning-*`), and Red `Danger` (`--status-danger-*`).
 - **Editor card stability:**
   - `ChapterEditorCard` and `ChecklistView` chapter headers use a left amber accent border on a neutral Surface-2 bar.
-  - `LessonEditorCard` header must keep identical background and border classes whether collapsed or expanded (toggling only sticky positioning and bottom corner rounding) and display a standardized position tag (`Ch X - L Y`).
+  - `LessonEditorCard` header uses a left burnt-peach accent border (`--tag-peach-border`), keeps identical background and border classes whether collapsed or expanded, and displays a standardized position tag (`Ch X - L Y`).
+- **Unified component recipes:**
+  - **Recommended container:** `1.5px dashed var(--recommended-border)` with `--recommended-bg` and purple star header.
+  - **Delete buttons:** `--status-danger-border` + `--status-danger-text` on `--surface-1`, transitioning to solid `--danger-solid-bg` + white text on hover/focus-visible.
+  - **Modals & drawers:** `--backdrop-modal` / `--backdrop-drawer`, `h-dvh` for fullscreen/drawer heights, and shared `useDialogFocus` (`Tab` trap, focus restore, topmost `Escape`).
 - **Resource kind badges (`RESOURCE_BADGE_STYLES` in `src/lib/theme.ts`):**
   - Keep all 10 `ResourceKind` badges visually distinct in both Light and Dark modes (`document` sky, `course` red, `textbook` teal, `official` blue, `slides` amber, `video` purple, `audio` rose, `lab` emerald, `exam` inverted high-contrast slate, `assignment` indigo).
 - **SVG tree node states (`src/index.css`, `src/lib/theme.ts`, `src/components/CourseTreeCanvas.tsx`):**
@@ -40,7 +48,7 @@ Reuse these components instead of creating one-off patterns:
 | `CourseHeader` | `src/components/CourseHeader.tsx` | Course page header with metadata, `Course Tree` / `Syllabus Checklist` tabs, and responsive action controls. |
 | `ProgressStrip` | `src/components/ProgressStrip.tsx` | Course completion summary (`% DONE`, required/learning/skipped counts, status filter pills, interaction hint). |
 | `CourseTreeCanvas` | `src/components/CourseTreeCanvas.tsx` | Interactive SVG prerequisite tree with zoom controls, click-and-drag panning, mobile responsive scaling, filter dimming, hover highlight, and status triggers. |
-| `ChecklistView` | `src/components/ChecklistView.tsx` | Linear syllabus checklist grouped by chapter. |
+| `ChecklistView` | `src/components/ChecklistView.tsx` | Linear collapsible syllabus checklist grouped by chapter (chapters expanded by default). |
 | `DrawerShell` | `src/components/DrawerShell.tsx` | `sm:max-w-[600px]` right slide-over panel with backdrop, header slots, body, footer, and `Escape` close (used by `ChapterDrawer` and `LessonDrawer`). |
 | `StatusSegmentedControl` | `src/components/StatusSegmentedControl.tsx` | Segmented toggle for `learning` / `done` / `skipped` (plus optional `showReset`). Use `itemRole="menuitem"` in popovers and `"button"` in drawers. |
 | `QuickStatusPill` | `src/components/QuickStatusPill.tsx` | Floating status popover anchored to right-clicked SVG tree nodes. |
@@ -54,7 +62,7 @@ Reuse these components instead of creating one-off patterns:
 | `ChapterEditorCard` / `LessonEditorCard` | `src/components/editor/` | Sticky-header chapter (`Ch X`) and sub-lesson (`Ch X - L Y`) form cards inside `CourseEditorPage`. |
 | `PrerequisitePicker` / `MaterialsEditor` | `src/components/editor/` | Same-course prerequisite chip selector and material editor (`Link` / `Upload`, plus `Interactive` when kind is `exam` or `assignment`) with `Pin as recommended`. |
 | `AssessmentBuilderModal` | `src/components/assessment/AssessmentBuilderModal.tsx` | Visual builder for interactive exams/assignments with live KaTeX preview, image header upload/URL, and JSON import/export. |
-| `AssessmentRunnerModal` | `src/components/assessment/AssessmentRunnerModal.tsx` | Interactive exam (timer, flagging, submit-all, review) and assignment (instant check, hints) player. |
+| `AssessmentRunnerModal` | `src/components/assessment/AssessmentRunnerModal.tsx` | Interactive exam/assignment player with Pre-Start Overview, 2-column Active view (color-coded question navigator, `A/B/C` keycaps, icon-only Flag, hidden-by-default Hint under header), Pre-Submit Review, and Results filter pills. |
 | `MaterialViewerModal` | `src/components/viewer/MaterialViewerModal.tsx` | Native in-app viewer for uploaded files (PDF, video, centered audio, zoomable images, line-numbered code/text) and cloud/video embeds. |
 | `SearchModal` | `src/components/SearchModal.tsx` | Global `Ctrl/Cmd+K` and `/` command palette searching courses, departments, chapters, and lessons. |
 

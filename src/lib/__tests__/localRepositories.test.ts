@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { COURSES } from '@/data/courses';
 import {
   USER_ROADMAPS_STORAGE_KEY,
@@ -51,5 +51,29 @@ describe('local storage repositories', () => {
       statuses: {},
       bookmarks: [],
     });
+  });
+
+  it('returns quota failure result when Storage.setItem throws QuotaExceededError', () => {
+    const spy = vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+      throw new DOMException('Quota exceeded', 'QuotaExceededError');
+    });
+
+    const courseRes = localUserRoadmapRepository.saveCourses([]);
+    expect(courseRes.ok).toBe(false);
+    if (!courseRes.ok) {
+      expect(courseRes.error).toMatch(/storage|quota/i);
+    }
+
+    const progressRes = localProgressRepository.saveProgress({
+      version: 1,
+      statuses: {},
+      bookmarks: [],
+    });
+    expect(progressRes.ok).toBe(false);
+    if (!progressRes.ok) {
+      expect(progressRes.error).toMatch(/storage|quota/i);
+    }
+
+    spy.mockRestore();
   });
 });

@@ -166,10 +166,10 @@ describe('CatalogPage & CourseCard', () => {
     expect(footerLink).toHaveAttribute('href', '/docs/data-formats');
 
     const mainEl = screen.getByRole('main');
-    expect(mainEl).toHaveClass('bg-slate-50', 'text-slate-900', 'dark:bg-[#0b0f17]', 'dark:text-slate-100');
+    expect(mainEl).toHaveClass('bg-[var(--surface-canvas)]', 'text-[var(--text-primary)]');
 
     const heroHeading = screen.getByRole('heading', { level: 1, name: BRAND.name });
-    expect(heroHeading).toHaveClass('text-slate-900');
+    expect(heroHeading).toHaveClass('text-[var(--text-primary)]');
     expect(screen.getByText(BRAND.heroDescription)).toBeInTheDocument();
     expect(screen.getByText(BRAND.footerNote)).toBeInTheDocument();
   });
@@ -203,9 +203,9 @@ describe('CatalogPage & CourseCard', () => {
     );
 
     const guideCardLink = codeBadge.closest('a') as HTMLElement;
-    expect(guideCardLink).toHaveClass('bg-white', 'dark:bg-[#121926]');
+    expect(guideCardLink).toHaveClass('bg-[var(--surface-1)]', 'border-[var(--border-subtle)]');
     const pctText = within(guideCardLink).getByText(/%$/);
-    expect(pctText).toHaveClass('text-emerald-700', 'dark:text-emerald-400');
+    expect(pctText).toHaveClass('text-[var(--accent-done)]');
   });
 
   it('clears saved progress and bookmarks (and Navbar badge) when deleting a course from CatalogPage', () => {
@@ -317,7 +317,7 @@ describe('ConfirmDialog dark mode and keyboard handling', () => {
     );
 
     const dialog = screen.getByRole('dialog', { name: 'Delete Course?' });
-    expect(dialog).toHaveClass('dark:bg-[#121926]', 'dark:border-slate-700/80', 'dark:text-slate-100');
+    expect(dialog).toHaveClass('bg-[var(--surface-1)]', 'border-[var(--border-subtle)]', 'text-[var(--text-primary)]');
 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(onCancel).toHaveBeenCalledTimes(1);
@@ -341,14 +341,14 @@ describe('SearchModal, ExportCourseDialog, DrawerShell, and ProgressStrip Light/
     const searchDialog = screen.getByRole('dialog', {
       name: /Search courses, chapters, and lessons/i,
     });
-    expect(searchDialog).toHaveClass('bg-white', 'text-slate-900', 'dark:bg-[#121926]', 'dark:text-slate-100');
+    expect(searchDialog).toHaveClass('bg-[var(--surface-1)]', 'text-[var(--text-primary)]');
     expect(screen.getAllByText(/Year 1 · 1st Semester/).length).toBeGreaterThanOrEqual(1);
 
     rerender(
       <ExportCourseDialog open={true} course={COURSES[0]} onClose={vi.fn()} />
     );
     const exportDialog = screen.getByRole('dialog', { name: 'Export Course' });
-    expect(exportDialog).toHaveClass('bg-white', 'dark:bg-[#121926]', 'dark:border-slate-700/80');
+    expect(exportDialog).toHaveClass('bg-[var(--surface-1)]', 'border-[var(--border-subtle)]');
 
     rerender(
       <DrawerShell title="Sample Drawer" onClose={vi.fn()}>
@@ -356,7 +356,7 @@ describe('SearchModal, ExportCourseDialog, DrawerShell, and ProgressStrip Light/
       </DrawerShell>
     );
     const drawerDialog = screen.getByRole('dialog', { name: 'Sample Drawer' });
-    expect(drawerDialog).toHaveClass('h-dvh', 'bg-white', 'dark:bg-[#121926]', 'dark:border-slate-700/80');
+    expect(drawerDialog).toHaveClass('h-dvh', 'bg-[var(--surface-1)]', 'border-[var(--border-subtle)]');
 
     const { container } = render(
       <ProgressStrip
@@ -366,7 +366,7 @@ describe('SearchModal, ExportCourseDialog, DrawerShell, and ProgressStrip Light/
       />
     );
     const stripEl = container.firstElementChild as HTMLElement;
-    expect(stripEl).toHaveClass('bg-white', 'border-slate-200', 'dark:bg-[#121926]', 'dark:border-slate-700/80');
+    expect(stripEl).toHaveClass('bg-[var(--surface-1)]', 'border-[var(--border-subtle)]');
     expect(stripEl.className).not.toContain('yellow-950/30');
   });
 });
@@ -384,7 +384,7 @@ describe('App routing & startup IndexedDB garbage collection', () => {
     }
   });
 
-  it('routes /docs/data-formats to DataFormatsPage', () => {
+  it('routes /docs/data-formats to DataFormatsPage', async () => {
     render(
       <MemoryRouter initialEntries={['/docs/data-formats']}>
         <Routes>
@@ -394,7 +394,7 @@ describe('App routing & startup IndexedDB garbage collection', () => {
     );
 
     expect(
-      screen.getByRole('heading', { name: /Course & Progress JSON Formats/i })
+      await screen.findByRole('heading', { name: /Course & Progress JSON Formats/i })
     ).toBeInTheDocument();
   });
 

@@ -1,5 +1,6 @@
-import { useEffect, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { X } from 'lucide-react';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 
 interface DrawerShellProps {
   title: string;
@@ -20,32 +21,30 @@ export function DrawerShell({
   footer,
   children,
 }: DrawerShellProps) {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
+  const drawerRef = useRef<HTMLElement>(null);
 
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  useDialogFocus({
+    isOpen: true,
+    containerRef: drawerRef,
+    onEscape: onClose,
+  });
 
   return (
     <>
       <div
-        className="fixed inset-0 z-30 bg-black/40 transition-opacity dark:bg-black/60"
+        className="fixed inset-0 z-30 bg-[var(--backdrop-drawer)] transition-opacity"
         onClick={onClose}
         aria-hidden="true"
       />
 
       <aside
+        ref={drawerRef}
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="fixed top-0 right-0 z-40 flex h-dvh w-full flex-col overflow-y-auto bg-white p-4 text-slate-900 shadow-2xl focus:outline-0 sm:max-w-[600px] sm:p-6 dark:border-l dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
+        className="fixed top-0 right-0 z-40 flex h-dvh w-full flex-col overflow-y-auto border-l border-[var(--border-subtle)] bg-[var(--surface-1)] p-4 text-[var(--text-primary)] shadow-2xl focus:outline-0 sm:max-w-[600px] sm:p-6"
       >
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-4 dark:border-slate-700/80">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] pb-4">
           <div className="flex items-center gap-1.5">{headerLeft}</div>
 
           <div className="flex items-center gap-2">
@@ -54,7 +53,7 @@ export function DrawerShell({
               type="button"
               onClick={onClose}
               aria-label={closeLabel}
-              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-slate-100 text-slate-900 transition-colors hover:bg-slate-200 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-lg bg-[var(--surface-2)] text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-hover)]"
             >
               <X className="h-4 w-4" />
             </button>
@@ -64,7 +63,7 @@ export function DrawerShell({
         <div className="flex-1 py-5">{children}</div>
 
         {footer && (
-          <div className="mt-auto border-t border-slate-200 pt-4 dark:border-slate-700/80">
+          <div className="mt-auto border-t border-[var(--border-subtle)] pt-4">
             {footer}
           </div>
         )}

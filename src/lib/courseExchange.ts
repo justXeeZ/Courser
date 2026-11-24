@@ -242,10 +242,18 @@ export type CourseImportResult =
   | { ok: true; course: CourseTree; warnings: string[] }
   | { ok: false; error: string };
 
+const MAX_IMPORT_JSON_CHARS = 50 * 1024 * 1024; // 50 MB guard
+
 export async function parseCourseImport(
   text: string,
   existingSlugs: Iterable<string>
 ): Promise<CourseImportResult> {
+  if (text.length > MAX_IMPORT_JSON_CHARS) {
+    return {
+      ok: false,
+      error: 'Course JSON exceeds the 50 MB import size limit.',
+    };
+  }
   let parsedJson: unknown;
   try {
     parsedJson = JSON.parse(text);

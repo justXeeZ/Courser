@@ -17,9 +17,10 @@ import {
   ZoomOut,
 } from 'lucide-react';
 import { ResourceBadge } from '@/components/ResourceBadge';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { resolveEmbedUrl } from '@/lib/embedResolver';
-import { getFile } from '@/lib/fileStore';
-import { extractExtension, formatBytes } from '@/lib/materialValidation';
+import { getFile, TEXT_CODE_EXTENSIONS } from '@/lib/fileStore';
+import { extractExtension, formatBytes, isSafeHttpUrl } from '@/lib/materialValidation';
 import type { LessonResource } from '@/types/course';
 
 export interface MaterialViewerModalProps {
@@ -42,7 +43,11 @@ type FileLoadState =
       mimeType: string;
       sizeBytes: number;
       textContent?: string;
+      textTooLarge?: boolean;
     };
+
+const MAX_TEXT_PREVIEW_BYTES = 1_048_576; // 1 MB
+const MAX_TEXT_PREVIEW_LINES = 10_000;
 
 const BLOCKED_INLINE_EXTENSIONS = new Set(['.svg', '.svgz', '.html', '.htm', '.xhtml']);
 const BLOCKED_INLINE_MIME_TYPES = new Set([
@@ -73,38 +78,6 @@ const IMAGE_EXT_MIME: Record<string, string> = {
   '.gif': 'image/gif',
 };
 
-const TEXT_EXTENSIONS = new Set([
-  '.txt',
-  '.md',
-  '.markdown',
-  '.csv',
-  '.json',
-  '.jsonl',
-  '.ipynb',
-  '.py',
-  '.js',
-  '.mjs',
-  '.cjs',
-  '.ts',
-  '.tsx',
-  '.jsx',
-  '.java',
-  '.c',
-  '.cpp',
-  '.cc',
-  '.h',
-  '.hpp',
-  '.cs',
-  '.go',
-  '.rs',
-  '.sql',
-  '.yaml',
-  '.yml',
-  '.toml',
-  '.xml',
-  '.css',
-]);
-
 const CATEGORY_LABELS: Record<FileCategory, string> = {
   pdf: 'PDF',
   video: 'Video',
@@ -115,18 +88,6 @@ const CATEGORY_LABELS: Record<FileCategory, string> = {
 };
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 2] as const;
-
-function isSafeHttpUrl(raw?: string): raw is string {
-  if (!raw) return false;
-  const trimmed = raw.trim();
-  if (!/^https?:\/\//i.test(trimmed)) return false;
-  try {
-    const parsed = new URL(trimmed);
-    return parsed.protocol === 'http:' || parsed.protocol === 'https:';
-  } catch {
-    return false;
-  }
-}
 
 function classifyStoredFile(
   name: string,
@@ -184,7 +145,7 @@ function classifyStoredFile(
     normalizedMime === 'application/json' ||
     normalizedMime === 'application/csv' ||
     normalizedMime === 'application/x-ipynb+json' ||
-    TEXT_EXTENSIONS.has(ext)
+    TEXT_CODE_EXTENSIONS.has(ext)
   ) {
     return {
       category: 'text',
@@ -247,13 +208,26 @@ export function MaterialViewerModal({
   }, [resourceUrl]);
 
   // Reset per-resource view controls
+  const [iframeTimedOut, setIframeTimedOut] = useState(false);
+
   useEffect(() => {
     setPlaybackRate(1);
     setImageZoom({ mode: 'fit', zoom: 1 });
     setCopied(false);
     setIframeLoaded(false);
     setIframeError(false);
+    setIframeTimedOut(false);
   }, [isOpen, fileId, resourceUrl]);
+
+  useEffect(() => {
+    if (!isOpen || !resolvedUrl || resolvedUrl.kind !== 'external' || iframeLoaded || iframeError) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setIframeTimedOut(true);
+    }, 3000);
+    return () => window.clearTimeout(timer);
+  }, [isOpen, resolvedUrl, iframeLoaded, iframeError]);
 
   // Load IndexedDB file + manage Blob object URL lifecycle safely
   useEffect(() => {
@@ -283,9 +257,14 @@ export function MaterialViewerModal({
         );
 
         let textContent: string | undefined;
+        let textTooLarge = false;
         if (classified.category === 'text') {
-          textContent = await readBlobAsUtf8(record.blob);
-          if (cancelled) return;
+          if (record.sizeBytes > MAX_TEXT_PREVIEW_BYTES) {
+            textTooLarge = true;
+          } else {
+            textContent = await readBlobAsUtf8(record.blob);
+            if (cancelled) return;
+          }
         }
 
         const blobForUrl =
@@ -310,6 +289,7 @@ export function MaterialViewerModal({
           mimeType: record.mimeType || classified.effectiveMime,
           sizeBytes: record.sizeBytes,
           textContent,
+          textTooLarge,
         });
       })
       .catch(() => {
@@ -378,20 +358,25 @@ export function MaterialViewerModal({
     (fileState.status === 'ready' && fileState.category === 'video') ||
     resolvedUrl?.kind === 'direct-video';
 
-  // Keyboard shortcuts: Escape to close + video shortcuts
+  const handleEscape = useCallback(() => {
+    if (isFullscreen && !document.fullscreenElement) {
+      setIsFullscreen(false);
+      return;
+    }
+    onClose();
+  }, [isFullscreen, onClose]);
+
+  useDialogFocus({
+    isOpen,
+    containerRef: dialogRef,
+    onEscape: handleEscape,
+  });
+
+  // Keyboard shortcuts: video shortcuts
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        if (isFullscreen && !document.fullscreenElement) {
-          setIsFullscreen(false);
-          return;
-        }
-        onClose();
-        return;
-      }
-
       if (!isVideoActive || e.ctrlKey || e.metaKey || e.altKey) return;
       const target = e.target as HTMLElement | null;
       if (target) {
@@ -624,17 +609,57 @@ export function MaterialViewerModal({
     </div>
   );
 
-  const renderTextViewer = (text: string, name: string) => {
-    const lines = text.replace(/\r\n/g, '\n').split('\n');
+  const renderTextViewer = (text: string, name: string, textTooLarge?: boolean) => {
+    if (textTooLarge) {
+      return (
+        <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
+          <div className="max-w-md rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-6 text-center">
+            <FileIcon className="mx-auto mb-3 h-10 w-10 text-[var(--text-muted)]" />
+            <p className="text-sm font-semibold text-[var(--text-primary)]">{name}</p>
+            <p className="mt-2 text-xs text-[var(--text-secondary)]">
+              This text file exceeds the 1 MB in-app preview limit. Download it to inspect the full contents.
+            </p>
+            <button
+              type="button"
+              onClick={triggerDownload}
+              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-[var(--cta-bg)] px-4 py-2 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Download File
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    const allLines = text.replace(/\r\n/g, '\n').split('\n');
+    const isLineTruncated = allLines.length > MAX_TEXT_PREVIEW_LINES;
+    const lines = isLineTruncated ? allLines.slice(0, MAX_TEXT_PREVIEW_LINES) : allLines;
     const ext = extractExtension(name) || '.txt';
     return (
       <div className="flex h-full flex-col gap-2.5">
+        {isLineTruncated && (
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-3 py-2 text-xs text-[var(--status-warning-text)]">
+            <span>
+              Showing first {MAX_TEXT_PREVIEW_LINES.toLocaleString()} of{' '}
+              {allLines.length.toLocaleString()} lines. Download for the full file.
+            </span>
+            <button
+              type="button"
+              onClick={triggerDownload}
+              className="inline-flex items-center gap-1 rounded bg-[var(--cta-bg)] px-2.5 py-1 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+            >
+              <Download className="h-3 w-3" />
+              Download
+            </button>
+          </div>
+        )}
         <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs dark:border-slate-700 dark:bg-[#1b2436]">
           <div className="flex items-center gap-2 font-mono text-slate-600 dark:text-slate-300">
             <span className="rounded bg-slate-200 px-1.5 py-0.5 text-[11px] font-semibold uppercase text-slate-800 dark:bg-slate-700 dark:text-slate-100">
               {ext}
             </span>
-            <span>{lines.length} lines</span>
+            <span>{allLines.length} lines</span>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -656,7 +681,9 @@ export function MaterialViewerModal({
               className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-200 dark:hover:bg-slate-800"
             >
               {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
-              {copied ? 'Copied' : 'Copy'}
+              <span role="status" aria-live="polite">
+                {copied ? 'Copied' : 'Copy'}
+              </span>
             </button>
           </div>
         </div>
@@ -700,14 +727,14 @@ export function MaterialViewerModal({
           <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
             <div
               role="alert"
-              className="max-w-md rounded-xl border border-red-200 bg-red-50 p-5 text-center text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+              className="max-w-md rounded-xl border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] p-5 text-center text-sm text-[var(--status-danger-text)]"
             >
               <AlertCircle className="mx-auto mb-2 h-6 w-6" />
               <p className="font-medium">{fileState.message}</p>
               <button
                 type="button"
                 onClick={onClose}
-                className="mt-3 rounded-md bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white dark:bg-slate-700"
+                className="mt-3 rounded-md bg-[var(--solid-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--solid-text)] hover:bg-[var(--solid-bg-hover)]"
               >
                 Close
               </button>
@@ -739,26 +766,30 @@ export function MaterialViewerModal({
       }
 
       if (fileState.category === 'text') {
-        return renderTextViewer(fileState.textContent ?? '', fileState.fileName);
+        return renderTextViewer(
+          fileState.textContent ?? '',
+          fileState.fileName,
+          fileState.textTooLarge
+        );
       }
 
       return (
         <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
-          <div className="max-w-md rounded-xl border border-slate-200 bg-slate-50 p-6 text-center dark:border-slate-700 dark:bg-[#1b2436]">
-            <FileIcon className="mx-auto mb-3 h-10 w-10 text-slate-500 dark:text-slate-400" />
-            <p className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <div className="max-w-md rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-2)] p-6 text-center">
+            <FileIcon className="mx-auto mb-3 h-10 w-10 text-[var(--text-muted)]" />
+            <p className="text-sm font-semibold text-[var(--text-primary)]">
               {fileState.fileName}
             </p>
-            <p className="mt-1 font-mono text-xs text-slate-500 dark:text-slate-400">
+            <p className="mt-1 font-mono text-xs text-[var(--text-muted)]">
               {fileState.mimeType} · {formatBytes(fileState.sizeBytes)}
             </p>
-            <p className="mt-3 text-xs text-slate-600 dark:text-slate-300">
+            <p className="mt-3 text-xs text-[var(--text-secondary)]">
               In-app preview is not available for this file format.
             </p>
             <button
               type="button"
               onClick={triggerDownload}
-              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-yellow-400 px-4 py-2 text-xs font-semibold text-black hover:bg-yellow-500"
+              className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-[var(--cta-bg)] px-4 py-2 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
             >
               <Download className="h-3.5 w-3.5" />
               Download
@@ -774,7 +805,7 @@ export function MaterialViewerModal({
         <div className="flex min-h-[360px] flex-1 flex-col items-center justify-center p-6">
           <div
             role="alert"
-            className="max-w-md rounded-xl border border-red-200 bg-red-50 p-5 text-center text-sm text-red-800 dark:border-red-900/60 dark:bg-red-950/30 dark:text-red-200"
+            className="max-w-md rounded-xl border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] p-5 text-center text-sm text-[var(--status-danger-text)]"
           >
             <AlertCircle className="mx-auto mb-2 h-6 w-6" />
             <p className="font-semibold">Unsafe or unsupported URL</p>
@@ -792,6 +823,7 @@ export function MaterialViewerModal({
           <iframe
             src={resolvedUrl.embedUrl}
             title={resource.title}
+            referrerPolicy="no-referrer"
             className="h-full min-h-[65vh] w-full rounded-lg border border-slate-200 bg-white dark:border-slate-700"
           />
         );
@@ -820,6 +852,7 @@ export function MaterialViewerModal({
           <iframe
             src={resolvedUrl.embedUrl}
             title={resource.title}
+            referrerPolicy="no-referrer"
             onLoad={() => setIframeLoaded(true)}
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
             allowFullScreen
@@ -833,12 +866,16 @@ export function MaterialViewerModal({
       );
     }
 
-    // Embedded webpage view for general external URLs (sandboxed; warning sits inline in the main header)
-    if (resolvedUrl.kind === 'external' && !iframeError) {
+    const isHttpsExternal =
+      resolvedUrl.kind === 'external' &&
+      /^https:\/\//i.test(resolvedUrl.originalUrl);
+
+    // Embedded webpage view for HTTPS external URLs (sandboxed; warning sits inline in the main header)
+    if (isHttpsExternal && !iframeError) {
       return (
         <div className="relative flex min-h-[60vh] flex-1 flex-col">
-          {!iframeLoaded && (
-            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-slate-50/80 text-xs font-medium text-slate-600 dark:bg-[#0d131f]/80 dark:text-slate-300">
+          {!iframeLoaded && !iframeTimedOut && (
+            <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-lg bg-[var(--surface-inset)]/85 text-xs font-medium text-[var(--text-secondary)]">
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               Loading webpage...
             </div>
@@ -846,15 +883,31 @@ export function MaterialViewerModal({
           <iframe
             src={resolvedUrl.originalUrl}
             title={resource.title}
-            sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+            sandbox="allow-scripts allow-forms allow-popups"
             referrerPolicy="no-referrer"
-            onLoad={() => setIframeLoaded(true)}
-            onError={() => {
+            onLoad={() => {
               setIframeLoaded(true);
-              setIframeError(true);
+              setIframeTimedOut(false);
             }}
-            className="h-full min-h-[60vh] w-full flex-1 rounded-lg border border-slate-200 bg-white dark:border-slate-700"
+            className="h-full min-h-[60vh] w-full flex-1 rounded-lg border border-[var(--border-subtle)] bg-white"
           />
+          {iframeTimedOut && !iframeLoaded && (
+            <div
+              role="status"
+              className="mt-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--status-warning-border)] bg-[var(--status-warning-bg)] px-3 py-2 text-xs text-[var(--status-warning-text)]"
+            >
+              <span>Taking longer than expected or blocked from embedding?</span>
+              <a
+                href={resolvedUrl.originalUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 rounded-md bg-[var(--cta-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
+              >
+                Page blank or blocked? Open in new tab
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            </div>
+          )}
         </div>
       );
     }
@@ -879,7 +932,7 @@ export function MaterialViewerModal({
             href={resolvedUrl.originalUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-yellow-400 px-4 py-2 text-xs font-semibold text-black hover:bg-yellow-500"
+            className="mt-4 inline-flex items-center gap-1.5 rounded-md bg-[var(--cta-bg)] px-4 py-2 text-xs font-semibold text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)]"
           >
             Open in new tab
             <ExternalLink className="h-3.5 w-3.5" />
@@ -891,7 +944,7 @@ export function MaterialViewerModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-2 sm:p-4 dark:bg-black/75"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop-modal)] p-2 sm:p-4"
       onClick={onClose}
       role="presentation"
     >
@@ -903,12 +956,12 @@ export function MaterialViewerModal({
         onClick={(e) => e.stopPropagation()}
         className={
           isFullscreen
-            ? 'fixed inset-0 z-50 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border-0 bg-white text-slate-900 dark:bg-[#121926] dark:text-slate-100'
-            : 'flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white text-slate-900 shadow-2xl dark:border-slate-700 dark:bg-[#121926] dark:text-slate-100'
+            ? 'fixed inset-0 z-50 flex h-dvh w-screen max-w-none flex-col overflow-hidden rounded-none border-0 bg-[var(--surface-1)] text-[var(--text-primary)]'
+            : 'flex h-[92vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl border border-[var(--border-subtle)] bg-[var(--surface-1)] text-[var(--text-primary)] shadow-2xl'
         }
       >
         {/* Header Toolbar */}
-        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 bg-slate-100 px-4 py-3 dark:border-slate-700 dark:bg-[#1b2436]">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border-subtle)] bg-[var(--surface-2)] px-4 py-3">
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2">
               <ResourceBadge kind={resource.kind} />
@@ -918,7 +971,9 @@ export function MaterialViewerModal({
             </div>
             <div className="mt-0.5 flex flex-wrap items-center gap-x-2.5 gap-y-0.5 text-xs text-slate-500 dark:text-slate-400">
               <p className="truncate">{metadataLine}</p>
-              {resolvedUrl?.kind === 'external' && !iframeError && (
+              {resolvedUrl?.kind === 'external' &&
+                /^https:\/\//i.test(resolvedUrl.originalUrl) &&
+                !iframeError && (
                 <span
                   data-testid="external-embed-header-warning"
                   className="inline-flex items-center gap-1 text-[11px] text-amber-700 dark:text-amber-300"

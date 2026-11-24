@@ -265,13 +265,21 @@ describe('Course schema & seed validation', () => {
     expect(getAllItemRefs(parsed)).toHaveLength(3);
   });
 
-  it('defaults department to "Preparatory" and strictly rejects invalid year, semester, and legacy reading kind', () => {
+  it('strictly validates department, year, semester, and legacy reading kind', () => {
     const omittedDept = structuredClone(COURSES[0]) as Record<string, unknown>;
     delete omittedDept.department;
-    omittedDept.year = 4;
-    omittedDept.semester = 2;
-    const parsed = parseCourseTree(omittedDept);
-    expect(parsed.department).toBe('Preparatory');
+    expect(CourseTreeSchema.safeParse(omittedDept).success).toBe(false);
+    expect(CourseTreeSchema.safeParse({ ...structuredClone(COURSES[0]), department: 'A' }).success).toBe(
+      false
+    );
+
+    const validTermCourse = {
+      ...structuredClone(COURSES[0]),
+      year: 4,
+      semester: 2 as const,
+    };
+    const parsed = parseCourseTree(validTermCourse);
+    expect(parsed.department).toBe(COURSES[0].department);
     expect(parsed.year).toBe(4);
     expect(parsed.semester).toBe(2);
     expect(formatCourseTerm(parsed)).toBe('Year 4 · 2nd Semester');

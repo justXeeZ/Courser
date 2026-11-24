@@ -85,7 +85,7 @@ export function QuickStatusPill({
   const centerX = liveAnchor.left + liveAnchor.width / 2;
   const maxCenterX = typeof window !== 'undefined' ? window.innerWidth - 12 : centerX;
   const clampedCenterX = Math.max(12, Math.min(centerX, maxCenterX));
-  const top = Math.max(12, liveAnchor.top - 46);
+  const top = Math.max(12, liveAnchor.top - 38);
 
   return (
     <div
@@ -98,7 +98,7 @@ export function QuickStatusPill({
       }}
       onMouseEnter={onMouseEnter}
       onMouseLeave={onMouseLeave}
-      className="fixed z-50 pb-3"
+      className="fixed z-50 pb-2"
     >
       <div className="rounded-md shadow-lg">
         <StatusSegmentedControl

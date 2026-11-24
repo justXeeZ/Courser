@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
@@ -48,6 +48,10 @@ export function LessonEditorCard({
   const summaryError = summaryErrorKey ? fieldErrors?.[summaryErrorKey] : undefined;
   const [isStuck, setIsStuck] = useState<boolean>(false);
   const headerRef = useRef<HTMLDivElement | null>(null);
+  const titleId = useId();
+  const sideId = useId();
+  const summaryId = useId();
+  const notesId = useId();
 
   useEffect(() => {
     if (!isExpanded) {
@@ -93,33 +97,34 @@ export function LessonEditorCard({
           }
           onToggleExpand();
         }}
-        className={`flex cursor-pointer flex-wrap items-center justify-between gap-2 border border-slate-200 border-l-4 border-l-blue-500 bg-slate-100 px-3 py-2 dark:border-slate-700 dark:border-l-blue-400 dark:bg-[#1b2436] ${headerCornerClass}`}
+        className={`flex cursor-pointer flex-wrap items-center justify-between gap-2 border border-[var(--border-subtle)] border-l-4 border-l-[var(--tag-peach-border)] bg-[var(--surface-2)] px-3 py-2 ${headerCornerClass}`}
       >
         <button
           type="button"
           onClick={onToggleExpand}
           aria-expanded={isExpanded}
+          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} lesson ${formatLessonPositionTag(chapterOrder, lessonIndex + 1)} ${lesson.title || 'Untitled Lesson'}`}
           className="flex min-w-0 flex-1 items-center gap-2 text-left"
         >
           {isExpanded ? (
-            <ChevronUp className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+            <ChevronUp className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
           ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 text-slate-600 dark:text-slate-300" />
+            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
           )}
-          <span className="shrink-0 rounded border border-[var(--tag-blue-border)] bg-[var(--tag-blue-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-blue-text)]">
+          <span className="shrink-0 rounded border border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-peach-text)]">
             {formatLessonPositionTag(chapterOrder, lessonIndex + 1)}
           </span>
-          <span className="truncate text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
             {lesson.title || 'Untitled Lesson'}
           </span>
-          <span className="hidden rounded bg-white px-1.5 py-0.5 font-mono text-[11px] text-slate-600 sm:inline dark:bg-[#0d131f] dark:text-slate-300">
+          <span className="hidden rounded bg-[var(--surface-inset)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] sm:inline">
             {derivedLessonId}
           </span>
           <span
             data-testid="lesson-resource-count-tag"
-            className="shrink-0 rounded border border-[var(--tag-blue-border)] bg-[var(--tag-blue-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-blue-text)]"
+            className="shrink-0 rounded border border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-peach-text)]"
           >
-            {lesson.resources.length} {lesson.resources.length === 1 ? 'resource' : 'resources'}
+            {lesson.resources.length} {lesson.resources.length === 1 ? 'material' : 'materials'}
           </span>
         </button>
 
@@ -130,7 +135,7 @@ export function LessonEditorCard({
             onClick={() => onMove(-1)}
             title="Move lesson up"
             aria-label="Move lesson up"
-            className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
           >
             <ArrowUp className="h-3 w-3" />
           </button>
@@ -140,7 +145,7 @@ export function LessonEditorCard({
             onClick={() => onMove(1)}
             title="Move lesson down"
             aria-label="Move lesson down"
-            className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
           >
             <ArrowDown className="h-3 w-3" />
           </button>
@@ -149,7 +154,7 @@ export function LessonEditorCard({
             onClick={onRemove}
             title="Delete sub-lesson"
             aria-label={`Delete ${lesson.title}`}
-            className="rounded border border-red-200 bg-white p-1 text-red-600 hover:bg-red-50 dark:border-red-800/60 dark:bg-[#0d131f] dark:text-red-400 dark:hover:bg-red-950/40"
+            className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
           >
             <Trash2 className="h-3 w-3" />
           </button>
@@ -158,13 +163,14 @@ export function LessonEditorCard({
 
       {/* Expanded Lesson Body */}
       {isExpanded && (
-        <div className="space-y-3 rounded-b-md border border-t-0 border-slate-200 bg-slate-50/70 p-3.5 dark:border-slate-700 dark:bg-[#121926]">
+        <div className="space-y-3 rounded-b-md border border-t-0 border-[var(--border-subtle)] bg-[var(--surface-1)] p-3.5">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor={titleId} className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
                 Sub-Lesson Title *
               </label>
               <input
+                id={titleId}
                 type="text"
                 value={lesson.title}
                 onChange={(e) =>
@@ -178,24 +184,25 @@ export function LessonEditorCard({
                 aria-invalid={Boolean(titleError)}
                 data-error-key={titleErrorKey}
                 data-field-error={titleError ? 'true' : undefined}
-                className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-sm text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500 ${
+                className={`w-full rounded-md border bg-[var(--surface-inset)] px-2.5 py-1.5 text-sm text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none ${
                   titleError
-                    ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
-                    : 'border-slate-300 dark:border-slate-600'
+                    ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
+                    : 'border-[var(--border-strong)]'
                 }`}
               />
               {titleError && (
-                <p role="alert" className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+                <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
                   {titleError}
                 </p>
               )}
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+              <label htmlFor={sideId} className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
                 Branch Side
               </label>
               <select
+                id={sideId}
                 value={lesson.side ?? ''}
                 onChange={(e) =>
                   onUpdate((l) => ({
@@ -207,7 +214,7 @@ export function LessonEditorCard({
                   }))
                 }
                 aria-label="Branch Side"
-                className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100"
+                className="w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-sm text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none"
               >
                 <option value="">Auto</option>
                 <option value="left">Left</option>
@@ -217,10 +224,11 @@ export function LessonEditorCard({
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor={summaryId} className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
               Summary *
             </label>
             <textarea
+              id={summaryId}
               rows={2}
               value={lesson.summary}
               onChange={(e) =>
@@ -234,24 +242,25 @@ export function LessonEditorCard({
               aria-invalid={Boolean(summaryError)}
               data-error-key={summaryErrorKey}
               data-field-error={summaryError ? 'true' : undefined}
-              className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500 ${
+              className={`w-full rounded-md border bg-[var(--surface-inset)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none ${
                 summaryError
-                  ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
-                  : 'border-slate-300 dark:border-slate-600'
+                  ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
+                  : 'border-[var(--border-strong)]'
               }`}
             />
             {summaryError && (
-              <p role="alert" className="mt-1 text-[11px] text-red-600 dark:text-red-400">
+              <p role="alert" className="mt-1 text-[11px] text-[var(--status-danger-text)]">
                 {summaryError}
               </p>
             )}
           </div>
 
           <div>
-            <label className="mb-1 block text-xs font-medium text-slate-700 dark:text-slate-300">
+            <label htmlFor={notesId} className="mb-1 block text-xs font-medium text-[var(--text-secondary)]">
               Study Notes (optional)
             </label>
             <textarea
+              id={notesId}
               rows={2}
               value={lesson.notes ?? ''}
               onChange={(e) =>
@@ -262,7 +271,7 @@ export function LessonEditorCard({
               }
               placeholder="Key takeaways, formulas, or exam tips..."
               aria-label="Lesson Notes"
-              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="w-full rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] px-2.5 py-1.5 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none"
             />
           </div>
 

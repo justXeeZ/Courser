@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, Download, FileArchive, X } from 'lucide-react';
+import { useDialogFocus } from '@/hooks/useDialogFocus';
 import { buildCourseExport } from '@/lib/courseExchange';
 import { collectReferencedFileIds, getFile } from '@/lib/fileStore';
 import { formatBytes } from '@/lib/materialValidation';
@@ -57,16 +58,13 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
     };
   }, [open, course]);
 
-  useEffect(() => {
-    if (!open) return;
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        onClose();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [open, onClose]);
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useDialogFocus({
+    isOpen: open,
+    containerRef: dialogRef,
+    onEscape: onClose,
+  });
 
   if (!open) return null;
 
@@ -93,22 +91,23 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 dark:bg-black/70"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--backdrop-modal)] p-4"
       onClick={onClose}
     >
       <div
+        ref={dialogRef}
         role="dialog"
         aria-modal="true"
         aria-label="Export Course"
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-5 text-slate-900 shadow-2xl dark:border-slate-700/80 dark:bg-[#121926] dark:text-slate-100"
+        className="w-full max-w-md rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] p-5 text-[var(--text-primary)] shadow-2xl"
       >
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-amber-100 text-amber-800 dark:bg-amber-400/15 dark:text-amber-300">
+            <span className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-[var(--status-warning-bg)] text-[var(--status-warning-text)]">
               <FileArchive className="h-4 w-4" />
             </span>
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+            <h2 className="text-base font-bold text-[var(--text-primary)]">
               Export Course
             </h2>
           </div>
@@ -116,30 +115,35 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
             type="button"
             onClick={onClose}
             aria-label="Close export dialog"
-            className="rounded-md bg-slate-100 p-1.5 text-slate-600 hover:bg-slate-200 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700"
+            className="rounded-md bg-[var(--surface-2)] p-1.5 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
 
-        <p className="mb-4 text-xs text-slate-600 dark:text-slate-300">
+        <p className="mb-4 text-xs text-[var(--text-secondary)]">
           Download <span className="font-semibold">{course.code}: {course.title}</span> as a
           portable <code className="font-mono">.course.json</code> file that can be shared or
           re-imported from the New Course page.
         </p>
 
-        <label className="mb-4 flex cursor-pointer items-start gap-2.5 rounded-md border border-slate-200 bg-slate-50 p-3 dark:border-slate-600 dark:bg-[#0d131f]">
+        <label
+          htmlFor="export-include-files"
+          className="mb-4 flex cursor-pointer items-start gap-2.5 rounded-md border border-[var(--border-strong)] bg-[var(--surface-inset)] p-3"
+        >
           <input
+            id="export-include-files"
             type="checkbox"
+            aria-label="Include uploaded files"
             checked={includeFiles}
             onChange={(e) => setIncludeFiles(e.target.checked)}
-            className="mt-0.5 h-4 w-4 rounded border-slate-300 text-amber-500 focus:ring-amber-500 dark:border-slate-600 dark:bg-[#121926]"
+            className="mt-0.5 h-4 w-4 rounded border-[var(--border-strong)] accent-[var(--accent-purple)]"
           />
           <div className="text-xs">
-            <div className="font-medium text-slate-900 dark:text-slate-100">
+            <div className="font-medium text-[var(--text-primary)]">
               Include uploaded files
             </div>
-            <div className="mt-0.5 text-slate-500 dark:text-slate-400">
+            <div className="mt-0.5 text-[var(--text-muted)]">
               {fileSummary === null
                 ? 'Calculating attached file size...'
                 : fileSummary.count === 0
@@ -152,7 +156,7 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
         {error && (
           <div
             role="alert"
-            className="mb-3 flex items-center gap-1.5 rounded bg-red-50 px-2.5 py-2 text-xs text-red-700 dark:bg-red-950/50 dark:text-red-300"
+            className="mb-3 flex items-center gap-1.5 rounded border border-[var(--status-danger-border)] bg-[var(--status-danger-bg)] px-2.5 py-2 text-xs text-[var(--status-danger-text)]"
           >
             <AlertCircle className="h-3.5 w-3.5 shrink-0" />
             <span>{error}</span>
@@ -163,7 +167,7 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
           <button
             type="button"
             onClick={onClose}
-            className="rounded-md border border-slate-300 bg-white px-3.5 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700"
+            className="rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-3.5 py-1.5 text-sm font-medium text-[var(--text-secondary)] hover:bg-[var(--surface-hover)]"
           >
             Cancel
           </button>
@@ -171,7 +175,7 @@ export function ExportCourseDialog({ open, course, onClose }: ExportCourseDialog
             type="button"
             disabled={exporting}
             onClick={() => void handleExport()}
-            className="inline-flex items-center gap-1.5 rounded-md bg-yellow-400 px-3.5 py-1.5 text-sm font-medium text-black hover:bg-yellow-500 disabled:opacity-50"
+            className="inline-flex items-center gap-1.5 rounded-md bg-[var(--cta-bg)] px-3.5 py-1.5 text-sm font-medium text-[var(--cta-text)] hover:bg-[var(--cta-bg-hover)] disabled:opacity-50"
           >
             <Download className="h-4 w-4" />
             {exporting ? 'Exporting...' : `Export ${course.slug}.course.json`}

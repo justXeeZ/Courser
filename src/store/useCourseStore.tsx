@@ -4,6 +4,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ReactNode,
 } from 'react';
@@ -19,7 +20,12 @@ import {
   createLocalUserRoadmapRepository,
   localUserRoadmapRepository,
 } from '@/lib/storage/localRepositories';
-import type { PremadeRoadmapRepository, UserRoadmapRepository } from '@/lib/storage/types';
+import type {
+  CatalogLoadResult,
+  PersistResult,
+  PremadeRoadmapRepository,
+  UserRoadmapRepository,
+} from '@/lib/storage/types';
 import { CourseTreeSchema, type CourseTree } from '@/types/course';
 
 export const COURSES_STORAGE_KEY = USER_ROADMAPS_STORAGE_KEY;
@@ -41,10 +47,34 @@ function createUserRepoForStorage(storage: CatalogReadStorage): UserRoadmapRepos
   });
 }
 
+export interface CatalogRecovery {
+  status: 'recovered' | 'corrupt';
+  droppedCount: number;
+  backedUp: boolean;
+}
+
+function toRecovery(result: CatalogLoadResult): CatalogRecovery | null {
+  if (result.status === 'recovered' || result.status === 'corrupt') {
+    return {
+      status: result.status,
+      droppedCount: result.droppedCount,
+      backedUp: result.backedUp,
+    };
+  }
+  return null;
+}
+
 export function loadCoursesCatalog(
   storage?: CatalogReadStorage | null,
   premadeRepo: PremadeRoadmapRepository = defaultPremadeRoadmapRepository
 ): CourseTree[] {
+  return loadCoursesCatalogDetailed(storage, premadeRepo).courses;
+}
+
+export function loadCoursesCatalogDetailed(
+  storage?: CatalogReadStorage | null,
+  premadeRepo: PremadeRoadmapRepository = defaultPremadeRoadmapRepository
+): { courses: CourseTree[]; recovery: CatalogRecovery | null } {
   const effectiveStorage: CatalogReadStorage | null =
     storage !== undefined
       ? storage
@@ -53,24 +83,28 @@ export function loadCoursesCatalog(
         : null;
 
   if (!effectiveStorage) {
-    return premadeRepo.getAll();
+    return { courses: premadeRepo.getAll(), recovery: null };
   }
 
   const userRepo: UserRoadmapRepository =
     storage === undefined ? localUserRoadmapRepository : createUserRepoForStorage(effectiveStorage);
 
   try {
-    return userRepo.loadCourses() ?? premadeRepo.getAll();
+    const result = userRepo.loadCatalog();
+    return {
+      courses: result.courses ?? premadeRepo.getAll(),
+      recovery: toRecovery(result),
+    };
   } catch {
-    return premadeRepo.getAll();
+    return { courses: premadeRepo.getAll(), recovery: null };
   }
 }
 
 export function saveCoursesCatalog(
   courses: CourseTree[],
   storage?: CatalogWriteStorage | null
-): void {
-  if (storage === null) return;
+): PersistResult {
+  if (storage === null) return { ok: true };
   const effectiveStorage: CatalogWriteStorage | null =
     storage !== undefined
       ? storage
@@ -78,7 +112,7 @@ export function saveCoursesCatalog(
         ? window.localStorage
         : null;
 
-  if (!effectiveStorage) return;
+  if (!effectiveStorage) return { ok: true };
 
   const userRepo: UserRoadmapRepository =
     storage === undefined
@@ -89,7 +123,7 @@ export function saveCoursesCatalog(
           removeItem: effectiveStorage.removeItem ? effectiveStorage.removeItem.bind(effectiveStorage) : () => {},
         });
 
-  userRepo.saveCourses(courses);
+  return userRepo.saveCourses(courses);
 }
 
 export type CourseMutationResult =
@@ -110,6 +144,12 @@ interface CourseContextValue {
   resetCatalogToDefaults: () => void;
   resetCatalog: () => void;
   isPremadeCourse: (slug: string) => boolean;
+  /** Set when the stored catalog was corrupt/partially invalid at startup. */
+  catalogRecovery: CatalogRecovery | null;
+  dismissCatalogRecovery: () => void;
+  /** Set when the last attempt to persist the catalog failed (e.g. quota). */
+  persistError: string | null;
+  dismissPersistError: () => void;
 }
 
 const CourseContext = createContext<CourseContextValue | null>(null);
@@ -125,21 +165,58 @@ export function CourseProvider({
   premadeRepository = defaultPremadeRoadmapRepository,
   userRepository,
 }: CourseProviderProps) {
-  const [courses, setCourses] = useState<CourseTree[]>(() => {
+  const [initial] = useState(() => {
     if (userRepository) {
-      return userRepository.loadCourses() ?? premadeRepository.getAll();
+      const result = userRepository.loadCatalog
+        ? userRepository.loadCatalog()
+        : {
+            courses: userRepository.loadCourses(),
+            status: 'ok' as const,
+            droppedCount: 0,
+            backedUp: false,
+          };
+      return {
+        courses: result.courses ?? premadeRepository.getAll(),
+        recovery: toRecovery(result),
+      };
     }
-    return loadCoursesCatalog(undefined, premadeRepository);
+    return loadCoursesCatalogDetailed(undefined, premadeRepository);
   });
+  const [courses, setCourses] = useState<CourseTree[]>(initial.courses);
+  const [catalogRecovery, setCatalogRecovery] = useState<CatalogRecovery | null>(
+    initial.recovery
+  );
+  const [persistError, setPersistError] = useState<string | null>(null);
+  const skipNextSaveRef = useRef(false);
 
   useEffect(() => {
-    if (userRepository) {
-      userRepository.saveCourses(courses);
-    } else {
-      saveCoursesCatalog(courses);
+    if (skipNextSaveRef.current) {
+      skipNextSaveRef.current = false;
+      return;
     }
+    const result = userRepository
+      ? userRepository.saveCourses(courses)
+      : saveCoursesCatalog(courses);
+    setPersistError(result && !result.ok ? result.error : null);
   }, [courses, userRepository]);
 
+  // Keep multiple tabs in sync: adopt catalog changes written by another tab.
+  useEffect(() => {
+    if (userRepository || typeof window === 'undefined') return;
+    const handleStorage = (event: StorageEvent) => {
+      if (event.storageArea && event.storageArea !== window.localStorage) return;
+      if (event.key !== null && event.key !== COURSES_STORAGE_KEY) return;
+      const result = localUserRoadmapRepository.loadCatalog();
+      if (!result.courses) return;
+      skipNextSaveRef.current = true;
+      setCourses(result.courses);
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, [userRepository]);
+
+  const dismissCatalogRecovery = useCallback(() => setCatalogRecovery(null), []);
+  const dismissPersistError = useCallback(() => setPersistError(null), []);
   const getCourseBySlug = useCallback(
     (slug: string) => courses.find((c) => c.slug === slug),
     [courses]
@@ -246,6 +323,10 @@ export function CourseProvider({
       resetCatalogToDefaults,
       resetCatalog: resetCatalogToDefaults,
       isPremadeCourse,
+      catalogRecovery,
+      dismissCatalogRecovery,
+      persistError,
+      dismissPersistError,
     }),
     [
       courses,
@@ -255,6 +336,10 @@ export function CourseProvider({
       deleteCourse,
       resetCatalogToDefaults,
       isPremadeCourse,
+      catalogRecovery,
+      dismissCatalogRecovery,
+      persistError,
+      dismissPersistError,
     ]
   );
 
