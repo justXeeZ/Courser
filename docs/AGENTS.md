@@ -26,7 +26,6 @@ Read only the document that matches your task:
 | UI, theming, layout, reusable components, copy tone, accessibility, or new pages | [`DESIGN.md`](./DESIGN.md) |
 | Data schemas, IDs, progress math, file validation/GC, storage keys, import/export, or non-goals | [`DATA_MODEL.md`](./DATA_MODEL.md) |
 | Adding, renaming, or removing a feature, schema field, resource kind, route, or UI label | [`CHANGE_PROTOCOL.md`](./CHANGE_PROTOCOL.md) |
-| Milestone roadmap and planned future work | [`PLAN.md`](./PLAN.md) |
 | Resolving known inconsistencies and open design questions | [`ISSUES.md`](./ISSUES.md) |
 
 **Do not read the other docs unless the task needs them.**

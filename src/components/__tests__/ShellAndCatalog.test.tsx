@@ -201,12 +201,12 @@ describe('CatalogPage & CourseCard', () => {
       'text-[var(--solid-text)]'
     );
 
-    const guideCardLink = codeBadge.closest('a') as HTMLElement;
-    expect(guideCardLink.parentElement).toHaveClass(
+    const guideCardContainer = codeBadge.closest('.group') as HTMLElement;
+    expect(guideCardContainer).toHaveClass(
       'bg-[var(--surface-1)]',
       'border-[var(--border-subtle)]'
     );
-    const pctText = within(guideCardLink).getByText(/%$/);
+    const pctText = within(guideCardContainer).getByText(/%$/);
     expect(pctText).toHaveClass('text-[var(--accent-purple-text)]');
   });
 

@@ -26,7 +26,7 @@ export const math201LinearAlgebra: CourseTree = {
       id: 'math201-ch1-vectors-matrices',
       order: 1,
       title: '1. Vectors & Matrices',
-      weekRange: 'Weeks 1–3',
+      weekRange: 'Week 1-3',
       description: 'Linear combinations, Gaussian elimination, and matrix inverses.',
       notes: 'Focus on geometric intuition alongside row-reduction mechanics.',
       lessons: [
@@ -69,7 +69,7 @@ export const math201LinearAlgebra: CourseTree = {
 ```
 
 ### Schema Rules & Options
-- **`department`**: Required string (min 2 chars), defaulting to `'Preparatory'`. Kept visible in the editor, course header, search modal, and homepage catalog grouping.
+- **`department`**: Required string (min 2 chars) in `CourseTreeSchema` (lenient `.course.json` import defaults omitted/blank values to `'Preparatory'`). Kept visible in the editor, course header, search modal, and homepage catalog grouping.
 - **`year` & `semester`**: Optional structured fields (`year`: integer `1..10`, `semester`: `1 | 2`). Omit either or both when unscheduled.
 - **Direct milestone chapters (`lessons: []`)**: A chapter with zero sub-lessons is treated as a single trackable item (`1` item in progress fractions) and supports optional `notes`, `prerequisites`, and `resources`.
 - **ID uniqueness & prerequisites**: All chapter (`<coursePrefix>-ch<order>-<slug>`) and lesson (`<coursePrefix>-ch<chapterOrder>-l<lessonOrder>-<slug>`) `id` values share a single uniqueness namespace per course and must start with `<coursePrefix>-` (lowercase alphanumeric characters of `code`, e.g. `math201-`). Both chapters and lessons can declare `prerequisites` referencing any chapter or lesson ID in the same course (no self-references).
@@ -109,6 +109,7 @@ Run the automated checks to verify schema compliance, unique IDs, valid prerequi
 
 ```bash
 npm run typecheck
+npm run lint
 npm run test
 npm run build
 ```

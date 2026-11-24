@@ -224,7 +224,7 @@ describe('ResourceBadge & MaterialList', () => {
     );
 
     const examBtn = screen.getByRole('button', { name: /Midterm Exam/i });
-    expect(within(examBtn).getAllByText('Exam')).toHaveLength(2);
+    expect(within(examBtn).getAllByText('Exam')).toHaveLength(1);
     expect(within(examBtn).getByText('2 questions')).toBeInTheDocument();
     expect(within(examBtn).getByText('45 min')).toBeInTheDocument();
     expect(within(examBtn).getByText('Best: 92%')).toHaveClass('bg-[var(--status-done-bg)]');

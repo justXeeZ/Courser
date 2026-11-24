@@ -27,18 +27,18 @@ Inspect schema and interface definitions in code rather than duplicating field l
 - **Material kinds, recommended pinning & 3-way XOR (`LessonResourceSchema` in `src/types/course.ts`):**
   - `ResourceKindSchema`: `'slides' | 'video' | 'audio' | 'lab' | 'document' | 'textbook' | 'course' | 'official' | 'exam' | 'assignment'`.
   - `recommended?: boolean`: when `true`, `MaterialList` pins the resource to the top (preserving relative order within pinned and unpinned items) with a `Recommended` badge.
-  - **Strict 3-way XOR payload:** every `LessonResource` must define **exactly one** of `url`, `file` (`StoredFileRef`), or `assessment` (`AssessmentData`). In `MaterialsEditor`, the `Interactive` source tab is shown only when `kind` is `'exam'` or `'assignment'`.
+  - **Strict 3-way XOR payload:** every `LessonResource` must define **exactly one** of `url` (`http(s)://`), `file` (`StoredFileRef`), or `assessment` (`AssessmentData`). In `MaterialsEditor`, the `Interactive` source tab is shown only when `kind` is `'exam'` or `'assignment'`.
 - **Upload validation & IndexedDB garbage collection (`src/lib/materialValidation.ts`, `src/lib/fileStore.ts`, `src/App.tsx`):**
   - Light validation enforces **no file size cap**, rejects `0`-byte files, and blocks executable/scriptable extensions and MIME types (`DANGEROUS_EXTENSIONS` / `DANGEROUS_MIME_TYPES`, including `.exe`, `.bat`, `.sh`, `.msi`, `.dll`, `.cmd`, `.ps1`, `.html`, `.svg`). It auto-suggests a `ResourceKind` (including `'audio'` for `.mp3`, `.wav`, `.m4a`, `.ogg`, `.aac`, `.flac`) from the filename and warns non-blockingly on unusual extensions.
   - `collectReferencedFileIds(courses)` scans `chapter.resources[].file?.id`, `lesson.resources[].file?.id`, and `resource.assessment?.questions[].header.imageFile?.id`.
-  - `garbageCollectFiles` runs once on initial mount in `src/App.tsx`, skipped on `/editor*` and `*/edit` routes so unsaved editor uploads are preserved.
+  - `garbageCollectFiles` runs on startup (skipped on `/editor*`, `*/edit`, or when a fresh multi-tab editor lease is active) and after course save/delete so unsaved editor uploads are preserved.
 - **Interactive assessments, LaTeX math & score persistence (`src/types/course.ts`, `src/lib/mathRender.ts`, `src/lib/storage/types.ts`):**
   - `AssessmentSchema`: `mode` (`'exam' | 'assignment'`), optional `instructions`, `timeLimitMinutes` (int > 0), `passingScorePercent` (number 0..100, defaults to 70% if omitted), `shuffleQuestions`, and non-empty `questions` with unique IDs across 4 types (`'mcq'`, `'multi-select'`, `'true-false'`, `'short-answer'`).
   - `AssessmentQuestionHeaderSchema`: requires at least one of non-empty `text`, `imageUrl` (`http://` or `https://`), or `imageFile` (`StoredFileRef`).
   - `mathRender.ts` & `RichMathText.tsx`: render prose as React text nodes (no raw HTML/XSS) and inline/display math via KaTeX (`throwOnError: false`, ignoring escaped `\$` and currency like `$50`).
   - `ProgressState.assessmentScores`: maps `courseSlug -> getAssessmentScoreKey(itemId, resourceTitle) -> AssessmentScoreRecord` (`bestScorePercent`, `latestScorePercent`, `attempts`, `passed`, `updatedAt`).
 - **Embed resolver & Blob URL cleanup (`src/lib/embedResolver.ts`, `src/components/viewer/MaterialViewerModal.tsx`):**
-  - `resolveEmbedUrl(url)` classifies URLs into `google-drive` (Drive files, Docs, Slides, Sheets → `/preview` or `/embed`; folders mark `embeddable: false`), `onedrive` (OneDrive/SharePoint embed/share URLs → iframe when supported, or `embeddable: false` fallback card with `"Open in new tab"`), `youtube`, `vimeo`, `direct-pdf`, `direct-video`, `direct-audio`, `direct-image`, or `external` (opens in new tab).
+  - `resolveEmbedUrl(url)` classifies URLs into `google-drive` (Drive files, Docs, Slides, Sheets → `/preview` or `/embed`; folders mark `embeddable: false`), `onedrive` (OneDrive/SharePoint embed/share URLs → iframe when supported, or `embeddable: false` fallback card with `"Open in new tab"`), `youtube`, `vimeo`, `direct-pdf`, `direct-video`, `direct-audio`, `direct-image`, or `external` (`https://` opens in a sandboxed webpage iframe with `referrerPolicy="no-referrer"` and a 3s new-tab fallback; `http://` routes to the new-tab fallback card). In-app text previews are capped at 1 MB / 10,000 lines with a Download fallback.
   - `MaterialViewerModal`, `AssessmentBuilderModal`, and `AssessmentRunnerModal` must call `URL.revokeObjectURL` whenever a Blob object URL is closed, replaced, or unmounted.
 
 ## 3. Immutable Persistence & Exchange Identifiers (Never Swap Out or Couple to `BRAND`)
@@ -50,8 +50,8 @@ Keep display copy in `src/config/brand.ts` (`BRAND`) strictly decoupled from the
 - **IndexedDB identifiers (`src/lib/fileStore.ts`):**
   - `FILE_DB_NAME = 'college_course_trees'`, `FILE_DB_VERSION = 1`, `FILE_STORE_NAME = 'files'`
 - **Export envelope constants:**
-  - `.course.json` (`src/lib/courseExchange.ts`): `COURSE_EXPORT_FORMAT = 'college-course-tree'`, `COURSE_EXPORT_VERSION = 1` (`buildCourseExport`, `parseCourseImport`; accepts envelope or bare `CourseTree`, suffixes duplicate slugs with `-2`, `-3`, and restores base64 file/image attachments under fresh `deriveFileId` IDs).
-  - `.assessment.json` (`src/lib/assessmentExchange.ts`): `ASSESSMENT_EXPORT_FORMAT = 'college-assessment'`, `ASSESSMENT_EXPORT_VERSION = 1` (`buildAssessmentExport`, `parseAssessmentImport`; accepts envelope or bare `AssessmentData` with optional base64 image attachments).
+  - `.course.json` (`src/lib/courseExchange.ts`): `COURSE_EXPORT_FORMAT = 'college-course-tree'`, `COURSE_EXPORT_VERSION = 1` (`buildCourseExport`, `parseCourseImport` with 50 MB import guard; accepts envelope or bare `CourseTree`, suffixes duplicate slugs with `-2`, `-3`, and restores base64 file/image attachments under fresh `deriveFileId` IDs).
+  - `.assessment.json` (`src/lib/assessmentExchange.ts`): `ASSESSMENT_EXPORT_FORMAT = 'college-assessment'`, `ASSESSMENT_EXPORT_VERSION = 1` (`buildAssessmentExport`, `parseAssessmentImport` with 50 MB import guard; accepts envelope or bare `AssessmentData` with optional base64 image attachments).
   - Progress backup (`src/lib/storage/types.ts`, `src/store/useProgressStore.tsx`): `ProgressStateSchema` (`version: 1`).
 - **Repository interfaces (`src/lib/storage/types.ts`):** `PremadeRoadmapRepository`, `UserRoadmapRepository`, `ProgressRepository`, `MaterialFileRepository`.
 

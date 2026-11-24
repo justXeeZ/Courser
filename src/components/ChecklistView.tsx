@@ -93,7 +93,7 @@ export function ChecklistView({
             }`}
           >
             <div
-              className={`flex items-start justify-between gap-3 border-l-4 border-l-[var(--accent-amber)] bg-[var(--surface-1)] px-4 py-3 sm:items-center dark:bg-[var(--surface-2)] ${
+              className={`flex items-start justify-between gap-3 border-l-4 border-l-[var(--accent-amber)] bg-[var(--surface-hover)] px-4 py-3 sm:items-center dark:bg-[var(--surface-2)] ${
                 !isLeaf && !isCollapsed ? 'border-b border-[var(--border-subtle)]' : ''
               }`}
             >

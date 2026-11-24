@@ -204,8 +204,18 @@ export function CourseTreeCanvas({
   };
 
   const applyZoom = (nextZoom: number) => {
+    const cw = scrollContainerRef.current?.clientWidth ?? 0;
+    const oldSw = getWrapperWidthForZoom(zoom, cw);
+    const newSw = getWrapperWidthForZoom(nextZoom, cw);
+    const oldCenter = getCenteredPanX(zoom);
+    const newCenter = getCenteredPanX(nextZoom);
+
     setZoom(nextZoom);
-    setPan((prev) => clampPan(prev.x, prev.y, nextZoom));
+    setPan((prev) => {
+      const offsetFromCenter = prev.x - oldCenter;
+      const scaledOffset = oldSw > 0 ? Math.round(offsetFromCenter * (newSw / oldSw)) : 0;
+      return clampPan(newCenter + scaledOffset, prev.y, nextZoom);
+    });
   };
   const dragStateRef = useRef<{
     active: boolean;

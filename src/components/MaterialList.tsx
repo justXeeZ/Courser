@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import {
   AlertCircle,
-  ClipboardCheck,
   Clock,
   ExternalLink,
   Eye,
@@ -120,29 +119,23 @@ export function MaterialList({
                 ? `Start ${modeLabel}: ${res.title}`
                 : 'Open from course view to launch interactive assessment'
             }
-            className={`${rowBaseClass} items-start ${
+            className={`${rowBaseClass} ${
               !onOpenAssessment ? 'cursor-not-allowed opacity-70' : ''
             }`}
           >
             <ResourceBadge kind={res.kind} />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <span
-                  className={`truncate text-sm font-medium text-[var(--text-primary)] ${
-                    onOpenAssessment
-                      ? 'underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)]'
-                      : ''
-                  }`}
-                >
-                  {res.title}
-                </span>
-              </div>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <span
+                className={`min-w-[140px] flex-1 truncate text-sm font-medium text-[var(--text-primary)] ${
+                  onOpenAssessment
+                    ? 'underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)]'
+                    : ''
+                }`}
+              >
+                {res.title}
+              </span>
 
-              <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-[var(--text-secondary)]">
-                <span className="inline-flex items-center gap-1 rounded bg-[var(--surface-warm-muted)] px-1.5 py-0.5 font-medium text-[var(--text-secondary)]">
-                  <ClipboardCheck className="h-3 w-3" />
-                  {modeLabel}
-                </span>
+              <div className="flex shrink-0 flex-wrap items-center gap-1.5 text-xs text-[var(--text-secondary)]">
                 <span>
                   {qCount} {qCount === 1 ? 'question' : 'questions'}
                 </span>
@@ -194,8 +187,8 @@ export function MaterialList({
             className={`${rowBaseClass} disabled:opacity-60`}
           >
             <ResourceBadge kind={res.kind} />
-            <div className="flex min-w-0 flex-1 flex-col items-start gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between sm:gap-x-2">
-              <span className="min-w-0 w-full truncate text-sm font-medium text-[var(--text-primary)] underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)] sm:w-auto sm:flex-1">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-x-2 gap-y-1">
+              <span className="min-w-[140px] flex-1 truncate text-sm font-medium text-[var(--text-primary)] underline decoration-[var(--border-strong)] underline-offset-2 group-hover:text-[var(--accent-purple)] group-hover:decoration-[var(--accent-purple)]">
                 {res.title}
               </span>
               <div

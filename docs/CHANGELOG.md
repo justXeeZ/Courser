@@ -4,7 +4,17 @@ All notable user-visible changes to **Courser** (formerly College Course Trees) 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions prior to a formal release are grouped chronologically from the project's git history.
 
-## [Unreleased]
+## [1.2.0] - 2026-11-24
+
+### Changed
+- Homepage catalog (`CourseCard`): moved Edit, Delete, and Bookmark controls inside the card's top content row on both mobile and desktop so they no longer eat into the title, stats, or progress bar width.
+- Tree view (`CourseTreeCanvas`): anchored zoom in/out around the centered tree spine while preserving zoom range (`50%–250%`) and smooth transitions.
+- Light mode amber accent (`--accent-amber`): brightened from `#b45309` to `#ca6a04` (while keeping Dark mode unchanged).
+- Material rows (`MaterialList`): removed redundant `Exam`/`Assignment` metadata pills from interactive assessments and switched both interactive and uploaded material rows to a one-line-first layout (wrapping to two lines only when tags would heavily truncate the title; external links unchanged).
+- Syllabus checklist (`ChecklistView`): updated Light-mode chapter header background from `--surface-1` to `--surface-hover` so chapters stand out clearly from both `--surface-canvas` and `--surface-1` sub-lesson rows.
+- Course editor (`CourseEditorPage`): switched Semester radio button accent from `--accent-amber` to `--accent-purple` in both Light and Dark modes.
+
+## [1.1.0]
 
 ### Added
 - Progress backup & restore: added reusable `ProgressBackupDialog` supporting `.json` file upload (in addition to pasting JSON), per-course export/restore (`This Course` vs `All Courses` in `CoursePage`), and an `All Courses` `Backup & Restore Progress` action in the `CatalogPage` footer.
@@ -20,7 +30,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Data formats page: matched the header badge to the Violet-Purple accent and added `scroll-mt-20` to all Table of Contents target sections so jumping to a section clears the sticky `Navbar`.
 - Course editor tree-mode navigation: increased `scroll-mt-*` offsets on `ChapterEditorCard` (`scroll-mt-36`) and `LessonEditorCard` (`scroll-mt-48`) so clicking nodes in Live Tree Preview scrolls cleanly below sticky headers.
 
-## [1.0.0] - 2026-11-24
+## [1.0.0] - DEPLOYED AT GITHUB PAGES
 
 ### Added
 - Pre-release accessibility & keyboard navigation: shared `useDialogFocus` (`Tab` trap, focus restore, topmost `Escape`), `Skip to main content` link, `ArrowUp`/`ArrowDown`/`Enter` navigation in `SearchModal`, `Shift+Enter`/`Shift+Space` (toggle Done) and `M`/`Shift+F10` (quick status menu) on SVG tree nodes, mobile `"Fit"` zoom preset, and `< sm` initial fit-to-width.
