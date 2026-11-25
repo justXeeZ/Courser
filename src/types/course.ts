@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { deriveCoursePrefix } from '@/lib/courseIds';
+import { isValidDmyDate } from '@/lib/dateValidation';
 
 export const LessonStatusSchema = z.enum(['todo', 'learning', 'done', 'skipped']);
 export type LessonStatus = z.infer<typeof LessonStatusSchema>;
@@ -222,6 +223,68 @@ export const LessonResourceSchema = z
   );
 export type LessonResource = z.infer<typeof LessonResourceSchema>;
 
+export const CustomFieldTypeSchema = z.enum(['text', 'link', 'badge', 'date']);
+export type CustomFieldType = z.infer<typeof CustomFieldTypeSchema>;
+
+export const CustomFieldSchema = z
+  .object({
+    label: z.string().trim().min(1),
+    value: z.string().trim().min(1),
+    type: CustomFieldTypeSchema,
+  })
+  .superRefine((field, ctx) => {
+    if (field.type === 'link') {
+      const trimmed = field.value.trim();
+      if (!/^https?:\/\//i.test(trimmed)) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Link custom field value must start with http:// or https://',
+          path: ['value'],
+        });
+        return;
+      }
+      try {
+        new URL(trimmed);
+      } catch {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Link custom field value must be a valid URL',
+          path: ['value'],
+        });
+      }
+    } else if (field.type === 'date' && !isValidDmyDate(field.value)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Date custom field value must be a valid date in DD/MM/YYYY format',
+        path: ['value'],
+      });
+    }
+  });
+export type CustomField = z.infer<typeof CustomFieldSchema>;
+
+export const SupplementSideSchema = z.enum(['left', 'right', 'up', 'down']);
+export type SupplementSide = z.infer<typeof SupplementSideSchema>;
+
+export const SupplementSchema = z.object({
+  id: z.string().min(1),
+  title: z.string().min(1),
+  summary: z.string().min(1),
+  notes: z.string().optional(),
+  weekRange: z.string().optional(),
+  trackable: z.boolean().optional(),
+  side: SupplementSideSchema.optional(),
+  prerequisites: z.array(z.string().min(1)).optional(),
+  resources: z.array(LessonResourceSchema),
+  customFields: z.array(CustomFieldSchema).optional(),
+});
+export type Supplement = z.infer<typeof SupplementSchema>;
+
+export const SpineSupplementSchema = SupplementSchema.extend({
+  afterChapterOrder: z.number().int().min(0),
+  children: z.array(SupplementSchema).optional(),
+});
+export type SpineSupplement = z.infer<typeof SpineSupplementSchema>;
+
 export const SubLessonSchema = z.object({
   id: z.string().min(1),
   title: z.string().min(1),
@@ -230,6 +293,7 @@ export const SubLessonSchema = z.object({
   side: z.enum(['left', 'right']).optional(),
   prerequisites: z.array(z.string().min(1)).optional(),
   resources: z.array(LessonResourceSchema),
+  supplements: z.array(SupplementSchema).optional(),
 });
 export type SubLesson = z.infer<typeof SubLessonSchema>;
 
@@ -243,6 +307,7 @@ export const ChapterSchema = z.object({
   prerequisites: z.array(z.string().min(1)).optional(),
   resources: z.array(LessonResourceSchema).optional(),
   lessons: z.array(SubLessonSchema),
+  supplements: z.array(SupplementSchema).optional(),
 });
 export type Chapter = z.infer<typeof ChapterSchema>;
 
@@ -257,80 +322,120 @@ export const CourseTreeSchema = z
     credits: z.number().int().positive().optional(),
     description: z.string().min(1),
     chapters: z.array(ChapterSchema).min(1),
+    supplements: z.array(SpineSupplementSchema).optional(),
   })
   .superRefine((course, ctx) => {
     const requiredPrefix = `${deriveCoursePrefix(course.code)}-`;
     const itemIds = new Set<string>();
 
-    course.chapters.forEach((chapter, cIdx) => {
-      if (!chapter.id.startsWith(requiredPrefix)) {
+    const registerItemId = (id: string, label: string, path: (string | number)[]) => {
+      if (!id.startsWith(requiredPrefix)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Chapter id "${chapter.id}" must be derived from course prefix "${requiredPrefix}"`,
-          path: ['chapters', cIdx, 'id'],
+          message: `${label} id "${id}" must be derived from course prefix "${requiredPrefix}"`,
+          path,
         });
       }
-      if (itemIds.has(chapter.id)) {
+      if (itemIds.has(id)) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
-          message: `Duplicate item id "${chapter.id}"`,
-          path: ['chapters', cIdx, 'id'],
+          message: `Duplicate item id "${id}"`,
+          path,
         });
       }
-      itemIds.add(chapter.id);
+      itemIds.add(id);
+    };
 
-      chapter.lessons.forEach((lesson, lIdx) => {
-        if (!lesson.id.startsWith(requiredPrefix)) {
+    const validatePrereqs = (
+      selfId: string,
+      label: string,
+      prereqs: string[] | undefined,
+      basePath: (string | number)[]
+    ) => {
+      prereqs?.forEach((prereqId, pIdx) => {
+        if (prereqId === selfId) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
-            message: `Lesson id "${lesson.id}" must be derived from course prefix "${requiredPrefix}"`,
-            path: ['chapters', cIdx, 'lessons', lIdx, 'id'],
-          });
-        }
-        if (itemIds.has(lesson.id)) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Duplicate item id "${lesson.id}"`,
-            path: ['chapters', cIdx, 'lessons', lIdx, 'id'],
-          });
-        }
-        itemIds.add(lesson.id);
-      });
-    });
-
-    course.chapters.forEach((chapter, cIdx) => {
-      chapter.prerequisites?.forEach((prereqId, pIdx) => {
-        if (prereqId === chapter.id) {
-          ctx.addIssue({
-            code: z.ZodIssueCode.custom,
-            message: `Chapter "${chapter.id}" cannot depend on itself`,
-            path: ['chapters', cIdx, 'prerequisites', pIdx],
+            message: `${label} "${selfId}" cannot depend on itself`,
+            path: [...basePath, 'prerequisites', pIdx],
           });
         } else if (!itemIds.has(prereqId)) {
           ctx.addIssue({
             code: z.ZodIssueCode.custom,
             message: `Unknown prerequisite id "${prereqId}"`,
-            path: ['chapters', cIdx, 'prerequisites', pIdx],
+            path: [...basePath, 'prerequisites', pIdx],
           });
         }
       });
+    };
 
+    course.chapters.forEach((chapter, cIdx) => {
+      registerItemId(chapter.id, 'Chapter', ['chapters', cIdx, 'id']);
       chapter.lessons.forEach((lesson, lIdx) => {
-        lesson.prerequisites?.forEach((prereqId, pIdx) => {
-          if (prereqId === lesson.id) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: `Lesson "${lesson.id}" cannot depend on itself`,
-              path: ['chapters', cIdx, 'lessons', lIdx, 'prerequisites', pIdx],
-            });
-          } else if (!itemIds.has(prereqId)) {
-            ctx.addIssue({
-              code: z.ZodIssueCode.custom,
-              message: `Unknown prerequisite id "${prereqId}"`,
-              path: ['chapters', cIdx, 'lessons', lIdx, 'prerequisites', pIdx],
-            });
-          }
+        registerItemId(lesson.id, 'Lesson', ['chapters', cIdx, 'lessons', lIdx, 'id']);
+        lesson.supplements?.forEach((node, nIdx) => {
+          registerItemId(node.id, 'Supplement', [
+            'chapters',
+            cIdx,
+            'lessons',
+            lIdx,
+            'supplements',
+            nIdx,
+            'id',
+          ]);
         });
+      });
+      chapter.supplements?.forEach((node, nIdx) => {
+        registerItemId(node.id, 'Supplement', ['chapters', cIdx, 'supplements', nIdx, 'id']);
+      });
+    });
+
+    course.supplements?.forEach((spineNode, sIdx) => {
+      registerItemId(spineNode.id, 'Supplement', ['supplements', sIdx, 'id']);
+      spineNode.children?.forEach((child, cIdx) => {
+        registerItemId(child.id, 'Supplement', ['supplements', sIdx, 'children', cIdx, 'id']);
+      });
+    });
+
+    course.chapters.forEach((chapter, cIdx) => {
+      validatePrereqs(chapter.id, 'Chapter', chapter.prerequisites, ['chapters', cIdx]);
+      chapter.lessons.forEach((lesson, lIdx) => {
+        validatePrereqs(lesson.id, 'Lesson', lesson.prerequisites, [
+          'chapters',
+          cIdx,
+          'lessons',
+          lIdx,
+        ]);
+        lesson.supplements?.forEach((node, nIdx) => {
+          validatePrereqs(node.id, 'Supplement', node.prerequisites, [
+            'chapters',
+            cIdx,
+            'lessons',
+            lIdx,
+            'supplements',
+            nIdx,
+          ]);
+        });
+      });
+      chapter.supplements?.forEach((node, nIdx) => {
+        validatePrereqs(node.id, 'Supplement', node.prerequisites, [
+          'chapters',
+          cIdx,
+          'supplements',
+          nIdx,
+        ]);
+      });
+    });
+
+    course.supplements?.forEach((spineNode, sIdx) => {
+      validatePrereqs(spineNode.id, 'Supplement', spineNode.prerequisites, ['supplements', sIdx]);
+      spineNode.children?.forEach((child, cIdx) => {
+        validatePrereqs(child.id, 'Supplement', child.prerequisites, [
+          'supplements',
+          sIdx,
+          'children',
+          cIdx,
+        ]);
       });
     });
   });

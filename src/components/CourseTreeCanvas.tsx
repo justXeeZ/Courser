@@ -8,11 +8,11 @@ import {
   type TouchEvent,
 } from 'react';
 import { ZoomIn, ZoomOut, RotateCcw, Maximize2 } from 'lucide-react';
-import { isLeafChapter } from '@/lib/courseItems';
+import { isLeafChapter, isSupplementTrackable } from '@/lib/courseItems';
 import { ROADMAP_COLORS } from '@/lib/theme';
 import { NODE_LINE_HEIGHT, type TreeLayout } from '@/lib/layoutTree';
-import type { Chapter, LessonStatus } from '@/types/course';
-import { computeChapterStats } from '@/store/useProgressStore';
+import type { Chapter, LessonStatus, SpineSupplement } from '@/types/course';
+import { computeChapterStats, computeSpineSupplementStats } from '@/store/useProgressStore';
 
 export type StatusFilter = 'all' | 'todo' | 'learning' | 'done' | 'skipped';
 
@@ -28,11 +28,13 @@ interface CourseTreeCanvasProps {
   statuses: Record<string, LessonStatus>;
   activeLessonId?: string | null;
   activeChapterId?: string | null;
+  activeSupplementId?: string | null;
   statusFilter?: StatusFilter;
   framed?: boolean;
   svgRef?: RefObject<SVGSVGElement | null>;
   onSelectLesson: (lessonId: string) => void;
   onSelectChapter?: (chapter: Chapter) => void;
+  onSelectSupplement?: (nodeId: string) => void;
   onQuickToggleDone: (lessonId: string) => void;
   onContextMenuLesson: (lessonId: string, anchor: NodeAnchorRect) => void;
   onHoverLesson?: (lessonId: string, anchor: NodeAnchorRect) => void;
@@ -116,11 +118,13 @@ export function CourseTreeCanvas({
   statuses,
   activeLessonId,
   activeChapterId,
+  activeSupplementId,
   statusFilter = 'all',
   framed = true,
   svgRef,
   onSelectLesson,
   onSelectChapter,
+  onSelectSupplement,
   onQuickToggleDone,
   onContextMenuLesson,
   onHoverLesson,
@@ -346,6 +350,8 @@ export function CourseTreeCanvas({
     if (lessonMatch) return new Set(lessonMatch.prerequisites ?? []);
     const chapterMatch = layout.chapterNodes.find((n) => n.id === hoveredItemId)?.chapter;
     if (chapterMatch) return new Set(chapterMatch.prerequisites ?? []);
+    const supplementMatch = layout.supplementNodes.find((n) => n.id === hoveredItemId)?.node;
+    if (supplementMatch) return new Set(supplementMatch.prerequisites ?? []);
     return new Set<string>();
   })();
 
@@ -462,7 +468,7 @@ export function CourseTreeCanvas({
       >
         <div
           ref={zoomWrapperRef}
-          className={`mx-auto ${isPinching ? '' : 'transition-[width,max-width,min-width] duration-200 ease-out'}`}
+          className={`mx-auto ${isPinching || isDragging ? '' : 'transition-[width,max-width,min-width,transform] duration-200 ease-out'}`}
           style={{
             width: `${Math.round(zoom * 100)}%`,
             minWidth: `${Math.round(Math.min(layout.width, 640) * zoom)}px`,
@@ -573,7 +579,7 @@ export function CourseTreeCanvas({
                       height={node.height}
                       rx={5}
                       fill="var(--svg-chapter-fill)"
-                      stroke={ROADMAP_COLORS.nodeStroke}
+                      stroke="var(--svg-node-stroke)"
                       strokeWidth={2.7}
                     />
                     <text
@@ -705,7 +711,7 @@ export function CourseTreeCanvas({
                       height={node.height}
                       rx={5}
                       fill="var(--svg-lesson-fill)"
-                      stroke={ROADMAP_COLORS.nodeStroke}
+                      stroke="var(--svg-node-stroke)"
                       strokeWidth={2.7}
                     />
                     <text
@@ -734,6 +740,170 @@ export function CourseTreeCanvas({
                     </text>
 
                     {renderStatusCornerBadge(status, node.x + node.width - 10, node.y - 8)}
+                  </g>
+                );
+              })}
+            </g>
+
+            {/* Supplements (--svg-supplement-fill teal) */}
+            <g>
+              {layout.supplementNodes.map((node) => {
+                const isSpineParent =
+                  node.placement === 'spine' &&
+                  'children' in node.node &&
+                  (node.node.children?.length ?? 0) > 0;
+                const trackable = isSupplementTrackable(node.node);
+                const isLeafTrackable = !isSpineParent && trackable;
+                const status: LessonStatus = isLeafTrackable
+                  ? (statuses[node.id] ?? 'todo')
+                  : 'todo';
+                const statusClass = isLeafTrackable ? getStatusClass(status) : '';
+                const isSelected = activeSupplementId === node.id;
+                const isPrereqHighlighted = hoveredPrereqs.has(node.id);
+                const isDimmed =
+                  isLeafTrackable && statusFilter !== 'all' && status !== statusFilter;
+
+                const spineStats = isSpineParent
+                  ? computeSpineSupplementStats(node.node as SpineSupplement, statuses)
+                  : null;
+                const badgeText = spineStats ? `${spineStats.done}/${spineStats.total}` : '';
+                const badgeWidth = Math.max(38, badgeText.length * 7 + 14);
+                const badgeFill =
+                  spineStats && spineStats.total > 0 && spineStats.done === spineStats.total
+                    ? ROADMAP_COLORS.statusDoneBadgeFill
+                    : ROADMAP_COLORS.nodeStroke;
+
+                return (
+                  <g
+                    key={node.id}
+                    data-node-id={node.id}
+                    data-node-kind="supplement"
+                    data-node-placement={node.placement}
+                    data-status={isLeafTrackable ? status : 'info'}
+                    className={[
+                      statusClass,
+                      isSelected || isPrereqHighlighted ? 'node-highlighted' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    style={{ opacity: isDimmed ? 0.3 : 1 }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={
+                      isLeafTrackable
+                        ? `${node.node.title}, supplement, status ${status}`
+                        : `${node.node.title}, supplement`
+                    }
+                    onClick={(e) => {
+                      if (isLeafTrackable && e.shiftKey) {
+                        e.preventDefault();
+                        onQuickToggleDone(node.id);
+                        return;
+                      }
+                      onSelectSupplement?.(node.id);
+                    }}
+                    onContextMenu={(e) => {
+                      if (!isLeafTrackable) return;
+                      openNodeContextMenu(e, node.id);
+                    }}
+                    onMouseEnter={(e) => {
+                      setHoveredItemId(node.id);
+                      if (isLeafTrackable && !dragStateRef.current.active && onHoverLesson) {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        onHoverLesson(node.id, {
+                          left: rect.left,
+                          top: rect.top,
+                          width: rect.width,
+                          height: rect.height,
+                        });
+                      }
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredItemId((prev) => (prev === node.id ? null : prev));
+                      if (isLeafTrackable) {
+                        onLeaveLesson?.(node.id);
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (isLeafTrackable && e.shiftKey && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        onQuickToggleDone(node.id);
+                      } else if (
+                        isLeafTrackable &&
+                        (e.key === 'm' || e.key === 'M' || (e.shiftKey && e.key === 'F10'))
+                      ) {
+                        openNodeContextMenu(e, node.id);
+                      } else if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        onSelectSupplement?.(node.id);
+                      }
+                    }}
+                  >
+                    <rect
+                      className="node-rect transition-colors duration-100"
+                      x={node.x}
+                      y={node.y}
+                      width={node.width}
+                      height={node.height}
+                      rx={5}
+                      fill="var(--svg-supplement-fill)"
+                      stroke="var(--svg-node-stroke)"
+                      strokeWidth={2.7}
+                      strokeDasharray={trackable ? undefined : '6 3'}
+                    />
+                    <text
+                      className="node-label"
+                      x={node.x + node.width / 2}
+                      y={
+                        node.y +
+                        node.height / 2 +
+                        6 -
+                        ((node.lines.length - 1) * NODE_LINE_HEIGHT) / 2
+                      }
+                      textAnchor="middle"
+                      fill={ROADMAP_COLORS.nodeText}
+                      fontSize={node.placement === 'spine' ? 17 : 16.5}
+                      fontWeight={node.placement === 'spine' ? 700 : 500}
+                    >
+                      {node.lines.map((line, idx) => (
+                        <tspan
+                          key={idx}
+                          x={node.x + node.width / 2}
+                          dy={idx === 0 ? 0 : NODE_LINE_HEIGHT}
+                        >
+                          {line}
+                        </tspan>
+                      ))}
+                    </text>
+
+                    {isLeafTrackable &&
+                      renderStatusCornerBadge(status, node.x + node.width - 10, node.y - 8)}
+
+                    {isSpineParent && spineStats && spineStats.total > 0 && (
+                      <g
+                        transform={`translate(${node.x + node.width - badgeWidth + 8}, ${node.y - 10})`}
+                      >
+                        <rect
+                          width={badgeWidth}
+                          height={20}
+                          rx={10}
+                          fill={badgeFill}
+                          stroke="#ffffff"
+                          strokeWidth={1.5}
+                        />
+                        <text
+                          x={badgeWidth / 2}
+                          y={14}
+                          textAnchor="middle"
+                          fill="#ffffff"
+                          fontSize={11}
+                          fontWeight={700}
+                          fontFamily="ui-sans-serif, system-ui, sans-serif"
+                        >
+                          {badgeText}
+                        </text>
+                      </g>
+                    )}
                   </g>
                 );
               })}

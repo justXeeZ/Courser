@@ -9,11 +9,14 @@ import {
   GitBranch,
   Layers,
   Link2,
+  Sparkles,
 } from 'lucide-react';
 import {
   findCourseItem,
   getTrackableItems,
   isLeafChapter,
+  isSupplementTrackable,
+  type CourseItem,
 } from '@/lib/courseItems';
 import { formatChapterPositionTag } from '@/lib/courseIds';
 import { computeChapterStats } from '@/store/useProgressStore';
@@ -65,6 +68,13 @@ export function ChapterDrawer({
     }
   }, [hasNotes, activeTab]);
 
+  const getItemTitle = (item: CourseItem) =>
+    item.kind === 'lesson'
+      ? item.lesson.title
+      : item.kind === 'chapter'
+        ? item.chapter.title
+        : item.node.title;
+
   const { prevTarget, nextTarget } = useMemo(() => {
     if (isLeaf) {
       const trackable = getTrackableItems(course);
@@ -75,13 +85,13 @@ export function ChapterDrawer({
         prevTarget: prev
           ? {
               id: prev.id,
-              label: prev.kind === 'lesson' ? prev.lesson.title : prev.chapter.title,
+              label: getItemTitle(prev),
             }
           : undefined,
         nextTarget: next
           ? {
               id: next.id,
-              label: next.kind === 'lesson' ? next.lesson.title : next.chapter.title,
+              label: getItemTitle(next),
             }
           : undefined,
       };
@@ -308,15 +318,23 @@ export function ChapterDrawer({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {prereqItems.map((item) => {
-              const title = item.kind === 'chapter' ? item.chapter.title : item.lesson.title;
+              const title = getItemTitle(item);
               const isLeafChapterItem =
                 item.kind === 'chapter' && isLeafChapter(item.chapter);
+              const isTrackableSupplement =
+                item.kind === 'supplement' &&
+                isSupplementTrackable(item.node) &&
+                !(
+                  item.placement === 'spine' &&
+                  'children' in item.node &&
+                  (item.node.children?.length ?? 0) > 0
+                );
               const chapterStats =
                 item.kind === 'chapter' && !isLeafChapterItem
                   ? computeChapterStats(item.chapter, statuses)
                   : null;
               const isSkipped =
-                item.kind === 'lesson' || isLeafChapterItem
+                item.kind === 'lesson' || isLeafChapterItem || isTrackableSupplement
                   ? statuses[item.id] === 'skipped'
                   : Boolean(
                       chapterStats &&
@@ -324,7 +342,7 @@ export function ChapterDrawer({
                         chapterStats.skipped === chapterStats.total
                     );
               const isDone =
-                item.kind === 'lesson' || isLeafChapterItem
+                item.kind === 'lesson' || isLeafChapterItem || isTrackableSupplement
                   ? statuses[item.id] === 'done'
                   : Boolean(
                       chapterStats &&
@@ -393,8 +411,8 @@ export function ChapterDrawer({
       )}
 
       {/* Sub-lessons List (for chapters with sub-lessons) */}
-      {!isLeaf && (
-        <div>
+      {chapter.lessons.length > 0 && (
+        <div className={(chapter.supplements?.length ?? 0) > 0 ? 'mb-6' : ''}>
           <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-[var(--text-muted)] uppercase">
             <Layers className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" />
             Sub-Lessons ({chapter.lessons.length})
@@ -446,6 +464,73 @@ export function ChapterDrawer({
                       </div>
                     </div>
                     <ChevronRight className="h-4 w-4 shrink-0 text-gray-400 dark:text-slate-500" />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Child Supplements List */}
+      {(chapter.supplements?.length ?? 0) > 0 && (
+        <div>
+          <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-[var(--text-muted)] uppercase">
+            <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--accent-teal)]" />
+            Child Supplements ({chapter.supplements!.length})
+          </h3>
+          <ul className="divide-y divide-[var(--border-subtle)] overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+            {chapter.supplements!.map((cn) => {
+              const trackable = isSupplementTrackable(cn);
+              const cnStatus = trackable ? (statuses[cn.id] ?? 'todo') : 'todo';
+              return (
+                <li
+                  key={cn.id}
+                  className="flex items-center gap-2 px-3 py-2.5 transition-colors hover:bg-[var(--surface-hover)]"
+                >
+                  {trackable ? (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onToggleLessonDone?.(cn.id);
+                      }}
+                      aria-label={`Toggle done for ${cn.title}`}
+                      className="shrink-0 rounded p-0.5 text-[var(--text-muted)] transition-colors hover:text-[var(--accent-done)]"
+                    >
+                      {cnStatus === 'done' ? (
+                        <CheckCircle2 className="h-4 w-4 text-[var(--accent-done)]" />
+                      ) : cnStatus === 'learning' ? (
+                        <BookOpen className="h-4 w-4 text-[var(--status-learning-icon)]" />
+                      ) : cnStatus === 'skipped' ? (
+                        <Ban className="h-4 w-4 text-[var(--status-skipped-text)]" />
+                      ) : (
+                        <Circle className="h-4 w-4" />
+                      )}
+                    </button>
+                  ) : (
+                    <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent-teal)]" />
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => onSelectItem(cn.id)}
+                    className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div
+                        className={`text-sm font-medium ${
+                          trackable && (cnStatus === 'done' || cnStatus === 'skipped')
+                            ? 'text-[var(--text-muted)] line-through'
+                            : 'text-[var(--text-primary)]'
+                        }`}
+                      >
+                        {cn.title}
+                      </div>
+                      <div className="truncate text-xs text-[var(--text-muted)]">
+                        {cn.summary}
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
                   </button>
                 </li>
               );

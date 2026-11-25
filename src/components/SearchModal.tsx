@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Search, X, BookOpen, GitFork, Layers } from 'lucide-react';
+import { Search, Sparkles, X, BookOpen, GitFork, Layers } from 'lucide-react';
 import { useCourses } from '@/store/useCourseStore';
 import { useNavigationGuard } from '@/context/NavigationGuardContext';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
@@ -12,7 +12,7 @@ interface SearchModalProps {
 
 interface SearchHit {
   key: string;
-  kind: 'course' | 'chapter' | 'lesson';
+  kind: 'course' | 'chapter' | 'lesson' | 'supplement';
   title: string;
   subtitle: string;
   to: string;
@@ -46,6 +46,7 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
     const courseHits: SearchHit[] = [];
     const chapterHits: SearchHit[] = [];
     const lessonHits: SearchHit[] = [];
+    const supplementHits: SearchHit[] = [];
 
     for (const course of courses) {
       const termLabel = formatCourseTerm(course);
@@ -105,12 +106,83 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                 to: `/course/${course.slug}?lesson=${lesson.id}`,
               });
             }
+
+            for (const cn of lesson.supplements ?? []) {
+              if (
+                cn.title.toLowerCase().includes(q) ||
+                cn.summary.toLowerCase().includes(q) ||
+                (cn.notes?.toLowerCase().includes(q) ?? false) ||
+                lesson.title.toLowerCase().includes(q) ||
+                chapter.title.toLowerCase().includes(q) ||
+                course.department.toLowerCase().includes(q)
+              ) {
+                supplementHits.push({
+                  key: `supplement-${course.slug}-${cn.id}`,
+                  kind: 'supplement',
+                  title: cn.title,
+                  subtitle: `${course.code} · ${chapter.title} › ${lesson.title}`,
+                  to: `/course/${course.slug}?supplement=${cn.id}`,
+                });
+              }
+            }
+          }
+
+          for (const cn of chapter.supplements ?? []) {
+            if (
+              cn.title.toLowerCase().includes(q) ||
+              cn.summary.toLowerCase().includes(q) ||
+              (cn.notes?.toLowerCase().includes(q) ?? false) ||
+              chapter.title.toLowerCase().includes(q) ||
+              course.department.toLowerCase().includes(q)
+            ) {
+              supplementHits.push({
+                key: `supplement-${course.slug}-${cn.id}`,
+                kind: 'supplement',
+                title: cn.title,
+                subtitle: `${course.code} · ${chapter.title}`,
+                to: `/course/${course.slug}?supplement=${cn.id}`,
+              });
+            }
+          }
+        }
+
+        for (const scn of course.supplements ?? []) {
+          if (
+            scn.title.toLowerCase().includes(q) ||
+            scn.summary.toLowerCase().includes(q) ||
+            (scn.notes?.toLowerCase().includes(q) ?? false) ||
+            course.department.toLowerCase().includes(q)
+          ) {
+            supplementHits.push({
+              key: `supplement-${course.slug}-${scn.id}`,
+              kind: 'supplement',
+              title: scn.title,
+              subtitle: `${course.code} · Supplement`,
+              to: `/course/${course.slug}?supplement=${scn.id}`,
+            });
+          }
+          for (const child of scn.children ?? []) {
+            if (
+              child.title.toLowerCase().includes(q) ||
+              child.summary.toLowerCase().includes(q) ||
+              (child.notes?.toLowerCase().includes(q) ?? false) ||
+              scn.title.toLowerCase().includes(q) ||
+              course.department.toLowerCase().includes(q)
+            ) {
+              supplementHits.push({
+                key: `supplement-${course.slug}-${child.id}`,
+                kind: 'supplement',
+                title: child.title,
+                subtitle: `${course.code} · ${scn.title}`,
+                to: `/course/${course.slug}?supplement=${child.id}`,
+              });
+            }
           }
         }
       }
     }
 
-    return [...courseHits, ...chapterHits, ...lessonHits].slice(0, 18);
+    return [...courseHits, ...chapterHits, ...lessonHits, ...supplementHits].slice(0, 18);
   }, [query, courses]);
 
   useEffect(() => {
@@ -216,6 +288,8 @@ export function SearchModal({ open, onClose }: SearchModalProps) {
                         <GitFork className="h-4 w-4 shrink-0 text-[var(--accent-purple)]" />
                       ) : hit.kind === 'chapter' ? (
                         <Layers className="h-4 w-4 shrink-0 text-[var(--accent-amber)]" />
+                      ) : hit.kind === 'supplement' ? (
+                        <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent-teal)]" />
                       ) : (
                         <BookOpen className="h-4 w-4 shrink-0 text-[var(--accent-peach)]" />
                       )}

@@ -141,4 +141,82 @@ describe('courseIds derivation helpers', () => {
     expect(rekeyCourseContentIds(draft)).toEqual(rekeyed);
     expect(() => parseCourseTree(rekeyed)).not.toThrow();
   });
+
+  it('rekeys spine, spine-child, chapter, and lesson supplements and remaps prerequisites', () => {
+    const draft: CourseTree = {
+      slug: 'cs301-systems',
+      code: 'CS301',
+      title: 'Systems',
+      department: 'Computer Science',
+      description: 'Systems course.',
+      chapters: [
+        {
+          id: 'c1',
+          order: 1,
+          title: '1. Memory',
+          description: 'Memory chapter',
+          lessons: [
+            {
+              id: 'l1',
+              title: 'Paging',
+              summary: 'Paging summary',
+              resources: [],
+              supplements: [
+                {
+                  id: 'old-ln1',
+                  title: 'Page Table Ref',
+                  summary: 'Ref summary',
+                  prerequisites: ['old-chn1'],
+                  resources: [],
+                },
+              ],
+            },
+          ],
+          supplements: [
+            {
+              id: 'old-chn1',
+              title: 'Lab Guidelines',
+              summary: 'Guidelines',
+              resources: [],
+            },
+          ],
+        },
+      ],
+      supplements: [
+        {
+          id: 'old-sn1',
+          title: 'Midterm Review',
+          summary: 'Spine summary',
+          afterChapterOrder: 1,
+          prerequisites: ['c1'],
+          resources: [],
+          children: [
+            {
+              id: 'old-scn1',
+              title: 'Practice Set',
+              summary: 'Child summary',
+              prerequisites: ['old-sn1'],
+              resources: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const { course: rekeyed, idMap } = rekeyCourseContentIdsWithMap(draft);
+    expect(rekeyed.chapters[0].supplements?.[0].id).toBe('cs301-ch1-s1-lab-guidelines');
+    expect(rekeyed.chapters[0].lessons[0].supplements?.[0].id).toBe(
+      'cs301-ch1-l1-s1-page-table-ref'
+    );
+    expect(rekeyed.chapters[0].lessons[0].supplements?.[0].prerequisites).toEqual([
+      'cs301-ch1-s1-lab-guidelines',
+    ]);
+    expect(rekeyed.supplements?.[0].id).toBe('cs301-s1-midterm-review');
+    expect(rekeyed.supplements?.[0].children?.[0].id).toBe('cs301-s1-s1-practice-set');
+    expect(rekeyed.supplements?.[0].children?.[0].prerequisites).toEqual([
+      'cs301-s1-midterm-review',
+    ]);
+    expect(idMap.get('old-sn1')).toBe('cs301-s1-midterm-review');
+    expect(() => parseCourseTree(rekeyed)).not.toThrow();
+  });
 });

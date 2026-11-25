@@ -59,7 +59,7 @@ describe('CoursePage integration', () => {
 
     const drawer = screen.getByRole('dialog', { name: 'Course Overview & Tree Structure' });
     expect(drawer).toBeInTheDocument();
-    expect(screen.getByText('0 of 12 Required Items Done')).toBeInTheDocument();
+    expect(screen.getByText('0 of 14 Required Items Done')).toBeInTheDocument();
 
     // Recommended video is pinned at top and opens MaterialViewerModal
     fireEvent.click(within(drawer).getByRole('button', { name: /Course Intro Walkthrough Video/i }));
@@ -77,7 +77,7 @@ describe('CoursePage integration', () => {
     ).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: 'd' });
-    expect(screen.getByText('0 of 12 Required Items Done')).toBeInTheDocument();
+    expect(screen.getByText('0 of 14 Required Items Done')).toBeInTheDocument();
 
     // Pressing Escape closes MaterialViewerModal ONLY — LessonDrawer stays open!
     fireEvent.keyDown(window, { key: 'Escape' });
@@ -277,5 +277,20 @@ describe('CoursePage integration', () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it('opens SupplementDrawer via ?supplement= with typed custom fields, prerequisites, and materials/notes tabs', () => {
+    renderCoursePage('/course/demo201-feature-showcase?supplement=demo201-s1-midterm-checkpoint');
+
+    const dialog = screen.getByRole('dialog', { name: 'Midterm Checkpoint' });
+    expect(within(dialog).getByRole('heading', { name: 'Midterm Checkpoint' })).toBeInTheDocument();
+    expect(within(dialog).getByTestId('supplement-position-tag')).toHaveTextContent('S1');
+    expect(within(dialog).getByText('30/11/2026')).toBeInTheDocument();
+    expect(within(dialog).getByText('25% of Grade')).toBeInTheDocument();
+    expect(within(dialog).getByText('Hall B-204')).toBeInTheDocument();
+    expect(within(dialog).getByRole('link', { name: /ocw\.mit\.edu/i })).toBeInTheDocument();
+
+    fireEvent.click(within(dialog).getByRole('tab', { name: 'Notes' }));
+    expect(within(dialog).getByText(/Click this Teal spine supplement/i)).toBeInTheDocument();
   });
 });

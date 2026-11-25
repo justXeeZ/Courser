@@ -1,12 +1,20 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronUp } from 'lucide-react';
-import { formatChapterPositionTag, formatLessonPositionTag } from '@/lib/courseIds';
-import type { Chapter } from '@/types/course';
+import {
+  formatChapterPositionTag,
+  formatChapterSupplementTag,
+  formatLessonPositionTag,
+  formatLessonSupplementTag,
+  formatSpineChildSupplementTag,
+  formatSpineSupplementTag,
+} from '@/lib/courseIds';
+import type { Chapter, SpineSupplement } from '@/types/course';
 
 interface PrerequisitePickerProps {
   chapters: Chapter[];
+  spineSupplements?: SpineSupplement[];
   currentId: string;
-  currentKind: 'chapter' | 'lesson';
+  currentKind: 'chapter' | 'lesson' | 'supplement';
   parentChapterId?: string;
   selectedIds: string[];
   onToggle: (prereqId: string) => void;
@@ -14,7 +22,7 @@ interface PrerequisitePickerProps {
 
 interface PrerequisiteOption {
   id: string;
-  kind: 'chapter' | 'lesson';
+  kind: 'chapter' | 'lesson' | 'supplement';
   tag: string;
   title: string;
 }
@@ -27,6 +35,7 @@ interface PrerequisiteGroup {
 
 export function PrerequisitePicker({
   chapters,
+  spineSupplements = [],
   currentId,
   currentKind,
   parentChapterId,
@@ -72,6 +81,26 @@ export function PrerequisitePicker({
           tag: formatLessonPositionTag(chapter.order, lIdx + 1),
           title: lesson.title || 'Untitled Lesson',
         });
+        for (let cnIdx = 0; cnIdx < (lesson.supplements ?? []).length; cnIdx++) {
+          const cn = lesson.supplements![cnIdx];
+          if (cn.id === currentId) continue;
+          options.push({
+            id: cn.id,
+            kind: 'supplement',
+            tag: formatLessonSupplementTag(chapter.order, lIdx + 1, cnIdx + 1),
+            title: cn.title || 'Untitled Supplement',
+          });
+        }
+      }
+      for (let cnIdx = 0; cnIdx < (chapter.supplements ?? []).length; cnIdx++) {
+        const cn = chapter.supplements![cnIdx];
+        if (cn.id === currentId) continue;
+        options.push({
+          id: cn.id,
+          kind: 'supplement',
+          tag: formatChapterSupplementTag(chapter.order, cnIdx + 1),
+          title: cn.title || 'Untitled Supplement',
+        });
       }
     }
 
@@ -83,6 +112,35 @@ export function PrerequisitePicker({
       });
     }
   }
+
+  spineSupplements.forEach((scn, sIdx) => {
+    const options: PrerequisiteOption[] = [];
+    const sTag = formatSpineSupplementTag(sIdx + 1);
+    if (scn.id !== currentId) {
+      options.push({
+        id: scn.id,
+        kind: 'supplement',
+        tag: sTag,
+        title: scn.title || 'Untitled Supplement',
+      });
+    }
+    (scn.children ?? []).forEach((child, cIdx) => {
+      if (child.id === currentId) return;
+      options.push({
+        id: child.id,
+        kind: 'supplement',
+        tag: formatSpineChildSupplementTag(sIdx + 1, cIdx + 1),
+        title: child.title || 'Untitled Supplement',
+      });
+    });
+    if (options.length > 0) {
+      groups.push({
+        chapterId: scn.id,
+        groupTitle: `${sTag}: ${scn.title || 'Untitled Supplement'}`,
+        options,
+      });
+    }
+  });
 
   if (groups.length === 0) {
     return (
@@ -130,16 +188,23 @@ export function PrerequisitePicker({
                 {group.options.map((opt) => {
                   const active = selectedIds.includes(opt.id);
                   const isChapter = opt.kind === 'chapter';
+                  const isSupplement = opt.kind === 'supplement';
                   const buttonStateClass = isChapter
                     ? active
                       ? 'border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] font-semibold text-[var(--tag-amber-text)] ring-1 ring-[var(--accent-amber)]'
                       : 'border-[var(--border-strong)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:border-[var(--accent-amber)]'
-                    : active
-                      ? 'border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] font-semibold text-[var(--tag-peach-text)] ring-1 ring-[var(--accent-peach)]'
-                      : 'border-[var(--border-strong)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:border-[var(--accent-peach)]';
+                    : isSupplement
+                      ? active
+                        ? 'border-[var(--tag-teal-border)] bg-[var(--tag-teal-bg)] font-semibold text-[var(--tag-teal-text)] ring-1 ring-[var(--accent-teal)]'
+                        : 'border-[var(--border-strong)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:border-[var(--accent-teal)]'
+                      : active
+                        ? 'border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] font-semibold text-[var(--tag-peach-text)] ring-1 ring-[var(--accent-peach)]'
+                        : 'border-[var(--border-strong)] bg-[var(--surface-1)] text-[var(--text-secondary)] hover:border-[var(--accent-peach)]';
                   const tagClass = isChapter
                     ? 'border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] text-[var(--tag-amber-text)]'
-                    : 'border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] text-[var(--tag-peach-text)]';
+                    : isSupplement
+                      ? 'border-[var(--tag-teal-border)] bg-[var(--tag-teal-bg)] text-[var(--tag-teal-text)]'
+                      : 'border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] text-[var(--tag-peach-text)]';
 
                   return (
                     <button

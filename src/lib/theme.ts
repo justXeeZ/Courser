@@ -3,6 +3,8 @@ export const ROADMAP_COLORS = {
   chapterHover: '#fcd34d',
   lessonFill: '#fad2c6',
   lessonHover: '#f5b5a2',
+  supplementFill: '#ccfbf1',
+  supplementHover: '#99f6e4',
   nodeStroke: '#000000',
   nodeText: '#000000',
   edgeBlue: '#7c3aed',

@@ -104,28 +104,45 @@ Do not include "attachments".
 - "credits" (optional, positive integer): credit hours.
 - "description" (required, non-empty string): concise course overview.
 - "chapters" (required, non-empty array of Chapter objects).
+- "supplements" (optional, SpineSupplement[]): spine-level Supplements placed before, between, or after chapters.
 
 3. Chapter fields:
-- "id" (required, string): unique across ALL chapters and lessons, prefixed with "<prefix>-" where <prefix> is the lowercase alphanumeric characters of "code" (canonical: "<prefix>-ch<order>-<slugified-title>").
+- "id" (required, string): unique across ALL chapters, lessons, and supplements, prefixed with "<prefix>-" where <prefix> is the lowercase alphanumeric characters of "code" (canonical: "<prefix>-ch<order>-<slugified-title>").
 - "order" (required, positive integer): sequential 1, 2, 3, ...
 - "title" (required, non-empty string): e.g. "1. Limits & Continuity".
 - "weekRange" (optional, string): e.g. "Week 1" or "Week 1-3".
 - "description" (required, non-empty string): chapter summary.
 - "notes" (optional, string): study tips or context.
-- "prerequisites" (optional, string[]): array of chapter or lesson IDs present in this same course (no self-references).
+- "prerequisites" (optional, string[]): array of chapter, lesson, or supplement IDs present in this same course (no self-references).
 - "resources" (optional, LessonResource[]): chapter-level study materials.
 - "lessons" (required, SubLesson[]): array of lessons, OR an empty array [] for a single-unit milestone chapter tracked directly without sub-lessons.
+- "supplements" (optional, Supplement[]): child supplements attached to this chapter (canonical ID: "<prefix>-ch<order>-s<n>-<slug>").
 
 4. SubLesson fields:
-- "id" (required, string): unique across ALL chapters and lessons, prefixed with "<prefix>-" (canonical: "<prefix>-ch<chapterOrder>-l<lessonOrder>-<slugified-title>").
+- "id" (required, string): unique across ALL chapters, lessons, and supplements, prefixed with "<prefix>-" (canonical: "<prefix>-ch<chapterOrder>-l<lessonOrder>-<slugified-title>").
 - "title" (required, non-empty string).
 - "summary" (required, non-empty string).
 - "notes" (optional, string).
 - "side" (optional, "left" | "right"): omit to auto-balance or specify layout side.
-- "prerequisites" (optional, string[]): chapter or lesson IDs present in this same course (no self-references).
+- "prerequisites" (optional, string[]): chapter, lesson, or supplement IDs present in this same course (no self-references).
 - "resources" (required, LessonResource[]): may be [] or a list of materials.
+- "supplements" (optional, Supplement[]): child supplements attached to this lesson (canonical ID: "<prefix>-ch<chapterOrder>-l<lessonOrder>-s<n>-<slug>").
 
-5. LessonResource fields (3-way XOR payload):
+5. Supplement & SpineSupplement fields (optional supplements):
+- "id" (required, string): unique in the same "<prefix>-" namespace:
+  - Spine supplement: "<prefix>-s<order>-<slug>"
+  - Spine child supplement: "<prefix>-s<parentOrder>-s<childOrder>-<slug>"
+  - Chapter child supplement: "<prefix>-ch<chapterOrder>-s<nodeOrder>-<slug>"
+  - Lesson child supplement: "<prefix>-ch<chapterOrder>-l<lessonOrder>-s<nodeOrder>-<slug>"
+- "title" (required, non-empty string) & "summary" (required, non-empty string).
+- "notes" (optional, string) & "weekRange" (optional, string).
+- "trackable" (optional, boolean): defaults to true; set false for informational-only supplements excluded from progress %.
+- "side" (optional): "left" | "right" (for chapter/spine-child), or "left" | "right" | "up" | "down" (for lesson child supplements).
+- "customFields" (optional): [{ "label": "...", "value": "...", "type": "text" | "link" | "badge" | "date" }] (date values must be DD/MM/YYYY).
+- "prerequisites" (optional, string[]) & "resources" (required, LessonResource[], may be []).
+- SpineSupplement only: "afterChapterOrder" (required, integer >= 0; 0 = before Chapter 1, N = after Chapter N) and optional "children" (Supplement[]).
+
+6. LessonResource fields (3-way XOR payload):
 - "title" (required, non-empty string).
 - "kind" (required): EXACTLY one of ${RESOURCE_KINDS.map((k) => `"${k}"`).join(' | ')}.
 - "recommended" (optional, boolean): true to pin to the top of the materials list.
@@ -577,6 +594,12 @@ export function DataFormatsPage() {
                     required: 'Required',
                     details: 'At least 1 chapter.',
                   },
+                  {
+                    field: 'supplements',
+                    type: 'SpineSupplement[]',
+                    required: 'Optional',
+                    details: 'Spine-level Supplements placed before, between, or after chapters.',
+                  },
                 ]}
               />
 
@@ -640,6 +663,12 @@ export function DataFormatsPage() {
                     details:
                       'Sub-lessons belonging to this chapter. Set lessons: [] to create a single-unit milestone chapter.',
                   },
+                  {
+                    field: 'supplements',
+                    type: 'Supplement[]',
+                    required: 'Optional',
+                    details: 'Child supplements branching off this chapter.',
+                  },
                 ]}
               />
 
@@ -689,6 +718,67 @@ export function DataFormatsPage() {
                     type: 'LessonResource[]',
                     required: 'Required',
                     details: 'Array of materials (may be [] if none).',
+                  },
+                  {
+                    field: 'supplements',
+                    type: 'Supplement[]',
+                    required: 'Optional',
+                    details: 'Child supplements branching off this sub-lesson.',
+                  },
+                ]}
+              />
+
+              <SchemaTable
+                title="Supplement & SpineSupplement"
+                rows={[
+                  {
+                    field: 'id',
+                    type: 'string',
+                    required: 'Required',
+                    details:
+                      'Unique ID in "<prefix>-": "<prefix>-s<order>-<slug>" (spine), "<prefix>-s<p>-s<c>-<slug>" (spine child), "<prefix>-ch<c>-s<n>-<slug>" (chapter), or "<prefix>-ch<c>-l<l>-s<n>-<slug>" (lesson).',
+                  },
+                  {
+                    field: 'title',
+                    type: 'string',
+                    required: 'Required',
+                    details: 'Non-empty supplement title.',
+                  },
+                  {
+                    field: 'summary',
+                    type: 'string',
+                    required: 'Required',
+                    details: 'Non-empty summary shown in the Supplement drawer (?supplement=<id>).',
+                  },
+                  {
+                    field: 'trackable',
+                    type: 'boolean',
+                    required: 'Optional',
+                    details: 'Defaults to true. Set false for informational-only supplements excluded from progress %.',
+                  },
+                  {
+                    field: 'side',
+                    type: '"left" | "right" | "up" | "down"',
+                    required: 'Optional',
+                    details: 'Branch side (up/down supported on lesson child supplements).',
+                  },
+                  {
+                    field: 'customFields',
+                    type: 'CustomField[]',
+                    required: 'Optional',
+                    details: 'Typed metadata fields: { label, value, type: "text" | "link" | "badge" | "date" } (DD/MM/YYYY for dates).',
+                  },
+                  {
+                    field: 'afterChapterOrder',
+                    type: 'number (int >= 0)',
+                    required: 'Required (SpineSupplement)',
+                    details: '0 places before Chapter 1; N places after Chapter N.',
+                  },
+                  {
+                    field: 'children',
+                    type: 'Supplement[]',
+                    required: 'Optional (SpineSupplement)',
+                    details: 'Child supplements branching off a spine Supplement.',
                   },
                 ]}
               />

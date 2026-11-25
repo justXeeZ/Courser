@@ -713,4 +713,57 @@ describe('courseExchange', () => {
       expect(readingResult.error).toContain('kind');
     }
   });
+
+  it('round-trips supplements, typed custom fields, trackable: false, and supplement file attachments under v1 envelope', async () => {
+    const base = makeCourseWithFiles();
+    const courseWithSupplements: CourseTree = {
+      ...base,
+      supplements: [
+        {
+          id: 'cs101-s1-midterm',
+          title: 'Midterm Checkpoint',
+          summary: 'Spine supplement',
+          afterChapterOrder: 1,
+          trackable: false,
+          customFields: [
+            { label: 'Weight', value: '30%', type: 'badge' },
+            { label: 'Date', value: '01/12/2026', type: 'date' },
+          ],
+          resources: [
+            {
+              title: 'Practice Sheet',
+              kind: 'document',
+              file: {
+                id: 'cs101-file-deadbeef',
+                name: 'practice.pdf',
+                mimeType: 'application/pdf',
+                sizeBytes: 12,
+              },
+            },
+          ],
+          children: [
+            {
+              id: 'cs101-s1-s1-prep',
+              title: 'Prep Checklist',
+              summary: 'Child supplement',
+              resources: [],
+            },
+          ],
+        },
+      ],
+    };
+
+    const jsonText = await buildCourseExport(courseWithSupplements, { includeFiles: true });
+    expect(JSON.parse(jsonText).version).toBe(1);
+    const parsed = await parseCourseImport(jsonText, []);
+    expect(parsed.ok).toBe(true);
+    if (!parsed.ok) return;
+    expect(parsed.course.supplements).toHaveLength(1);
+    expect(parsed.course.supplements?.[0].trackable).toBe(false);
+    expect(parsed.course.supplements?.[0].customFields).toEqual([
+      { label: 'Weight', value: '30%', type: 'badge' },
+      { label: 'Date', value: '01/12/2026', type: 'date' },
+    ]);
+    expect(parsed.course.supplements?.[0].children?.[0].id).toBe('cs101-s1-s1-prep-checklist');
+  });
 });

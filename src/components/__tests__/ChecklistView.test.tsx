@@ -9,7 +9,7 @@ describe('ChecklistView', () => {
   it('shows 0/3 chapter fraction after skipping 1 of 4 lessons and styles skip icons/badges in slate gray', () => {
     const skippedLesson = demoCourse.chapters[0].lessons[0];
 
-    const { container } = render(
+    render(
       <ChecklistView
         course={demoCourse}
         statuses={{ [skippedLesson.id]: 'skipped' }}
@@ -26,9 +26,7 @@ describe('ChecklistView', () => {
     expect(skippedBadges.length).toBeGreaterThanOrEqual(1);
     expect(skippedBadges[0].className).toContain('bg-[var(--status-skipped-bg)]');
     expect(skippedBadges[0].className).toContain('text-[var(--status-skipped-text)]');
-
-    // Ensure no teal classes remain anywhere in checklist view
-    expect(container.innerHTML).not.toContain('teal');
+    expect(skippedBadges[0].className).not.toContain('teal');
 
     // Chapter tags container stacks vertically on mobile and lays out horizontally on sm+
     const chapterTagGroups = screen.getAllByTestId('checklist-chapter-tags');
@@ -79,13 +77,13 @@ describe('ChecklistView', () => {
       />
     );
 
-    expect(screen.getAllByText('1 material').length).toBeGreaterThanOrEqual(1);
-    expect(screen.queryByText('1 materials')).not.toBeInTheDocument();
+    expect(screen.getAllByText('1 Material').length).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText('1 Materials')).not.toBeInTheDocument();
     expect(container.innerHTML).not.toContain('bg-[#fdff00]');
 
     const ch3TitleBtn = screen.getByRole('button', { name: demoCourse.chapters[2].title });
     const headerBar = ch3TitleBtn.closest('div[class*="border-l-[var(--accent-amber)]"]') as HTMLElement;
-    expect(headerBar).toHaveClass('bg-[var(--surface-hover)]', 'dark:bg-[var(--surface-2)]', 'border-l-4', 'border-l-[var(--accent-amber)]');
+    expect(headerBar).toHaveClass('bg-[var(--surface-chapter-header)]', 'border-l-4', 'border-l-[var(--accent-amber)]');
     expect(headerBar.nextElementSibling).toBeNull();
   });
 
@@ -106,5 +104,32 @@ describe('ChecklistView', () => {
     expect(dimmedCards.length).toBeGreaterThanOrEqual(1);
     expect(dimmedCards[0]).toHaveClass('opacity-40');
     expect(screen.queryByText(/No items match the current filter/i)).not.toBeInTheDocument();
+  });
+
+  it('renders spine, chapter, and lesson supplements without Supplement pill, with accent-colored n Materials tags and Info pill for trackable: false', () => {
+    const onSelectSupplement = vi.fn();
+    const onToggleDone = vi.fn();
+    render(
+      <ChecklistView
+        course={demoCourse}
+        statuses={{}}
+        statusFilter="all"
+        onSelectLesson={vi.fn()}
+        onSelectChapter={vi.fn()}
+        onSelectSupplement={onSelectSupplement}
+        onToggleDone={onToggleDone}
+      />
+    );
+
+    expect(screen.queryByText('Supplement')).not.toBeInTheDocument();
+    expect(screen.queryByText('Custom Node')).not.toBeInTheDocument();
+    expect(screen.getAllByText(/1 Material$/).length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('Info')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Midterm Checkpoint' }));
+    expect(onSelectSupplement).toHaveBeenCalledWith('demo201-s1-midterm-checkpoint');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Toggle done for Office Hours Prep' }));
+    expect(onToggleDone).toHaveBeenCalledWith('demo201-s1-s1-office-hours-prep');
   });
 });

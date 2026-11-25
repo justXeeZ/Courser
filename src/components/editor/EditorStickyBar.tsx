@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react';
-import { AlertCircle, ChevronsUp, Plus, Save, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { AlertCircle, ChevronDown, ChevronsUp, Layers, Plus, Save, Sparkles, X } from 'lucide-react';
 import { formatChapterPositionTag, formatLessonPositionTag } from '@/lib/courseIds';
 
 export interface FocusedChapterContext {
@@ -21,6 +21,7 @@ interface EditorStickyBarProps {
   onDismissError?: () => void;
   onHeightChange?: (heightPx: number) => void;
   onAddChapter: () => void;
+  onAddSpineSupplement?: () => void;
   onCollapseAll: () => void;
   onSave: () => void;
 }
@@ -34,11 +35,14 @@ export function EditorStickyBar({
   onDismissError,
   onHeightChange,
   onAddChapter,
+  onAddSpineSupplement,
   onCollapseAll,
   onSave,
 }: EditorStickyBarProps) {
   const displayCode = courseCode.trim() || 'COURSE';
   const barRef = useRef<HTMLDivElement | null>(null);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
 
   useEffect(() => {
     const el = barRef.current;
@@ -58,16 +62,36 @@ export function EditorStickyBar({
     }
   }, [errorMsg, focusedChapter, focusedLesson, onHeightChange]);
 
+  useEffect(() => {
+    if (!addMenuOpen) return;
+    const handlePointerDown = (e: MouseEvent) => {
+      if (addMenuRef.current && !addMenuRef.current.contains(e.target as Node)) {
+        setAddMenuOpen(false);
+      }
+    };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setAddMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handlePointerDown);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [addMenuOpen]);
+
   return (
     <div
       ref={barRef}
       data-testid="editor-sticky-bar"
       className="sticky top-16 z-30 min-h-14 border-b border-[var(--border-subtle)] bg-[var(--surface-1)]"
     >
-      <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6">
+      <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-6">
         <nav
           aria-label="Editing context"
-          className="flex w-full min-w-0 items-center gap-1.5 overflow-x-auto text-xs sm:w-auto sm:flex-1 sm:text-sm"
+          className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto text-xs sm:text-sm"
         >
           <span className="shrink-0 rounded bg-[var(--solid-bg)] px-2 py-0.5 font-mono text-xs font-semibold text-[var(--solid-text)]">
             {displayCode}
@@ -113,21 +137,71 @@ export function EditorStickyBar({
           )}
         </nav>
 
-        <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onClick={onAddChapter}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--solid-bg)] px-2.5 text-xs font-semibold text-[var(--solid-text)] transition-colors hover:bg-[var(--solid-bg-hover)]"
-          >
-            <Plus className="h-3.5 w-3.5" />
-            Add Chapter
-          </button>
+        <div className="flex w-full shrink-0 flex-wrap items-center justify-end gap-1.5 sm:w-auto sm:gap-2">
+          <div ref={addMenuRef} className="relative">
+            {onAddSpineSupplement ? (
+              <>
+                <button
+                  type="button"
+                  aria-haspopup="menu"
+                  aria-expanded={addMenuOpen}
+                  onClick={() => setAddMenuOpen((prev) => !prev)}
+                  className="inline-flex h-8 items-center gap-1 rounded-md bg-[var(--solid-bg)] px-2.5 text-xs font-semibold text-[var(--solid-text)] transition-colors hover:bg-[var(--solid-bg-hover)]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Add</span>
+                  <ChevronDown className="h-3 w-3 opacity-80" />
+                </button>
+                {addMenuOpen && (
+                  <div
+                    role="menu"
+                    aria-label="Add course item"
+                    className="absolute right-0 z-40 mt-1.5 w-44 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] py-1 shadow-lg"
+                  >
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAddMenuOpen(false);
+                        onAddChapter();
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-hover)]"
+                    >
+                      <Layers className="h-3.5 w-3.5 shrink-0 text-[var(--accent-amber)]" />
+                      <span>Add Chapter</span>
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setAddMenuOpen(false);
+                        onAddSpineSupplement();
+                      }}
+                      className="flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-medium text-[var(--text-primary)] transition-colors hover:bg-[var(--surface-hover)]"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-[var(--accent-teal)]" />
+                      <span>Add Supplement</span>
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
+              <button
+                type="button"
+                onClick={onAddChapter}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--solid-bg)] px-2.5 text-xs font-semibold text-[var(--solid-text)] transition-colors hover:bg-[var(--solid-bg-hover)]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Chapter
+              </button>
+            )}
+          </div>
 
           <button
             type="button"
             onClick={onCollapseAll}
             disabled={!hasExpandedLessons}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-45"
+            className="inline-flex h-8 items-center gap-1 rounded-md border border-[var(--border-strong)] bg-[var(--surface-1)] px-2 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] disabled:cursor-not-allowed disabled:opacity-45 sm:gap-1.5 sm:px-2.5"
           >
             <ChevronsUp className="h-3.5 w-3.5" />
             Collapse all
@@ -136,7 +210,7 @@ export function EditorStickyBar({
           <button
             type="button"
             onClick={onSave}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-[var(--cta-bg)] px-3 text-xs font-semibold text-[var(--cta-text)] transition-colors hover:bg-[var(--cta-bg-hover)]"
+            className="inline-flex h-8 items-center gap-1 rounded-md bg-[var(--cta-bg)] px-2.5 text-xs font-semibold text-[var(--cta-text)] transition-colors hover:bg-[var(--cta-bg-hover)] sm:gap-1.5 sm:px-3"
           >
             <Save className="h-3.5 w-3.5" />
             Save

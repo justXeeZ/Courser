@@ -10,6 +10,7 @@
   --surface-2: #efede8;
   --surface-inset: #ffffff;
   --surface-hover: #e8e4dc;
+  --surface-chapter-header: #fdfcfa;
   --surface-warm-muted: #efede8;
   --surface-warm-hover: #e5e1d8;
   --border-subtle: #e5e1d8;
@@ -41,6 +42,10 @@
   --tag-peach-border: #ad3c1a;
   --tag-peach-text: #6b240f;
   --accent-peach: #ad3c1a;
+  --tag-teal-bg: #ccfbf1;
+  --tag-teal-border: #0f766e;
+  --tag-teal-text: #134e4a;
+  --accent-teal: #0d9488;
   --status-done-bg: #dcfce7;
   --status-done-border: #15803d;
   --status-done-text: #14532d;
@@ -53,6 +58,9 @@
   --svg-chapter-hover: #fcd34d;
   --svg-lesson-fill: #fad2c6;
   --svg-lesson-hover: #f5b5a2;
+  --svg-supplement-fill: #ccfbf1;
+  --svg-supplement-hover: #99f6e4;
+  --svg-node-stroke: #000000;
   --svg-edge-color: #7c3aed;
   --status-skipped-bg: #efede8;
   --status-skipped-border: #767067;
@@ -75,6 +83,7 @@
   --surface-2: #1b2436;
   --surface-inset: #0d131f;
   --surface-hover: #242f45;
+  --surface-chapter-header: #1b2436;
   --surface-warm-muted: #1e293b;
   --surface-warm-hover: #263349;
   --border-subtle: #263248;
@@ -106,6 +115,10 @@
   --tag-peach-border: #E97451;
   --tag-peach-text: #f7b5a0;
   --accent-peach: #E97451;
+  --tag-teal-bg: rgba(45, 212, 191, 0.16);
+  --tag-teal-border: #2dd4bf;
+  --tag-teal-text: #99f6e4;
+  --accent-teal: #2dd4bf;
   --status-done-bg: rgba(22, 163, 74, 0.22);
   --status-done-border: #22c55e;
   --status-done-text: #86efac;
@@ -121,6 +134,9 @@
   --svg-chapter-hover: #eab308;
   --svg-lesson-fill: #f2a891;
   --svg-lesson-hover: #E97451;
+  --svg-supplement-fill: #99f6e4;
+  --svg-supplement-hover: #5eead4;
+  --svg-node-stroke: #cbd5e1;
   --svg-edge-color: #a78bfa;
   --status-danger-bg: rgba(127, 29, 29, 0.42);
   --status-danger-border: #ef4444;
@@ -178,6 +194,26 @@
 
 .roadmap-svg g[data-node-kind="lesson"]:hover > rect.node-rect {
   fill: var(--svg-lesson-hover);
+}
+
+.editor-entry-amber {
+  --border-focus: var(--accent-amber);
+}
+
+.editor-entry-peach {
+  --border-focus: var(--accent-peach);
+}
+
+.editor-entry-teal {
+  --border-focus: var(--accent-teal);
+}
+
+.roadmap-svg g[data-node-kind="supplement"] {
+  cursor: pointer;
+}
+
+.roadmap-svg g[data-node-kind="supplement"]:hover > rect.node-rect {
+  fill: var(--svg-supplement-hover);
 }
 
 .roadmap-svg g.node-done > rect.node-rect {

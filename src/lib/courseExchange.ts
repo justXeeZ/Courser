@@ -125,6 +125,31 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function prepassSupplementList(
+  rawNodes: unknown,
+  prefix: string
+): unknown {
+  if (!Array.isArray(rawNodes)) return rawNodes;
+  return rawNodes.map((rawNode, nIdx) => {
+    if (!isPlainRecord(rawNode)) return rawNode;
+    const nodeId =
+      typeof rawNode.id === 'string' && rawNode.id.trim().length > 0
+        ? rawNode.id
+        : `${prefix}_s_${nIdx + 1}`;
+    const resources =
+      rawNode.resources === undefined || rawNode.resources === null ? [] : rawNode.resources;
+    const children = Array.isArray(rawNode.children)
+      ? prepassSupplementList(rawNode.children, `${prefix}_s_${nIdx + 1}`)
+      : rawNode.children;
+    return {
+      ...rawNode,
+      id: nodeId,
+      resources,
+      ...(children !== undefined ? { children } : {}),
+    };
+  });
+}
+
 function applyLenientPrepass(rawCourse: Record<string, unknown>): Record<string, unknown> {
   const rawDepartment = rawCourse.department;
   const department =
@@ -167,13 +192,24 @@ function applyLenientPrepass(rawCourse: Record<string, unknown>): Record<string,
               ? []
               : rawLesson.resources;
 
+          const lessonSupplements = prepassSupplementList(
+            rawLesson.supplements,
+            `__tmp_ch_${cIdx + 1}_l_${lIdx + 1}`
+          );
+
           return {
             ...rawLesson,
             id: lessonId,
             resources: lessonResources,
+            ...(lessonSupplements !== undefined ? { supplements: lessonSupplements } : {}),
           };
         });
       }
+
+      const chapterSupplements = prepassSupplementList(
+        rawChapter.supplements,
+        `__tmp_ch_${cIdx + 1}`
+      );
 
       return {
         ...rawChapter,
@@ -181,15 +217,31 @@ function applyLenientPrepass(rawCourse: Record<string, unknown>): Record<string,
         order,
         resources: chapterResources,
         lessons,
+        ...(chapterSupplements !== undefined ? { supplements: chapterSupplements } : {}),
       };
     });
   }
+
+  const spineSupplements = prepassSupplementList(rawCourse.supplements, '__tmp_spine');
 
   return {
     ...rawCourse,
     department,
     chapters,
+    ...(spineSupplements !== undefined ? { supplements: spineSupplements } : {}),
   };
+}
+
+function canRekeySupplements(rawNodes: unknown): boolean {
+  if (rawNodes === undefined) return true;
+  if (!Array.isArray(rawNodes)) return false;
+  return rawNodes.every(
+    (node) =>
+      isPlainRecord(node) &&
+      typeof node.id === 'string' &&
+      typeof node.title === 'string' &&
+      canRekeySupplements(node.children)
+  );
 }
 
 function canRekeyCourseStructure(candidate: Record<string, unknown>): boolean {
@@ -199,15 +251,20 @@ function canRekeyCourseStructure(candidate: Record<string, unknown>): boolean {
   if (!Array.isArray(candidate.chapters) || candidate.chapters.length === 0) {
     return false;
   }
+  if (!canRekeySupplements(candidate.supplements)) {
+    return false;
+  }
   return candidate.chapters.every((chapter) => {
     if (!isPlainRecord(chapter)) return false;
     if (typeof chapter.id !== 'string' || typeof chapter.title !== 'string') return false;
     if (!Array.isArray(chapter.lessons)) return false;
+    if (!canRekeySupplements(chapter.supplements)) return false;
     return chapter.lessons.every(
       (lesson) =>
         isPlainRecord(lesson) &&
         typeof lesson.id === 'string' &&
-        typeof lesson.title === 'string'
+        typeof lesson.title === 'string' &&
+        canRekeySupplements(lesson.supplements)
     );
   });
 }
@@ -487,6 +544,24 @@ export async function parseCourseImport(
     return resolved;
   }
 
+  async function resolveSupplements<T extends NonNullable<CourseTree['supplements']>[number] | NonNullable<CourseTree['chapters'][number]['supplements']>[number]>(
+    nodes: T[]
+  ): Promise<T[]> {
+    const resolved: T[] = [];
+    for (const node of nodes) {
+      const nextResources = await resolveResources(node.resources);
+      const maybeChildren = 'children' in node && Array.isArray(node.children)
+        ? await resolveSupplements(node.children)
+        : undefined;
+      resolved.push({
+        ...node,
+        resources: nextResources,
+        ...(maybeChildren !== undefined ? { children: maybeChildren } : {}),
+      });
+    }
+    return resolved;
+  }
+
   const nextChapters: CourseTree['chapters'] = [];
   for (const chapter of course.chapters) {
     const nextChapterResources = chapter.resources
@@ -496,24 +571,38 @@ export async function parseCourseImport(
     const nextLessons: typeof chapter.lessons = [];
     for (const lesson of chapter.lessons) {
       const nextLessonResources = await resolveResources(lesson.resources);
+      const nextLessonSupplements = lesson.supplements
+        ? await resolveSupplements(lesson.supplements)
+        : undefined;
       nextLessons.push({
         ...lesson,
         resources: nextLessonResources,
+        ...(nextLessonSupplements !== undefined ? { supplements: nextLessonSupplements } : {}),
       });
     }
+
+    const nextChapterSupplements = chapter.supplements
+      ? await resolveSupplements(chapter.supplements)
+      : undefined;
 
     nextChapters.push({
       ...chapter,
       ...(nextChapterResources !== undefined ? { resources: nextChapterResources } : {}),
       lessons: nextLessons,
+      ...(nextChapterSupplements !== undefined ? { supplements: nextChapterSupplements } : {}),
     });
   }
+
+  const nextSpineSupplements = course.supplements
+    ? await resolveSupplements(course.supplements)
+    : undefined;
 
   return {
     ok: true,
     course: {
       ...course,
       chapters: nextChapters,
+      ...(nextSpineSupplements !== undefined ? { supplements: nextSpineSupplements } : {}),
     },
     warnings,
   };

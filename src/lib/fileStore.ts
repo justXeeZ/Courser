@@ -316,8 +316,20 @@ export function collectReferencedFileIds(courses: Iterable<CourseTree>): Set<str
   for (const course of courses) {
     for (const chapter of course.chapters) {
       collectResourceFileIds(chapter.resources, referenced);
+      for (const node of chapter.supplements ?? []) {
+        collectResourceFileIds(node.resources, referenced);
+      }
       for (const lesson of chapter.lessons) {
         collectResourceFileIds(lesson.resources, referenced);
+        for (const node of lesson.supplements ?? []) {
+          collectResourceFileIds(node.resources, referenced);
+        }
+      }
+    }
+    for (const spineNode of course.supplements ?? []) {
+      collectResourceFileIds(spineNode.resources, referenced);
+      for (const child of spineNode.children ?? []) {
+        collectResourceFileIds(child.resources, referenced);
       }
     }
   }

@@ -25,7 +25,11 @@ function assertLayoutValid(course: CourseTree) {
   expect(layout.width).toBeGreaterThan(0);
   expect(layout.height).toBeGreaterThan(0);
 
-  const allNodes: Rect[] = [...layout.chapterNodes, ...layout.lessonNodes];
+  const allNodes: Rect[] = [
+    ...layout.chapterNodes,
+    ...layout.lessonNodes,
+    ...layout.supplementNodes,
+  ];
 
   for (const node of allNodes) {
     expect(node.x).toBeGreaterThanOrEqual(0);
@@ -43,14 +47,22 @@ function assertLayoutValid(course: CourseTree) {
     }
   }
 
-  // Spine edges should equal chapters - 1
+  const spineSupplementCount = course.supplements?.length ?? 0;
   const spineEdges = layout.edges.filter((e) => e.kind === 'spine');
-  expect(spineEdges).toHaveLength(Math.max(0, course.chapters.length - 1));
+  expect(spineEdges).toHaveLength(Math.max(0, course.chapters.length + spineSupplementCount - 1));
 
-  // Branch edges should equal total lessons
   const totalLessons = course.chapters.reduce((sum, ch) => sum + ch.lessons.length, 0);
+  const totalSupplementBranches =
+    (course.supplements?.reduce((sum, n) => sum + (n.children?.length ?? 0), 0) ?? 0) +
+    course.chapters.reduce(
+      (sum, ch) =>
+        sum +
+        (ch.supplements?.length ?? 0) +
+        ch.lessons.reduce((ls, l) => ls + (l.supplements?.length ?? 0), 0),
+      0
+    );
   const branchEdges = layout.edges.filter((e) => e.kind === 'branch');
-  expect(branchEdges).toHaveLength(totalLessons);
+  expect(branchEdges).toHaveLength(totalLessons + totalSupplementBranches);
 }
 
 describe('layoutCourseTree pure geometry engine', () => {
@@ -191,5 +203,80 @@ describe('layoutCourseTree pure geometry engine', () => {
     }
 
     expect(wrapNodeLabel('Short Title', 260, 16.5)).toEqual(['Short Title']);
+  });
+
+  it('positions interleaved spine supplements and up/down/outward lesson child supplements without overlaps', () => {
+    const customCourse: CourseTree = {
+      slug: 'cs400-supplements',
+      code: 'CS400',
+      title: 'Supplements Layout',
+      department: 'Computer Science',
+      description: 'Layout test for supplements.',
+      chapters: [
+        {
+          id: 'cs400-ch1-intro',
+          order: 1,
+          title: '1. Intro',
+          description: 'Ch 1',
+          lessons: [
+            {
+              id: 'cs400-ch1-l1-left',
+              title: 'Left Lesson',
+              summary: 'Left',
+              side: 'left',
+              resources: [],
+              supplements: [
+                { id: 'cs400-ch1-l1-s1-up', title: 'Up Note', summary: 'Up', side: 'up', resources: [] },
+                { id: 'cs400-ch1-l1-s2-down', title: 'Down Note', summary: 'Down', side: 'down', resources: [] },
+                { id: 'cs400-ch1-l1-s3-inward', title: 'Coerced Outward', summary: 'Out', side: 'right', resources: [] },
+              ],
+            },
+          ],
+          supplements: [
+            { id: 'cs400-ch1-s1-chsub', title: 'Chapter Sub', summary: 'Sub', side: 'right', resources: [] },
+          ],
+        },
+        {
+          id: 'cs400-ch2-next',
+          order: 2,
+          title: '2. Next',
+          description: 'Ch 2',
+          lessons: [],
+        },
+      ],
+      supplements: [
+        {
+          id: 'cs400-s1-before',
+          title: 'Course Orientation',
+          summary: 'Before Ch 1',
+          afterChapterOrder: 0,
+          resources: [],
+        },
+        {
+          id: 'cs400-s2-between',
+          title: 'Midterm Checkpoint',
+          summary: 'Between Ch 1 and Ch 2',
+          afterChapterOrder: 1,
+          resources: [],
+          children: [
+            { id: 'cs400-s2-s1-child', title: 'Prep Sheet', summary: 'Prep', side: 'left', resources: [] },
+          ],
+        },
+      ],
+    };
+
+    assertLayoutValid(customCourse);
+    const layout = layoutCourseTree(customCourse);
+    const s1 = layout.supplementNodes.find((n) => n.id === 'cs400-s1-before')!;
+    const ch1 = layout.chapterNodes.find((n) => n.id === 'cs400-ch1-intro')!;
+    const s2 = layout.supplementNodes.find((n) => n.id === 'cs400-s2-between')!;
+    const ch2 = layout.chapterNodes.find((n) => n.id === 'cs400-ch2-next')!;
+    expect(s1.y).toBeLessThan(ch1.y);
+    expect(ch1.y).toBeLessThan(s2.y);
+    expect(s2.y).toBeLessThan(ch2.y);
+
+    // Left-branch lesson's inward 'right' child supplement is coerced outward to 'left'
+    const coerced = layout.supplementNodes.find((n) => n.id === 'cs400-ch1-l1-s3-inward')!;
+    expect(coerced.side).toBe('left');
   });
 });

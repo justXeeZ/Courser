@@ -4,6 +4,24 @@ All notable user-visible changes to **Courser** (formerly College Course Trees) 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions prior to a formal release are grouped chronologically from the project's git history.
 
+## [1.4.0] - 2026-11-24
+
+### Changed
+- **Renamed Custom Nodes to Supplements**: Completely replaced "Custom Node" / `customNodes` across UI copy, schema/JSON keys (`supplements`, `-s<order>-` IDs, `S1` tags, `?supplement=<id>`), `SupplementDrawer`, `SupplementEditorCard`, seed courses, `DataFormatsPage`, and documentation.
+- **Course Editor (`EditorStickyBar`, `CourseEditorPage`, `ChapterEditorCard`, `LessonEditorCard`, `SupplementEditorCard`)**:
+  - Replaced separate `Add Chapter` / `Add Supplement` toolbar buttons with a single neutral `+ Add ▾` menu (`Add Chapter` / `Add Supplement`), removed the redundant section-level add button, and made the mobile toolbar wrap cleanly without horizontal overflow.
+  - Shared scroll-and-focus behavior on `Add Chapter` and `Add Supplement`, shared `useStickyHeader` across Chapter/Lesson/Supplement cards, shared `ReorderButtons` across Chapters/Lessons/Supplements/Materials/Custom Fields, and scoped per-entry `--border-focus` accents (Amber, Burnt Peach, Teal).
+  - Styled dashed `"Add Sub-Lesson to Chapter X"` buttons with Burnt Peach, updated section heading to `SUPPLEMENTS` and nested labels to `Child Supplement`, and styled Custom Fields rows similarly to Materials (without left icon) with a segmented `DD/MM/YYYY` `DateFieldInput` and auto-expanding/focusing validation errors.
+- **Syllabus Checklist (`ChecklistView`)**: Matched Light-mode `--surface-chapter-header` to `--surface-1`, removed the redundant `"Supplement"` pill, capitalized `"n Materials"`, and colored `"n Materials"` and `"Week x"` pills with each entry's accent tokens (Amber/Peach/Teal).
+- **Course Tree & Drawer (`CourseTreeCanvas`, `SupplementDrawer`)**: Added Dark-mode `--svg-node-stroke` (`#cbd5e1`, 11.1:1 contrast vs `#121926`) while keeping Light mode `#000000`, and styled Supplement custom fields like Material rows with `ExternalLink`, `Calendar`, `Tag`, and `AlignLeft` icons.
+
+## [1.3.0] - 2026-11-24
+
+### Added
+- **Custom Nodes**: Added a new Teal-accented node type (`CustomNode` / `SpineCustomNode`) that can be placed on the spine (`afterChapterOrder`, with optional child custom nodes), under a chapter, or under a lesson (`left`, `right`, `up`, `down`, with inward horizontal directions constrained/coerced outward to avoid spine collisions).
+- **Custom Fields & Trackable Toggle**: Custom nodes support typed `customFields` (`text`, `link`, `badge`, `date`), materials, prerequisites, study notes, and an optional `trackable: false` informational-only mode (dashed SVG border, `Info` badge, excluded from progress %).
+- **Full App Integration**: Added `CustomNodeDrawer` (`?node=<id>`), `CustomNodeEditorCard`, interleaved spine & sub-node layout in `layoutTree.ts` and `CourseTreeCanvas.tsx`, `ChecklistView`, `SearchModal`, `PrerequisitePicker`, `.course.json` import/export (v1 compatible), `DataFormatsPage` + LLM prompt, and showcases in `GUIDE101` and `DEMO201`.
+
 ## [1.2.0] - 2026-11-24
 
 ### Changed
@@ -11,7 +29,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Tree view (`CourseTreeCanvas`): anchored zoom in/out around the centered tree spine while preserving zoom range (`50%–250%`) and smooth transitions.
 - Light mode amber accent (`--accent-amber`): brightened from `#b45309` to `#ca6a04` (while keeping Dark mode unchanged).
 - Material rows (`MaterialList`): removed redundant `Exam`/`Assignment` metadata pills from interactive assessments and switched both interactive and uploaded material rows to a one-line-first layout (wrapping to two lines only when tags would heavily truncate the title; external links unchanged).
-- Syllabus checklist (`ChecklistView`): updated Light-mode chapter header background from `--surface-1` to `--surface-hover` so chapters stand out clearly from both `--surface-canvas` and `--surface-1` sub-lesson rows.
+- Syllabus checklist (`ChecklistView`): added semantic token `--surface-chapter-header` (`#dfd9ce` in Light, `#1b2436` in Dark) so Light-mode chapter headers stand out clearly from both `--surface-canvas` and `--surface-1` sub-lesson rows.
 - Course editor (`CourseEditorPage`): switched Semester radio button accent from `--accent-amber` to `--accent-purple` in both Light and Dark modes.
 
 ## [1.1.0]

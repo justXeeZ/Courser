@@ -48,6 +48,26 @@ export function formatLessonPositionTag(chapterOrder: number, lessonOrder: numbe
   return `Ch${chapterOrder} / L${lessonOrder}`;
 }
 
+export function formatSpineSupplementTag(nodeOrder: number): string {
+  return `S${nodeOrder}`;
+}
+
+export function formatSpineChildSupplementTag(parentOrder: number, childOrder: number): string {
+  return `S${parentOrder} / S${childOrder}`;
+}
+
+export function formatChapterSupplementTag(chapterOrder: number, nodeOrder: number): string {
+  return `Ch${chapterOrder} / S${nodeOrder}`;
+}
+
+export function formatLessonSupplementTag(
+  chapterOrder: number,
+  lessonOrder: number,
+  nodeOrder: number
+): string {
+  return `Ch${chapterOrder} / L${lessonOrder} / S${nodeOrder}`;
+}
+
 export function deriveChapterId(
   courseCode: string,
   order: number,
@@ -76,6 +96,58 @@ export function deriveLessonId(
   );
   const titlePart = slugify(stripped) || slugify(title) || 'lesson';
   const base = `${prefix}-ch${chapterOrder}-l${lessonOrder}-${titlePart}`;
+  return makeUniqueId(base, existingIds);
+}
+
+export function deriveSpineSupplementId(
+  courseCode: string,
+  order: number,
+  title: string,
+  existingIds?: Set<string>
+): string {
+  const prefix = deriveCoursePrefix(courseCode);
+  const titlePart = slugify(title) || 'supplement';
+  const base = `${prefix}-s${order}-${titlePart}`;
+  return makeUniqueId(base, existingIds);
+}
+
+export function deriveSpineChildSupplementId(
+  courseCode: string,
+  parentOrder: number,
+  childOrder: number,
+  title: string,
+  existingIds?: Set<string>
+): string {
+  const prefix = deriveCoursePrefix(courseCode);
+  const titlePart = slugify(title) || 'supplement';
+  const base = `${prefix}-s${parentOrder}-s${childOrder}-${titlePart}`;
+  return makeUniqueId(base, existingIds);
+}
+
+export function deriveChapterSupplementId(
+  courseCode: string,
+  chapterOrder: number,
+  nodeOrder: number,
+  title: string,
+  existingIds?: Set<string>
+): string {
+  const prefix = deriveCoursePrefix(courseCode);
+  const titlePart = slugify(title) || 'supplement';
+  const base = `${prefix}-ch${chapterOrder}-s${nodeOrder}-${titlePart}`;
+  return makeUniqueId(base, existingIds);
+}
+
+export function deriveLessonSupplementId(
+  courseCode: string,
+  chapterOrder: number,
+  lessonOrder: number,
+  nodeOrder: number,
+  title: string,
+  existingIds?: Set<string>
+): string {
+  const prefix = deriveCoursePrefix(courseCode);
+  const titlePart = slugify(title) || 'supplement';
+  const base = `${prefix}-ch${chapterOrder}-l${lessonOrder}-s${nodeOrder}-${titlePart}`;
   return makeUniqueId(base, existingIds);
 }
 
@@ -124,12 +196,38 @@ export function rekeyCourseContentIdsWithMap(course: CourseTree): {
     idMap.set(chapter.id, newChapterId);
 
     const lessons = chapter.lessons.map((lesson, lIdx) => {
-      const newLessonId = deriveLessonId(course.code, order, lIdx + 1, lesson.title, usedItemIds);
+      const lessonOrder = lIdx + 1;
+      const newLessonId = deriveLessonId(course.code, order, lessonOrder, lesson.title, usedItemIds);
       idMap.set(lesson.id, newLessonId);
+      const lessonSupplements = lesson.supplements?.map((node, nIdx) => {
+        const newNodeId = deriveLessonSupplementId(
+          course.code,
+          order,
+          lessonOrder,
+          nIdx + 1,
+          node.title,
+          usedItemIds
+        );
+        idMap.set(node.id, newNodeId);
+        return { ...node, id: newNodeId };
+      });
       return {
         ...lesson,
         id: newLessonId,
+        ...(lessonSupplements !== undefined ? { supplements: lessonSupplements } : {}),
       };
+    });
+
+    const chapterSupplements = chapter.supplements?.map((node, nIdx) => {
+      const newNodeId = deriveChapterSupplementId(
+        course.code,
+        order,
+        nIdx + 1,
+        node.title,
+        usedItemIds
+      );
+      idMap.set(node.id, newNodeId);
+      return { ...node, id: newNodeId };
     });
 
     return {
@@ -137,10 +235,38 @@ export function rekeyCourseContentIdsWithMap(course: CourseTree): {
       order,
       id: newChapterId,
       lessons,
+      ...(chapterSupplements !== undefined ? { supplements: chapterSupplements } : {}),
     };
   });
 
-  // Remap prerequisites on both chapters and lessons and prune dangling/self references
+  const spineNodesWithNewIds = course.supplements?.map((spineNode, sIdx) => {
+    const parentOrder = sIdx + 1;
+    const newSpineId = deriveSpineSupplementId(
+      course.code,
+      parentOrder,
+      spineNode.title,
+      usedItemIds
+    );
+    idMap.set(spineNode.id, newSpineId);
+    const children = spineNode.children?.map((child, cIdx) => {
+      const newChildId = deriveSpineChildSupplementId(
+        course.code,
+        parentOrder,
+        cIdx + 1,
+        child.title,
+        usedItemIds
+      );
+      idMap.set(child.id, newChildId);
+      return { ...child, id: newChildId };
+    });
+    return {
+      ...spineNode,
+      id: newSpineId,
+      ...(children !== undefined ? { children } : {}),
+    };
+  });
+
+  // Remap prerequisites on chapters, lessons, and all supplements
   const validItemIds = new Set(usedItemIds);
   const remappedChapters = chaptersWithNewIds.map((chapter) => ({
     ...chapter,
@@ -148,13 +274,48 @@ export function rekeyCourseContentIdsWithMap(course: CourseTree): {
     lessons: chapter.lessons.map((lesson) => ({
       ...lesson,
       prerequisites: remapPrerequisites(lesson.prerequisites, lesson.id, idMap, validItemIds),
+      ...(lesson.supplements !== undefined
+        ? {
+            supplements: lesson.supplements.map((node) => ({
+              ...node,
+              prerequisites: remapPrerequisites(node.prerequisites, node.id, idMap, validItemIds),
+            })),
+          }
+        : {}),
     })),
+    ...(chapter.supplements !== undefined
+      ? {
+          supplements: chapter.supplements.map((node) => ({
+            ...node,
+            prerequisites: remapPrerequisites(node.prerequisites, node.id, idMap, validItemIds),
+          })),
+        }
+      : {}),
+  }));
+
+  const remappedSpineNodes = spineNodesWithNewIds?.map((spineNode) => ({
+    ...spineNode,
+    prerequisites: remapPrerequisites(
+      spineNode.prerequisites,
+      spineNode.id,
+      idMap,
+      validItemIds
+    ),
+    ...(spineNode.children !== undefined
+      ? {
+          children: spineNode.children.map((child) => ({
+            ...child,
+            prerequisites: remapPrerequisites(child.prerequisites, child.id, idMap, validItemIds),
+          })),
+        }
+      : {}),
   }));
 
   return {
     course: {
       ...course,
       chapters: remappedChapters,
+      ...(remappedSpineNodes !== undefined ? { supplements: remappedSpineNodes } : {}),
     },
     idMap,
   };
@@ -178,71 +339,140 @@ export function validateRawCourseReferences(rawCourse: unknown): string | null {
   const chapterRawIds: Array<string | null> = [];
   const lessonRawIds: Array<Array<string | null>> = [];
 
-  for (let cIdx = 0; cIdx < rawCourse.chapters.length; cIdx += 1) {
-    const rawChapter = rawCourse.chapters[cIdx];
-    if (!isPlainObject(rawChapter)) {
-      chapterRawIds.push(null);
-      lessonRawIds.push([]);
-      continue;
-    }
-
-    const chapterId =
-      typeof rawChapter.id === 'string' && rawChapter.id.trim().length > 0
-        ? rawChapter.id
-        : null;
-
-    if (chapterId !== null) {
-      if (declaredRawIds.has(chapterId)) {
-        return `chapters.${cIdx}.id: Duplicate item id "${chapterId}".`;
+  const collectNodeId = (rawNode: unknown, pathLabel: string): string | null => {
+    if (!isPlainObject(rawNode)) return null;
+    const nodeId =
+      typeof rawNode.id === 'string' && rawNode.id.trim().length > 0 ? rawNode.id : null;
+    if (nodeId !== null) {
+      if (declaredRawIds.has(nodeId)) {
+        throw new Error(`${pathLabel}.id: Duplicate item id "${nodeId}".`);
       }
-      declaredRawIds.add(chapterId);
+      declaredRawIds.add(nodeId);
     }
-    chapterRawIds.push(chapterId);
+    return nodeId;
+  };
 
-    const chapterLessonIds: Array<string | null> = [];
-    if (Array.isArray(rawChapter.lessons)) {
-      for (let lIdx = 0; lIdx < rawChapter.lessons.length; lIdx += 1) {
-        const rawLesson = rawChapter.lessons[lIdx];
-        if (!isPlainObject(rawLesson)) {
-          chapterLessonIds.push(null);
-          continue;
+  try {
+    for (let cIdx = 0; cIdx < rawCourse.chapters.length; cIdx += 1) {
+      const rawChapter = rawCourse.chapters[cIdx];
+      if (!isPlainObject(rawChapter)) {
+        chapterRawIds.push(null);
+        lessonRawIds.push([]);
+        continue;
+      }
+
+      const chapterId =
+        typeof rawChapter.id === 'string' && rawChapter.id.trim().length > 0
+          ? rawChapter.id
+          : null;
+
+      if (chapterId !== null) {
+        if (declaredRawIds.has(chapterId)) {
+          return `chapters.${cIdx}.id: Duplicate item id "${chapterId}".`;
         }
-        const lessonId =
-          typeof rawLesson.id === 'string' && rawLesson.id.trim().length > 0
-            ? rawLesson.id
-            : null;
-        if (lessonId !== null) {
-          if (declaredRawIds.has(lessonId)) {
-            return `chapters.${cIdx}.lessons.${lIdx}.id: Duplicate item id "${lessonId}".`;
+        declaredRawIds.add(chapterId);
+      }
+      chapterRawIds.push(chapterId);
+
+      const chapterLessonIds: Array<string | null> = [];
+      if (Array.isArray(rawChapter.lessons)) {
+        for (let lIdx = 0; lIdx < rawChapter.lessons.length; lIdx += 1) {
+          const rawLesson = rawChapter.lessons[lIdx];
+          if (!isPlainObject(rawLesson)) {
+            chapterLessonIds.push(null);
+            continue;
           }
-          declaredRawIds.add(lessonId);
+          const lessonId =
+            typeof rawLesson.id === 'string' && rawLesson.id.trim().length > 0
+              ? rawLesson.id
+              : null;
+          if (lessonId !== null) {
+            if (declaredRawIds.has(lessonId)) {
+              return `chapters.${cIdx}.lessons.${lIdx}.id: Duplicate item id "${lessonId}".`;
+            }
+            declaredRawIds.add(lessonId);
+          }
+          chapterLessonIds.push(lessonId);
+
+          if (Array.isArray(rawLesson.supplements)) {
+            rawLesson.supplements.forEach((rawNode, nIdx) => {
+              collectNodeId(rawNode, `chapters.${cIdx}.lessons.${lIdx}.supplements.${nIdx}`);
+            });
+          }
         }
-        chapterLessonIds.push(lessonId);
+      }
+      lessonRawIds.push(chapterLessonIds);
+
+      if (Array.isArray(rawChapter.supplements)) {
+        rawChapter.supplements.forEach((rawNode, nIdx) => {
+          collectNodeId(rawNode, `chapters.${cIdx}.supplements.${nIdx}`);
+        });
       }
     }
-    lessonRawIds.push(chapterLessonIds);
+
+    if (Array.isArray(rawCourse.supplements)) {
+      rawCourse.supplements.forEach((rawSpineNode, sIdx) => {
+        collectNodeId(rawSpineNode, `supplements.${sIdx}`);
+        if (isPlainObject(rawSpineNode) && Array.isArray(rawSpineNode.children)) {
+          rawSpineNode.children.forEach((rawChild, cIdx) => {
+            collectNodeId(rawChild, `supplements.${sIdx}.children.${cIdx}`);
+          });
+        }
+      });
+    }
+  } catch (err) {
+    return err instanceof Error ? err.message : 'Duplicate item id.';
   }
+
+  const validateRawPrereqs = (
+    rawObj: Record<string, unknown>,
+    selfId: string | null,
+    selfLabel: string,
+    pathPrefix: string
+  ): string | null => {
+    if (rawObj.prerequisites === undefined) return null;
+    if (!Array.isArray(rawObj.prerequisites)) {
+      return `${pathPrefix}.prerequisites: Expected an array of prerequisite IDs.`;
+    }
+    for (let pIdx = 0; pIdx < rawObj.prerequisites.length; pIdx += 1) {
+      const prereqId = rawObj.prerequisites[pIdx];
+      if (typeof prereqId !== 'string' || prereqId.trim().length === 0) {
+        return `${pathPrefix}.prerequisites.${pIdx}: Prerequisite id must be a non-empty string.`;
+      }
+      if (selfId !== null && prereqId === selfId) {
+        return `${pathPrefix}.prerequisites.${pIdx}: ${selfLabel} "${selfId}" cannot depend on itself.`;
+      }
+      if (!declaredRawIds.has(prereqId)) {
+        return `${pathPrefix}.prerequisites.${pIdx}: Unknown prerequisite id "${prereqId}".`;
+      }
+    }
+    return null;
+  };
 
   for (let cIdx = 0; cIdx < rawCourse.chapters.length; cIdx += 1) {
     const rawChapter = rawCourse.chapters[cIdx];
     if (!isPlainObject(rawChapter)) continue;
 
-    const chapterId = chapterRawIds[cIdx];
-    if (rawChapter.prerequisites !== undefined) {
-      if (!Array.isArray(rawChapter.prerequisites)) {
-        return `chapters.${cIdx}.prerequisites: Expected an array of prerequisite IDs.`;
-      }
-      for (let pIdx = 0; pIdx < rawChapter.prerequisites.length; pIdx += 1) {
-        const prereqId = rawChapter.prerequisites[pIdx];
-        if (typeof prereqId !== 'string' || prereqId.trim().length === 0) {
-          return `chapters.${cIdx}.prerequisites.${pIdx}: Prerequisite id must be a non-empty string.`;
-        }
-        if (chapterId !== null && prereqId === chapterId) {
-          return `chapters.${cIdx}.prerequisites.${pIdx}: Chapter "${chapterId}" cannot depend on itself.`;
-        }
-        if (!declaredRawIds.has(prereqId)) {
-          return `chapters.${cIdx}.prerequisites.${pIdx}: Unknown prerequisite id "${prereqId}".`;
-        }
+    const chErr = validateRawPrereqs(
+      rawChapter,
+      chapterRawIds[cIdx],
+      'Chapter',
+      `chapters.${cIdx}`
+    );
+    if (chErr) return chErr;
+
+    if (Array.isArray(rawChapter.supplements)) {
+      for (let nIdx = 0; nIdx < rawChapter.supplements.length; nIdx += 1) {
+        const rawNode = rawChapter.supplements[nIdx];
+        if (!isPlainObject(rawNode)) continue;
+        const nId = typeof rawNode.id === 'string' && rawNode.id.trim() ? rawNode.id : null;
+        const err = validateRawPrereqs(
+          rawNode,
+          nId,
+          'Supplement',
+          `chapters.${cIdx}.supplements.${nIdx}`
+        );
+        if (err) return err;
       }
     }
 
@@ -251,23 +481,53 @@ export function validateRawCourseReferences(rawCourse: unknown): string | null {
         const rawLesson = rawChapter.lessons[lIdx];
         if (!isPlainObject(rawLesson)) continue;
 
-        const lessonId = lessonRawIds[cIdx]?.[lIdx] ?? null;
-        if (rawLesson.prerequisites !== undefined) {
-          if (!Array.isArray(rawLesson.prerequisites)) {
-            return `chapters.${cIdx}.lessons.${lIdx}.prerequisites: Expected an array of prerequisite IDs.`;
+        const lErr = validateRawPrereqs(
+          rawLesson,
+          lessonRawIds[cIdx]?.[lIdx] ?? null,
+          'Lesson',
+          `chapters.${cIdx}.lessons.${lIdx}`
+        );
+        if (lErr) return lErr;
+
+        if (Array.isArray(rawLesson.supplements)) {
+          for (let nIdx = 0; nIdx < rawLesson.supplements.length; nIdx += 1) {
+            const rawNode = rawLesson.supplements[nIdx];
+            if (!isPlainObject(rawNode)) continue;
+            const nId = typeof rawNode.id === 'string' && rawNode.id.trim() ? rawNode.id : null;
+            const err = validateRawPrereqs(
+              rawNode,
+              nId,
+              'Supplement',
+              `chapters.${cIdx}.lessons.${lIdx}.supplements.${nIdx}`
+            );
+            if (err) return err;
           }
-          for (let pIdx = 0; pIdx < rawLesson.prerequisites.length; pIdx += 1) {
-            const prereqId = rawLesson.prerequisites[pIdx];
-            if (typeof prereqId !== 'string' || prereqId.trim().length === 0) {
-              return `chapters.${cIdx}.lessons.${lIdx}.prerequisites.${pIdx}: Prerequisite id must be a non-empty string.`;
-            }
-            if (lessonId !== null && prereqId === lessonId) {
-              return `chapters.${cIdx}.lessons.${lIdx}.prerequisites.${pIdx}: Lesson "${lessonId}" cannot depend on itself.`;
-            }
-            if (!declaredRawIds.has(prereqId)) {
-              return `chapters.${cIdx}.lessons.${lIdx}.prerequisites.${pIdx}: Unknown prerequisite id "${prereqId}".`;
-            }
-          }
+        }
+      }
+    }
+  }
+
+  if (Array.isArray(rawCourse.supplements)) {
+    for (let sIdx = 0; sIdx < rawCourse.supplements.length; sIdx += 1) {
+      const rawSpineNode = rawCourse.supplements[sIdx];
+      if (!isPlainObject(rawSpineNode)) continue;
+      const sId =
+        typeof rawSpineNode.id === 'string' && rawSpineNode.id.trim() ? rawSpineNode.id : null;
+      const sErr = validateRawPrereqs(rawSpineNode, sId, 'Supplement', `supplements.${sIdx}`);
+      if (sErr) return sErr;
+
+      if (Array.isArray(rawSpineNode.children)) {
+        for (let cIdx = 0; cIdx < rawSpineNode.children.length; cIdx += 1) {
+          const rawChild = rawSpineNode.children[cIdx];
+          if (!isPlainObject(rawChild)) continue;
+          const cId = typeof rawChild.id === 'string' && rawChild.id.trim() ? rawChild.id : null;
+          const cErr = validateRawPrereqs(
+            rawChild,
+            cId,
+            'Supplement',
+            `supplements.${sIdx}.children.${cIdx}`
+          );
+          if (cErr) return cErr;
         }
       }
     }

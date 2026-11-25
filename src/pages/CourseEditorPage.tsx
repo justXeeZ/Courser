@@ -16,13 +16,22 @@ import { useNavigationGuard } from '@/context/NavigationGuardContext';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
 import {
   deriveChapterId,
+  deriveChapterSupplementId,
   deriveCoursePrefix,
   deriveCourseSlug,
   deriveLessonId,
+  deriveLessonSupplementId,
+  deriveSpineChildSupplementId,
+  deriveSpineSupplementId,
   formatChapterPositionTag,
+  formatChapterSupplementTag,
   formatLessonPositionTag,
+  formatLessonSupplementTag,
+  formatSpineChildSupplementTag,
+  formatSpineSupplementTag,
   rekeyCourseContentIds,
 } from '@/lib/courseIds';
+import { isValidDmyDate } from '@/lib/dateValidation';
 import { layoutCourseTree } from '@/lib/layoutTree';
 import {
   EDITOR_LEASE_STORAGE_KEY,
@@ -33,12 +42,15 @@ import { CourseTreeCanvas } from '@/components/CourseTreeCanvas';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { EditorStickyBar } from '@/components/editor/EditorStickyBar';
 import { ChapterEditorCard } from '@/components/editor/ChapterEditorCard';
+import { SupplementEditorCard } from '@/components/editor/SupplementEditorCard';
 import { ImportCourseDialog } from '@/components/editor/ImportCourseDialog';
 import {
   type Chapter,
   type CourseTree,
   type LessonResource,
+  type SpineSupplement,
   type SubLesson,
+  type Supplement,
 } from '@/types/course';
 
 function createBlankCourse(): CourseTree {
@@ -91,6 +103,7 @@ interface ValidationResult {
   firstErrorMsg: string | null;
   chaptersToExpand: string[];
   lessonsToExpand: string[];
+  supplementsToExpand: string[];
 }
 
 function validateCourseDraft(
@@ -101,13 +114,15 @@ function validateCourseDraft(
   const fieldErrors: Record<string, string> = {};
   const chaptersToExpand: string[] = [];
   const lessonsToExpand: string[] = [];
+  const supplementsToExpand: string[] = [];
   let firstErrorMsg: string | null = null;
 
   const recordError = (
     key: string,
     msg: string,
     expandLessonId?: string,
-    expandChapterId?: string
+    expandChapterId?: string,
+    expandSupplementIds: string[] = []
   ) => {
     if (!fieldErrors[key]) {
       fieldErrors[key] = msg;
@@ -120,6 +135,11 @@ function validateCourseDraft(
     }
     if (expandLessonId && !lessonsToExpand.includes(expandLessonId)) {
       lessonsToExpand.push(expandLessonId);
+    }
+    for (const sid of expandSupplementIds) {
+      if (sid && !supplementsToExpand.includes(sid)) {
+        supplementsToExpand.push(sid);
+      }
     }
   };
 
@@ -294,10 +314,174 @@ function validateCourseDraft(
       lesson.resources.forEach((res, rIdx) => {
         validateResource(res, rIdx, lLabel, `${lPrefix}.resources`, lesson.id, chapter.id);
       });
+
+      const validateSupplementFields = (
+        sup: Supplement,
+        supLabel: string,
+        supPrefix: string,
+        expandLessonId?: string,
+        expandChapterId?: string,
+        expandSupIds: string[] = [sup.id]
+      ) => {
+        (sup.customFields ?? []).forEach((field, fIdx) => {
+          const fieldNum = fIdx + 1;
+          const fLabel = field.label.trim();
+          const fieldDesc = fLabel
+            ? `Custom Field #${fieldNum} ("${fLabel}")`
+            : `Custom Field #${fieldNum}`;
+          if (!fLabel) {
+            recordError(
+              `${supPrefix}.customFields.${fIdx}.label`,
+              `${supLabel}, Custom Field #${fieldNum}: Please enter a field label.`,
+              expandLessonId,
+              expandChapterId,
+              expandSupIds
+            );
+          }
+          const fVal = field.value.trim();
+          if (!fVal) {
+            recordError(
+              `${supPrefix}.customFields.${fIdx}.value`,
+              `${supLabel}, ${fieldDesc}: Please enter a value.`,
+              expandLessonId,
+              expandChapterId,
+              expandSupIds
+            );
+          } else if (field.type === 'link' && !isValidHttpUrlString(fVal)) {
+            recordError(
+              `${supPrefix}.customFields.${fIdx}.value`,
+              `${supLabel}, ${fieldDesc}: Please enter a valid URL starting with http:// or https://.`,
+              expandLessonId,
+              expandChapterId,
+              expandSupIds
+            );
+          } else if (field.type === 'date' && !isValidDmyDate(fVal)) {
+            recordError(
+              `${supPrefix}.customFields.${fIdx}.value`,
+              `${supLabel}, ${fieldDesc}: Please enter a valid date in DD/MM/YYYY format.`,
+              expandLessonId,
+              expandChapterId,
+              expandSupIds
+            );
+          }
+        });
+      };
+
+      (lesson.supplements ?? []).forEach((cn, cnIdx) => {
+        const cnTag = formatLessonSupplementTag(chOrder, lOrder, cnIdx + 1);
+        const cnTitle = cn.title.trim();
+        const cnLabel = cnTitle ? `${cnTag} ("${cnTitle}")` : cnTag;
+        const cnPrefix = `${lPrefix}.supplements.${cnIdx}`;
+        if (!cnTitle) {
+          recordError(`${cnPrefix}.title`, `${cnTag}: Please enter a Supplement Title.`, lesson.id, chapter.id, [cn.id]);
+        }
+        if (!cn.summary.trim()) {
+          recordError(`${cnPrefix}.summary`, `${cnLabel}: Please enter a Supplement Summary.`, lesson.id, chapter.id, [cn.id]);
+        }
+        validateSupplementFields(cn, cnLabel, cnPrefix, lesson.id, chapter.id, [cn.id]);
+        (cn.resources ?? []).forEach((res, rIdx) => {
+          validateResource(res, rIdx, cnLabel, `${cnPrefix}.resources`, lesson.id, chapter.id);
+        });
+      });
+    });
+
+    (chapter.supplements ?? []).forEach((cn, cnIdx) => {
+      const cnTag = formatChapterSupplementTag(chOrder, cnIdx + 1);
+      const cnTitle = cn.title.trim();
+      const cnLabel = cnTitle ? `${cnTag} ("${cnTitle}")` : cnTag;
+      const cnPrefix = `${chPrefix}.supplements.${cnIdx}`;
+      if (!cnTitle) {
+        recordError(`${cnPrefix}.title`, `${cnTag}: Please enter a Supplement Title.`, undefined, chapter.id, [cn.id]);
+      }
+      if (!cn.summary.trim()) {
+        recordError(`${cnPrefix}.summary`, `${cnLabel}: Please enter a Supplement Summary.`, undefined, chapter.id, [cn.id]);
+      }
+      (cn.customFields ?? []).forEach((field, fIdx) => {
+        const fieldNum = fIdx + 1;
+        const fLabel = field.label.trim();
+        const fieldDesc = fLabel ? `Custom Field #${fieldNum} ("${fLabel}")` : `Custom Field #${fieldNum}`;
+        if (!fLabel) {
+          recordError(`${cnPrefix}.customFields.${fIdx}.label`, `${cnLabel}, Custom Field #${fieldNum}: Please enter a field label.`, undefined, chapter.id, [cn.id]);
+        }
+        const fVal = field.value.trim();
+        if (!fVal) {
+          recordError(`${cnPrefix}.customFields.${fIdx}.value`, `${cnLabel}, ${fieldDesc}: Please enter a value.`, undefined, chapter.id, [cn.id]);
+        } else if (field.type === 'link' && !isValidHttpUrlString(fVal)) {
+          recordError(`${cnPrefix}.customFields.${fIdx}.value`, `${cnLabel}, ${fieldDesc}: Please enter a valid URL starting with http:// or https://.`, undefined, chapter.id, [cn.id]);
+        } else if (field.type === 'date' && !isValidDmyDate(fVal)) {
+          recordError(`${cnPrefix}.customFields.${fIdx}.value`, `${cnLabel}, ${fieldDesc}: Please enter a valid date in DD/MM/YYYY format.`, undefined, chapter.id, [cn.id]);
+        }
+      });
+      (cn.resources ?? []).forEach((res, rIdx) => {
+        validateResource(res, rIdx, cnLabel, `${cnPrefix}.resources`, undefined, chapter.id);
+      });
     });
   });
 
-  return { fieldErrors, firstErrorMsg, chaptersToExpand, lessonsToExpand };
+  (draft.supplements ?? []).forEach((scn, sIdx) => {
+    const sTag = formatSpineSupplementTag(sIdx + 1);
+    const sTitle = scn.title.trim();
+    const sLabel = sTitle ? `${sTag} ("${sTitle}")` : sTag;
+    const sPrefix = `supplements.${sIdx}`;
+    if (!sTitle) {
+      recordError(`${sPrefix}.title`, `${sTag}: Please enter a Supplement Title.`, undefined, undefined, [scn.id]);
+    }
+    if (!scn.summary.trim()) {
+      recordError(`${sPrefix}.summary`, `${sLabel}: Please enter a Supplement Summary.`, undefined, undefined, [scn.id]);
+    }
+    (scn.customFields ?? []).forEach((field, fIdx) => {
+      const fieldNum = fIdx + 1;
+      const fLabel = field.label.trim();
+      const fieldDesc = fLabel ? `Custom Field #${fieldNum} ("${fLabel}")` : `Custom Field #${fieldNum}`;
+      if (!fLabel) {
+        recordError(`${sPrefix}.customFields.${fIdx}.label`, `${sLabel}, Custom Field #${fieldNum}: Please enter a field label.`, undefined, undefined, [scn.id]);
+      }
+      const fVal = field.value.trim();
+      if (!fVal) {
+        recordError(`${sPrefix}.customFields.${fIdx}.value`, `${sLabel}, ${fieldDesc}: Please enter a value.`, undefined, undefined, [scn.id]);
+      } else if (field.type === 'link' && !isValidHttpUrlString(fVal)) {
+        recordError(`${sPrefix}.customFields.${fIdx}.value`, `${sLabel}, ${fieldDesc}: Please enter a valid URL starting with http:// or https://.`, undefined, undefined, [scn.id]);
+      } else if (field.type === 'date' && !isValidDmyDate(fVal)) {
+        recordError(`${sPrefix}.customFields.${fIdx}.value`, `${sLabel}, ${fieldDesc}: Please enter a valid date in DD/MM/YYYY format.`, undefined, undefined, [scn.id]);
+      }
+    });
+    (scn.resources ?? []).forEach((res, rIdx) => {
+      validateResource(res, rIdx, sLabel, `${sPrefix}.resources`);
+    });
+    (scn.children ?? []).forEach((child, cIdx) => {
+      const cTag = formatSpineChildSupplementTag(sIdx + 1, cIdx + 1);
+      const cTitle = child.title.trim();
+      const cLabel = cTitle ? `${cTag} ("${cTitle}")` : cTag;
+      const cPrefix = `${sPrefix}.children.${cIdx}`;
+      if (!cTitle) {
+        recordError(`${cPrefix}.title`, `${cTag}: Please enter a Supplement Title.`, undefined, undefined, [scn.id, child.id]);
+      }
+      if (!child.summary.trim()) {
+        recordError(`${cPrefix}.summary`, `${cLabel}: Please enter a Supplement Summary.`, undefined, undefined, [scn.id, child.id]);
+      }
+      (child.customFields ?? []).forEach((field, fIdx) => {
+        const fieldNum = fIdx + 1;
+        const fLabel = field.label.trim();
+        const fieldDesc = fLabel ? `Custom Field #${fieldNum} ("${fLabel}")` : `Custom Field #${fieldNum}`;
+        if (!fLabel) {
+          recordError(`${cPrefix}.customFields.${fIdx}.label`, `${cLabel}, Custom Field #${fieldNum}: Please enter a field label.`, undefined, undefined, [scn.id, child.id]);
+        }
+        const fVal = field.value.trim();
+        if (!fVal) {
+          recordError(`${cPrefix}.customFields.${fIdx}.value`, `${cLabel}, ${fieldDesc}: Please enter a value.`, undefined, undefined, [scn.id, child.id]);
+        } else if (field.type === 'link' && !isValidHttpUrlString(fVal)) {
+          recordError(`${cPrefix}.customFields.${fIdx}.value`, `${cLabel}, ${fieldDesc}: Please enter a valid URL starting with http:// or https://.`, undefined, undefined, [scn.id, child.id]);
+        } else if (field.type === 'date' && !isValidDmyDate(fVal)) {
+          recordError(`${cPrefix}.customFields.${fIdx}.value`, `${cLabel}, ${fieldDesc}: Please enter a valid date in DD/MM/YYYY format.`, undefined, undefined, [scn.id, child.id]);
+        }
+      });
+      (child.resources ?? []).forEach((res, rIdx) => {
+        validateResource(res, rIdx, cLabel, `${cPrefix}.resources`);
+      });
+    });
+  });
+
+  return { fieldErrors, firstErrorMsg, chaptersToExpand, lessonsToExpand, supplementsToExpand };
 }
 
 export function CourseEditorPage() {
@@ -335,6 +519,7 @@ export function CourseEditorPage() {
     }
     return {};
   });
+  const [expandedSupplements, setExpandedSupplements] = useState<Record<string, boolean>>({});
   const [focusedChapterId, setFocusedChapterId] = useState<string | null>(null);
   const [focusedLessonId, setFocusedLessonId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -355,7 +540,10 @@ export function CourseEditorPage() {
   const unsavedDialogRef = useRef<HTMLDivElement | null>(null);
   const { registerGuard } = useNavigationGuard();
   const prevRouteSlugRef = useRef<string | undefined>(slug);
-  const pendingScrollChapterIdRef = useRef<string | null>(null);
+  const pendingScrollTargetRef = useRef<{
+    attr: 'data-edit-chapter' | 'data-edit-supplement';
+    id: string;
+  } | null>(null);
   const pendingPreviewJumpRef = useRef<
     | { kind: 'chapter'; chapterId: string }
     | { kind: 'lesson'; chapterId: string; lessonId: string }
@@ -457,16 +645,24 @@ export function CourseEditorPage() {
   }, [isDirty, location.pathname]);
 
   useEffect(() => {
-    const targetId = pendingScrollChapterIdRef.current;
-    if (!targetId) return;
-    pendingScrollChapterIdRef.current = null;
-    const targetEl = Array.from(document.querySelectorAll('[data-edit-chapter]')).find(
-      (node) => node.getAttribute('data-edit-chapter') === targetId
+    const target = pendingScrollTargetRef.current;
+    if (!target) return;
+    pendingScrollTargetRef.current = null;
+    const targetEl = Array.from(document.querySelectorAll(`[${target.attr}]`)).find(
+      (node) => node.getAttribute(target.attr) === target.id
     );
     if (targetEl && typeof targetEl.scrollIntoView === 'function') {
       targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [draft.chapters]);
+    const firstInput = targetEl?.querySelector<HTMLElement>('input, textarea');
+    if (firstInput && typeof firstInput.focus === 'function') {
+      try {
+        firstInput.focus({ preventScroll: true });
+      } catch {
+        firstInput.focus();
+      }
+    }
+  }, [draft.chapters, draft.supplements]);
 
   useEffect(() => {
     if (activeTab !== 'editor') return;
@@ -698,7 +894,7 @@ export function CourseEditorPage() {
       ],
     };
 
-    pendingScrollChapterIdRef.current = newChapterId;
+    pendingScrollTargetRef.current = { attr: 'data-edit-chapter', id: newChapterId };
     setDraft((prev) => ({ ...prev, chapters: [...prev.chapters, newChapter] }));
     setCollapsedChapters((prev) => ({ ...prev, [newChapterId]: false }));
     setExpandedLessons((exp) => ({ ...exp, [newLessonId]: true }));
@@ -859,6 +1055,204 @@ export function CourseEditorPage() {
     performRemoveLesson(chapterIdx, lessonIdx);
   };
 
+  const toggleSupplementExpand = (nodeId: string) => {
+    setExpandedSupplements((prev) => ({ ...prev, [nodeId]: !prev[nodeId] }));
+  };
+
+  const addChapterSupplement = (chapterIdx: number) => {
+    const ch = draft.chapters[chapterIdx];
+    if (!ch) return;
+    const nextNum = (ch.supplements?.length ?? 0) + 1;
+    const title = `Child Supplement ${nextNum}`;
+    const newId = deriveChapterSupplementId(draft.code, chapterIdx + 1, nextNum, title);
+    const newNode: Supplement = {
+      id: newId,
+      title,
+      summary: 'Supplement overview.',
+      resources: [],
+    };
+    setCollapsedChapters((prev) => ({ ...prev, [ch.id]: false }));
+    setExpandedSupplements((prev) => ({ ...prev, [newId]: true }));
+    updateChapter(chapterIdx, (c) => ({
+      ...c,
+      supplements: [...(c.supplements ?? []), newNode],
+    }));
+  };
+
+  const updateChapterSupplement = (
+    chapterIdx: number,
+    cnIdx: number,
+    updater: (cn: Supplement) => Supplement
+  ) => {
+    updateChapter(chapterIdx, (ch) => ({
+      ...ch,
+      supplements: (ch.supplements ?? []).map((cn, idx) =>
+        idx === cnIdx ? updater(cn) : cn
+      ),
+    }));
+  };
+
+  const removeChapterSupplement = (chapterIdx: number, cnIdx: number) => {
+    updateChapter(chapterIdx, (ch) => {
+      const next = (ch.supplements ?? []).filter((_, idx) => idx !== cnIdx);
+      return { ...ch, supplements: next.length > 0 ? next : undefined };
+    });
+  };
+
+  const addLessonSupplement = (chapterIdx: number, lessonIdx: number) => {
+    const ch = draft.chapters[chapterIdx];
+    const lesson = ch?.lessons[lessonIdx];
+    if (!ch || !lesson) return;
+    const nextNum = (lesson.supplements?.length ?? 0) + 1;
+    const title = `Child Supplement ${nextNum}`;
+    const newId = deriveLessonSupplementId(
+      draft.code,
+      chapterIdx + 1,
+      lessonIdx + 1,
+      nextNum,
+      title
+    );
+    const newNode: Supplement = {
+      id: newId,
+      title,
+      summary: 'Child supplement overview.',
+      resources: [],
+    };
+    setCollapsedChapters((prev) => ({ ...prev, [ch.id]: false }));
+    setExpandedLessons((prev) => ({ ...prev, [lesson.id]: true }));
+    setExpandedSupplements((prev) => ({ ...prev, [newId]: true }));
+    updateLesson(chapterIdx, lessonIdx, (l) => ({
+      ...l,
+      supplements: [...(l.supplements ?? []), newNode],
+    }));
+  };
+
+  const updateLessonSupplement = (
+    chapterIdx: number,
+    lessonIdx: number,
+    cnIdx: number,
+    updater: (cn: Supplement) => Supplement
+  ) => {
+    updateLesson(chapterIdx, lessonIdx, (l) => ({
+      ...l,
+      supplements: (l.supplements ?? []).map((cn, idx) =>
+        idx === cnIdx ? updater(cn) : cn
+      ),
+    }));
+  };
+
+  const removeLessonSupplement = (
+    chapterIdx: number,
+    lessonIdx: number,
+    cnIdx: number
+  ) => {
+    updateLesson(chapterIdx, lessonIdx, (l) => {
+      const next = (l.supplements ?? []).filter((_, idx) => idx !== cnIdx);
+      return { ...l, supplements: next.length > 0 ? next : undefined };
+    });
+  };
+
+  const addSpineSupplement = () => {
+    const nextNum = (draft.supplements?.length ?? 0) + 1;
+    const title = `Supplement ${nextNum}`;
+    const newId = deriveSpineSupplementId(draft.code, nextNum, title);
+    const newNode: SpineSupplement = {
+      id: newId,
+      title,
+      summary: 'Supplement overview.',
+      afterChapterOrder: draft.chapters.length,
+      resources: [],
+    };
+    pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: newId };
+    setExpandedSupplements((prev) => ({ ...prev, [newId]: true }));
+    setDraft((prev) => ({
+      ...prev,
+      supplements: [...(prev.supplements ?? []), newNode],
+    }));
+  };
+
+  const updateSpineSupplement = (
+    sIdx: number,
+    updater: (node: SpineSupplement) => SpineSupplement
+  ) => {
+    setDraft((prev) => ({
+      ...prev,
+      supplements: (prev.supplements ?? []).map((n, idx) =>
+        idx === sIdx ? updater(n) : n
+      ),
+    }));
+  };
+
+  const moveSpineSupplement = (sIdx: number, direction: -1 | 1) => {
+    setDraft((prev) => {
+      const list = [...(prev.supplements ?? [])];
+      const target = sIdx + direction;
+      if (target < 0 || target >= list.length) return prev;
+      [list[sIdx], list[target]] = [list[target], list[sIdx]];
+      return { ...prev, supplements: list };
+    });
+  };
+
+  const removeSpineSupplement = (sIdx: number) => {
+    setDraft((prev) => {
+      const next = (prev.supplements ?? []).filter((_, idx) => idx !== sIdx);
+      return { ...prev, supplements: next.length > 0 ? next : undefined };
+    });
+  };
+
+  const addSpineChildSupplement = (sIdx: number) => {
+    const parent = draft.supplements?.[sIdx];
+    if (!parent) return;
+    const nextNum = (parent.children?.length ?? 0) + 1;
+    const title = `Child Supplement ${nextNum}`;
+    const newId = deriveSpineChildSupplementId(draft.code, sIdx + 1, nextNum, title);
+    const child: Supplement = {
+      id: newId,
+      title,
+      summary: 'Child supplement overview.',
+      resources: [],
+    };
+    setExpandedSupplements((prev) => ({ ...prev, [parent.id]: true, [newId]: true }));
+    updateSpineSupplement(sIdx, (n) => ({
+      ...n,
+      children: [...(n.children ?? []), child],
+    }));
+  };
+
+  const updateSpineChildSupplement = (
+    sIdx: number,
+    childIdx: number,
+    updater: (child: Supplement) => Supplement
+  ) => {
+    updateSpineSupplement(sIdx, (n) => ({
+      ...n,
+      children: (n.children ?? []).map((c, idx) =>
+        idx === childIdx ? updater(c) : c
+      ),
+    }));
+  };
+
+  const moveSpineChildSupplement = (
+    sIdx: number,
+    childIdx: number,
+    direction: -1 | 1
+  ) => {
+    updateSpineSupplement(sIdx, (n) => {
+      const list = [...(n.children ?? [])];
+      const target = childIdx + direction;
+      if (target < 0 || target >= list.length) return n;
+      [list[childIdx], list[target]] = [list[target], list[childIdx]];
+      return { ...n, children: list };
+    });
+  };
+
+  const removeSpineChildSupplement = (sIdx: number, childIdx: number) => {
+    updateSpineSupplement(sIdx, (n) => {
+      const next = (n.children ?? []).filter((_, idx) => idx !== childIdx);
+      return { ...n, children: next.length > 0 ? next : undefined };
+    });
+  };
+
   const toggleLessonPrerequisite = (
     chapterIdx: number,
     lessonIdx: number,
@@ -874,17 +1268,31 @@ export function CourseEditorPage() {
 
   const scrollFirstErrorIntoView = () => {
     requestAnimationFrame(() => {
-      const firstErrEl = document.querySelector('[data-field-error="true"]');
-      if (firstErrEl && typeof firstErrEl.scrollIntoView === 'function') {
-        const reducedMotion =
-          typeof window !== 'undefined' &&
-          typeof window.matchMedia === 'function' &&
-          window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-        firstErrEl.scrollIntoView({
-          behavior: reducedMotion ? 'auto' : 'smooth',
-          block: 'center',
-        });
-      }
+      requestAnimationFrame(() => {
+        const firstErrEl = document.querySelector<HTMLElement>('[data-field-error="true"]');
+        if (!firstErrEl) return;
+        if (typeof firstErrEl.scrollIntoView === 'function') {
+          const reducedMotion =
+            typeof window !== 'undefined' &&
+            typeof window.matchMedia === 'function' &&
+            window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+          firstErrEl.scrollIntoView({
+            behavior: reducedMotion ? 'auto' : 'smooth',
+            block: 'center',
+          });
+        }
+        const focusTarget =
+          firstErrEl.matches('input, select, textarea')
+            ? firstErrEl
+            : firstErrEl.querySelector<HTMLElement>('input, select, textarea');
+        if (focusTarget && typeof focusTarget.focus === 'function') {
+          try {
+            focusTarget.focus({ preventScroll: true });
+          } catch {
+            focusTarget.focus();
+          }
+        }
+      });
     });
   };
 
@@ -912,6 +1320,15 @@ export function CourseEditorPage() {
           const next = { ...prev };
           for (const lid of validation.lessonsToExpand) {
             next[lid] = true;
+          }
+          return next;
+        });
+      }
+      if (validation.supplementsToExpand.length > 0) {
+        setExpandedSupplements((prev) => {
+          const next = { ...prev };
+          for (const sid of validation.supplementsToExpand) {
+            next[sid] = true;
           }
           return next;
         });
@@ -1024,8 +1441,66 @@ export function CourseEditorPage() {
     setActiveTab('editor');
   };
 
+  const handlePreviewSelectSupplement = (previewNodeId: string) => {
+    // Check spine supplements
+    for (let sIdx = 0; sIdx < (normalizedPreviewCourse.supplements ?? []).length; sIdx++) {
+      const pNode = normalizedPreviewCourse.supplements![sIdx];
+      const dNode = draft.supplements?.[sIdx];
+      if (!dNode) continue;
+      if (pNode.id === previewNodeId) {
+        pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: dNode.id };
+        setExpandedSupplements((prev) => ({ ...prev, [dNode.id]: true }));
+        setActiveTab('editor');
+        return;
+      }
+      const childIdx = (pNode.children ?? []).findIndex((c) => c.id === previewNodeId);
+      if (childIdx >= 0 && dNode.children?.[childIdx]) {
+        const childId = dNode.children[childIdx].id;
+        pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: childId };
+        setExpandedSupplements((prev) => ({
+          ...prev,
+          [dNode.id]: true,
+          [childId]: true,
+        }));
+        setActiveTab('editor');
+        return;
+      }
+    }
+    // Check chapter & lesson supplements
+    for (let cIdx = 0; cIdx < normalizedPreviewCourse.chapters.length; cIdx++) {
+      const pCh = normalizedPreviewCourse.chapters[cIdx];
+      const dCh = draft.chapters[cIdx];
+      if (!dCh) continue;
+      const chCnIdx = (pCh.supplements ?? []).findIndex((cn) => cn.id === previewNodeId);
+      if (chCnIdx >= 0 && dCh.supplements?.[chCnIdx]) {
+        const supId = dCh.supplements[chCnIdx].id;
+        pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: supId };
+        setCollapsedChapters((prev) => ({ ...prev, [dCh.id]: false }));
+        setExpandedSupplements((prev) => ({ ...prev, [supId]: true }));
+        setActiveTab('editor');
+        return;
+      }
+      for (let lIdx = 0; lIdx < pCh.lessons.length; lIdx++) {
+        const pL = pCh.lessons[lIdx];
+        const dL = dCh.lessons[lIdx];
+        if (!dL) continue;
+        const lCnIdx = (pL.supplements ?? []).findIndex((cn) => cn.id === previewNodeId);
+        if (lCnIdx >= 0 && dL.supplements?.[lCnIdx]) {
+          const supId = dL.supplements[lCnIdx].id;
+          pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: supId };
+          setCollapsedChapters((prev) => ({ ...prev, [dCh.id]: false }));
+          setExpandedLessons((prev) => ({ ...prev, [dL.id]: true }));
+          setExpandedSupplements((prev) => ({ ...prev, [supId]: true }));
+          setActiveTab('editor');
+          return;
+        }
+      }
+    }
+  };
+
   const displayErrorMsg = storeErrorMsg ?? errorMsg;
   const hasExpandedLessons = Object.values(expandedLessons).some(Boolean);
+  const hasExpandedSupplements = Object.values(expandedSupplements).some(Boolean);
   const hasExpandedChapters = draft.chapters.some((ch) => !collapsedChapters[ch.id]);
   const effectiveStickyBarHeight =
     stickyBarHeight > 56 ? stickyBarHeight : displayErrorMsg ? 92 : 56;
@@ -1166,7 +1641,7 @@ export function CourseEditorPage() {
                 }
               : null
           }
-          hasExpandedLessons={hasExpandedLessons || hasExpandedChapters}
+          hasExpandedLessons={hasExpandedLessons || hasExpandedSupplements || hasExpandedChapters}
           errorMsg={displayErrorMsg}
           onDismissError={() => {
             setErrorMsg(null);
@@ -1174,8 +1649,10 @@ export function CourseEditorPage() {
           }}
           onHeightChange={setStickyBarHeight}
           onAddChapter={addChapter}
+          onAddSpineSupplement={addSpineSupplement}
           onCollapseAll={() => {
             setExpandedLessons({});
+            setExpandedSupplements({});
             setCollapsedChapters(
               Object.fromEntries(draft.chapters.map((ch) => [ch.id, true]))
             );
@@ -1235,6 +1712,22 @@ export function CourseEditorPage() {
                 {normalizedPreviewCourse.chapters.length} chapters ·{' '}
                 {normalizedPreviewCourse.chapters.reduce((s, c) => s + c.lessons.length, 0)}{' '}
                 lessons
+                {(() => {
+                  const supCount =
+                    (normalizedPreviewCourse.supplements?.length ?? 0) +
+                    (normalizedPreviewCourse.supplements?.reduce(
+                      (s, n) => s + (n.children?.length ?? 0),
+                      0
+                    ) ?? 0) +
+                    normalizedPreviewCourse.chapters.reduce(
+                      (s, c) =>
+                        s +
+                        (c.supplements?.length ?? 0) +
+                        c.lessons.reduce((ls, l) => ls + (l.supplements?.length ?? 0), 0),
+                      0
+                    );
+                  return supCount > 0 ? ` · ${supCount} ${supCount === 1 ? 'supplement' : 'supplements'}` : '';
+                })()}
               </span>
             </div>
             {previewLayout && (
@@ -1244,6 +1737,7 @@ export function CourseEditorPage() {
                 framed={false}
                 onSelectLesson={handlePreviewSelectLesson}
                 onSelectChapter={handlePreviewSelectChapter}
+                onSelectSupplement={handlePreviewSelectSupplement}
                 onQuickToggleDone={() => {}}
                 onContextMenuLesson={() => {}}
               />
@@ -1562,6 +2056,18 @@ export function CourseEditorPage() {
                 const derivedLessonIds =
                   derivedChapter?.lessons.map((l) => l.id) ??
                   chapter.lessons.map((l) => l.id);
+                const derivedSupplementIds =
+                  derivedChapter?.supplements?.map((cn) => cn.id) ??
+                  chapter.supplements?.map((cn) => cn.id) ??
+                  [];
+                const derivedLessonSupplementIds = Object.fromEntries(
+                  chapter.lessons.map((l, lIdx) => [
+                    l.id,
+                    derivedChapter?.lessons[lIdx]?.supplements?.map((cn) => cn.id) ??
+                      l.supplements?.map((cn) => cn.id) ??
+                      [],
+                  ])
+                );
 
                 return (
                   <ChapterEditorCard
@@ -1571,10 +2077,14 @@ export function CourseEditorPage() {
                     totalChapters={draft.chapters.length}
                     derivedChapterId={derivedChapterId}
                     derivedLessonIds={derivedLessonIds}
+                    derivedSupplementIds={derivedSupplementIds}
+                    derivedLessonSupplementIds={derivedLessonSupplementIds}
                     courseCode={draft.code}
                     allChapters={draft.chapters}
+                    allSpineSupplements={draft.supplements ?? []}
                     isExpanded={!collapsedChapters[chapter.id]}
                     expandedLessons={expandedLessons}
+                    expandedSupplements={expandedSupplements}
                     fieldErrors={fieldErrors}
                     onToggleChapterExpand={() =>
                       setCollapsedChapters((prev) => ({
@@ -1588,6 +2098,7 @@ export function CourseEditorPage() {
                         [lessonId]: !prev[lessonId],
                       }))
                     }
+                    onToggleSupplementExpand={toggleSupplementExpand}
                     onUpdateChapter={(updater) => updateChapter(cIdx, updater)}
                     onMoveChapter={(dir) => moveChapter(cIdx, dir)}
                     onRemoveChapter={() => removeChapter(cIdx)}
@@ -1601,9 +2112,72 @@ export function CourseEditorPage() {
                     onToggleLessonPrerequisite={(lIdx, prereqId) =>
                       toggleLessonPrerequisite(cIdx, lIdx, prereqId)
                     }
+                    onAddChapterSupplement={() => addChapterSupplement(cIdx)}
+                    onUpdateChapterSupplement={(cnIdx, updater) =>
+                      updateChapterSupplement(cIdx, cnIdx, updater)
+                    }
+                    onRemoveChapterSupplement={(cnIdx) =>
+                      removeChapterSupplement(cIdx, cnIdx)
+                    }
+                    onAddLessonSupplement={(lIdx) => addLessonSupplement(cIdx, lIdx)}
+                    onUpdateLessonSupplement={(lIdx, cnIdx, updater) =>
+                      updateLessonSupplement(cIdx, lIdx, cnIdx, updater)
+                    }
+                    onRemoveLessonSupplement={(lIdx, cnIdx) =>
+                      removeLessonSupplement(cIdx, lIdx, cnIdx)
+                    }
                   />
                 );
               })}
+            </section>
+
+            {/* 3. Spine Supplements Builder */}
+            <section className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <h2 className="text-sm font-bold tracking-wide text-[var(--text-secondary)] uppercase">
+                  Supplements ({(draft.supplements ?? []).length})
+                </h2>
+              </div>
+              {(draft.supplements ?? []).length > 0 && (
+                <div className="space-y-3">
+                  {(draft.supplements ?? []).map((scn, sIdx) => {
+                    const derivedSpine = normalizedPreviewCourse.supplements?.[sIdx];
+                    return (
+                      <SupplementEditorCard
+                        key={scn.id}
+                        node={scn}
+                        placement="spine"
+                        positionTag={formatSpineSupplementTag(sIdx + 1)}
+                        derivedId={derivedSpine?.id ?? scn.id}
+                        courseCode={draft.code}
+                        allChapters={draft.chapters}
+                        allSpineSupplements={draft.supplements ?? []}
+                        isExpanded={Boolean(expandedSupplements[scn.id])}
+                        spineOrder={sIdx + 1}
+                        derivedChildIds={derivedSpine?.children?.map((c) => c.id) ?? []}
+                        expandedChildIds={expandedSupplements}
+                        onToggleChildExpand={toggleSupplementExpand}
+                        errorPrefix={`supplements.${sIdx}`}
+                        fieldErrors={fieldErrors}
+                        canMoveUp={sIdx > 0}
+                        canMoveDown={sIdx < (draft.supplements?.length ?? 0) - 1}
+                        onToggleExpand={() => toggleSupplementExpand(scn.id)}
+                        onUpdate={(updater) =>
+                          updateSpineSupplement(sIdx, (prev) => updater(prev) as SpineSupplement)
+                        }
+                        onMove={(dir) => moveSpineSupplement(sIdx, dir)}
+                        onRemove={() => removeSpineSupplement(sIdx)}
+                        onAddChild={() => addSpineChildSupplement(sIdx)}
+                        onUpdateChild={(cIdx, updater) =>
+                          updateSpineChildSupplement(sIdx, cIdx, updater)
+                        }
+                        onMoveChild={(cIdx, dir) => moveSpineChildSupplement(sIdx, cIdx, dir)}
+                        onRemoveChild={(cIdx) => removeSpineChildSupplement(sIdx, cIdx)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
             </section>
           </div>
         )}

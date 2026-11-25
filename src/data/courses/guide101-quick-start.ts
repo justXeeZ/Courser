@@ -248,6 +248,23 @@ export const guide101QuickStart: CourseTree = {
           ],
         },
       ],
+      supplements: [
+        {
+          id: 'guide101-ch4-s1-supplements-overview',
+          title: 'Supplements Overview',
+          summary:
+            'Teal-accented Supplements can sit on the main spine, under a chapter, or off any sub-lesson—with typed custom fields and an optional informational-only toggle.',
+          notes:
+            'Supplements support materials, prerequisites, and notes just like chapters and lessons.\nThis supplement is marked Informational (trackable: false), so it shows a dashed border on the tree and does not affect your course completion percentage.',
+          side: 'right',
+          trackable: false,
+          customFields: [
+            { label: 'Color Family', value: 'Teal', type: 'badge' },
+            { label: 'Placements', value: 'Spine, Chapter, Lesson', type: 'text' },
+          ],
+          resources: [],
+        },
+      ],
     },
     {
       id: 'guide101-ch5-backup-import-export',
@@ -293,6 +310,36 @@ export const guide101QuickStart: CourseTree = {
         },
       ],
       lessons: [],
+    },
+  ],
+  supplements: [
+    {
+      id: 'guide101-s1-supplements-sandbox',
+      title: 'Supplements Sandbox',
+      summary:
+        'A spine-level Supplement placed after Chapter 6 with a child Supplement and typed custom fields.',
+      notes:
+        'Spine Supplements can be placed before, between, or after any chapter using afterChapterOrder, and can host child Supplements.',
+      afterChapterOrder: 6,
+      prerequisites: ['guide101-ch6-dark-mode-data-formats'],
+      customFields: [
+        { label: 'Role', value: 'Interactive Guide', type: 'badge' },
+        { label: 'Format Docs', value: 'https://courser.app/docs/data-formats', type: 'link' },
+      ],
+      resources: [],
+      children: [
+        {
+          id: 'guide101-s1-s1-trying-custom-fields',
+          title: 'Trying Custom Fields',
+          summary:
+            'Inspect typed custom fields (text, link, badge, date) in the Teal Supplement drawer and toggle completion like any lesson.',
+          side: 'left',
+          customFields: [
+            { label: 'Field Types', value: 'text, link, badge, date', type: 'text' },
+          ],
+          resources: [],
+        },
+      ],
     },
   ],
 };

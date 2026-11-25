@@ -16,6 +16,7 @@ import { ChecklistView } from '@/components/ChecklistView';
 import { QuickStatusPill } from '@/components/QuickStatusPill';
 import { LessonDrawer } from '@/components/LessonDrawer';
 import { ChapterDrawer } from '@/components/ChapterDrawer';
+import { SupplementDrawer } from '@/components/SupplementDrawer';
 import { ExportCourseDialog } from '@/components/ExportCourseDialog';
 import { ProgressBackupDialog } from '@/components/ProgressBackupDialog';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
@@ -127,15 +128,19 @@ export function CoursePage() {
   const stats = getCourseStats(course);
   const requestedLessonId = searchParams.get('lesson');
   const requestedChapterId = searchParams.get('chapter');
+  const requestedSupplementId = searchParams.get('supplement');
 
   const resolvedItem = requestedLessonId
     ? findCourseItem(course, requestedLessonId)
     : requestedChapterId
       ? findCourseItem(course, requestedChapterId)
-      : undefined;
+      : requestedSupplementId
+        ? findCourseItem(course, requestedSupplementId)
+        : undefined;
 
   const activeLessonEntry = resolvedItem?.kind === 'lesson' ? resolvedItem : undefined;
   const activeChapterEntry = resolvedItem?.kind === 'chapter' ? resolvedItem : undefined;
+  const activeSupplementEntry = resolvedItem?.kind === 'supplement' ? resolvedItem : undefined;
 
   const openItem = (itemId: string) => {
     if (hasSubModalOpen) return;
@@ -144,6 +149,8 @@ export function CoursePage() {
     if (!item) return;
     if (item.kind === 'chapter') {
       setSearchParams({ chapter: item.id }, { replace: false });
+    } else if (item.kind === 'supplement') {
+      setSearchParams({ supplement: item.id }, { replace: false });
     } else {
       setSearchParams({ lesson: item.id }, { replace: false });
     }
@@ -170,6 +177,8 @@ export function CoursePage() {
       :root {
         --svg-chapter-fill: ${ROADMAP_COLORS.chapterFill};
         --svg-lesson-fill: ${ROADMAP_COLORS.lessonFill};
+        --svg-supplement-fill: ${ROADMAP_COLORS.supplementFill};
+        --svg-node-stroke: ${ROADMAP_COLORS.nodeStroke};
         --svg-edge-color: ${ROADMAP_COLORS.edgeBlue};
       }
       text { font-family: "Balsamiq Sans", ui-sans-serif, system-ui, sans-serif; }
@@ -221,10 +230,12 @@ export function CoursePage() {
             statuses={statuses}
             activeLessonId={activeLessonEntry?.lesson.id ?? null}
             activeChapterId={activeChapterEntry?.chapter.id ?? null}
+            activeSupplementId={activeSupplementEntry?.id ?? null}
             statusFilter={statusFilter}
             svgRef={svgRef}
             onSelectLesson={openItem}
             onSelectChapter={handleSelectChapter}
+            onSelectSupplement={openItem}
             onQuickToggleDone={(itemId) => toggleDone(course.slug, itemId)}
             onContextMenuLesson={(itemId, anchor) => {
               clearHoverCloseTimer();
@@ -250,6 +261,7 @@ export function CoursePage() {
             statusFilter={statusFilter}
             onSelectLesson={openItem}
             onSelectChapter={handleSelectChapter}
+            onSelectSupplement={openItem}
             onToggleDone={(itemId) => toggleDone(course.slug, itemId)}
           />
         )}
@@ -320,6 +332,32 @@ export function CoursePage() {
           onOpenAssessment={(resource) =>
             setActiveAssessmentMaterial({
               itemId: activeChapterEntry.chapter.id,
+              resource,
+            })
+          }
+          onClose={closeDrawer}
+        />
+      )}
+
+      {/* 600px Slide-Over Supplement Drawer */}
+      {activeSupplementEntry && (
+        <SupplementDrawer
+          course={course}
+          entry={activeSupplementEntry}
+          status={getLessonStatus(course.slug, activeSupplementEntry.id)}
+          statuses={statuses}
+          courseSlug={course.slug}
+          onChangeStatus={(next) => {
+            if (!hasSubModalOpen) {
+              setLessonStatus(course.slug, activeSupplementEntry.id, next);
+            }
+          }}
+          onSelectItem={openItem}
+          onToggleItemDone={(itemId) => toggleDone(course.slug, itemId)}
+          onOpenMaterialViewer={(resource) => setActiveViewerMaterial(resource)}
+          onOpenAssessment={(resource) =>
+            setActiveAssessmentMaterial({
+              itemId: activeSupplementEntry.id,
               resource,
             })
           }

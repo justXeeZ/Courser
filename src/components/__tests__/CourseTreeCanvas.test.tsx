@@ -22,7 +22,7 @@ describe('CourseTreeCanvas', () => {
 
     const zoomWrapper = container.querySelector('svg[role="img"]')?.parentElement as HTMLElement;
     expect(zoomWrapper).toHaveClass(
-      'transition-[width,max-width,min-width]',
+      'transition-[width,max-width,min-width,transform]',
       'duration-200',
       'ease-out'
     );
@@ -195,6 +195,9 @@ describe('CourseTreeCanvas', () => {
         statuses={{
           ...allSkippedStatuses,
           [ch2.lessons[0].id]: 'done',
+          ...Object.fromEntries(
+            (ch2.lessons[0].supplements ?? []).map((cn) => [cn.id, 'skipped' as const])
+          ),
           ...Object.fromEntries(ch2.lessons.slice(1).map((l) => [l.id, 'skipped' as const])),
         }}
         onSelectLesson={vi.fn()}
@@ -264,7 +267,7 @@ describe('CourseTreeCanvas', () => {
 
     const canvasContainer = container.querySelector('.touch-none') as HTMLDivElement;
     const zoomWrapper = canvasContainer.firstElementChild as HTMLDivElement;
-    expect(zoomWrapper.className).toContain('transition-[width,max-width,min-width]');
+    expect(zoomWrapper.className).toContain('transition-[width,max-width,min-width,transform]');
 
     fireEvent.touchStart(canvasContainer, {
       touches: [
@@ -272,7 +275,7 @@ describe('CourseTreeCanvas', () => {
         { clientX: 100, clientY: 0 },
       ],
     });
-    expect(zoomWrapper.className).not.toContain('transition-[width,max-width,min-width]');
+    expect(zoomWrapper.className).not.toContain('transition-[width,max-width,min-width,transform]');
 
     fireEvent.touchMove(canvasContainer, {
       touches: [
@@ -283,7 +286,7 @@ describe('CourseTreeCanvas', () => {
     expect(screen.getByText('150%')).toBeInTheDocument();
 
     fireEvent.touchEnd(canvasContainer, { touches: [] });
-    expect(zoomWrapper.className).toContain('transition-[width,max-width,min-width]');
+    expect(zoomWrapper.className).toContain('transition-[width,max-width,min-width,transform]');
   });
 
   it('centers mathematically on the first click of Fit and Reset zoom (100%)', () => {
@@ -311,5 +314,45 @@ describe('CourseTreeCanvas', () => {
     const expectedMinW = Math.round(Math.min(layout.width, 640));
     const expectedCenterPanX = -Math.round((expectedMinW - 360) / 2);
     expect(zoomWrapper.style.transform).toBe(`translate(${expectedCenterPanX}px, 0px)`);
+  });
+
+  it('renders supplements with Teal fill, --svg-node-stroke outline, dashed stroke for informational supplements, and Shift+Click only on trackable leaves', () => {
+    const onQuickToggleDone = vi.fn();
+    const onSelectSupplement = vi.fn();
+    const { container } = render(
+      <CourseTreeCanvas
+        layout={layout}
+        statuses={{}}
+        onSelectLesson={vi.fn()}
+        onSelectChapter={vi.fn()}
+        onSelectSupplement={onSelectSupplement}
+        onQuickToggleDone={onQuickToggleDone}
+        onContextMenuLesson={vi.fn()}
+      />
+    );
+
+    const trackableLeaf = container.querySelector(
+      'g[data-node-id="demo201-s1-s1-office-hours-prep"]'
+    ) as SVGGElement;
+    expect(trackableLeaf).toHaveAttribute('data-node-kind', 'supplement');
+    expect(trackableLeaf.querySelector('rect.node-rect')).toHaveAttribute(
+      'fill',
+      'var(--svg-supplement-fill)'
+    );
+    expect(trackableLeaf.querySelector('rect.node-rect')).toHaveAttribute(
+      'stroke',
+      'var(--svg-node-stroke)'
+    );
+    fireEvent.click(trackableLeaf, { shiftKey: true });
+    expect(onQuickToggleDone).toHaveBeenCalledWith('demo201-s1-s1-office-hours-prep');
+
+    const infoNode = container.querySelector(
+      'g[data-node-id="demo201-ch1-s1-syllabus-reference-card"]'
+    ) as SVGGElement;
+    expect(infoNode).toHaveAttribute('data-status', 'info');
+    expect(infoNode.querySelector('rect.node-rect')).toHaveAttribute('stroke-dasharray', '6 3');
+    fireEvent.click(infoNode, { shiftKey: true });
+    expect(onQuickToggleDone).toHaveBeenCalledTimes(1);
+    expect(onSelectSupplement).toHaveBeenCalledWith('demo201-ch1-s1-syllabus-reference-card');
   });
 });

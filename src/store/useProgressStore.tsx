@@ -11,7 +11,14 @@ import {
   createLocalProgressRepository,
   localProgressRepository,
 } from '@/lib/storage/localRepositories';
-import type { Chapter, CourseTree, LessonStatus } from '@/types/course';
+import type {
+  Chapter,
+  CourseTree,
+  LessonStatus,
+  SpineSupplement,
+  Supplement,
+} from '@/types/course';
+import { isLeafChapter, isSupplementTrackable } from '@/lib/courseItems';
 
 export {
   AssessmentScoreRecordSchema,
@@ -73,30 +80,17 @@ export function parseImportedProgressJson(
   }
 }
 
-export function computeChapterStats(
-  chapter: Chapter,
-  courseStatuses: Record<string, LessonStatus> = {}
+function computeTrackableIdStats(
+  ids: string[],
+  courseStatuses: Record<string, LessonStatus>
 ): ProgressStats {
-  if (chapter.lessons.length === 0) {
-    const status = courseStatuses[chapter.id] ?? 'todo';
-    const done = status === 'done' ? 1 : 0;
-    const learning = status === 'learning' ? 1 : 0;
-    const skipped = status === 'skipped' ? 1 : 0;
-    const todo = status === 'todo' ? 1 : 0;
-    const total = 1;
-    const required = total - skipped;
-    const percentDone = required === 0 ? 100 : Math.round((done / required) * 100);
-
-    return { total, required, done, learning, skipped, todo, percentDone };
-  }
-
-  const total = chapter.lessons.length;
+  const total = ids.length;
   let done = 0;
   let learning = 0;
   let skipped = 0;
 
-  for (const lesson of chapter.lessons) {
-    const status = courseStatuses[lesson.id] ?? 'todo';
+  for (const id of ids) {
+    const status = courseStatuses[id] ?? 'todo';
     if (status === 'done') done += 1;
     else if (status === 'learning') learning += 1;
     else if (status === 'skipped') skipped += 1;
@@ -108,6 +102,42 @@ export function computeChapterStats(
     required === 0 ? (total > 0 ? 100 : 0) : Math.round((done / required) * 100);
 
   return { total, required, done, learning, skipped, todo, percentDone };
+}
+
+export function computeChapterStats(
+  chapter: Chapter,
+  courseStatuses: Record<string, LessonStatus> = {}
+): ProgressStats {
+  if (isLeafChapter(chapter)) {
+    return computeTrackableIdStats([chapter.id], courseStatuses);
+  }
+
+  const ids: string[] = [];
+  for (const lesson of chapter.lessons) {
+    ids.push(lesson.id);
+    for (const node of lesson.supplements ?? []) {
+      if (isSupplementTrackable(node)) ids.push(node.id);
+    }
+  }
+  for (const node of chapter.supplements ?? []) {
+    if (isSupplementTrackable(node)) ids.push(node.id);
+  }
+
+  return computeTrackableIdStats(ids, courseStatuses);
+}
+
+export function computeSpineSupplementStats(
+  node: SpineSupplement,
+  courseStatuses: Record<string, LessonStatus> = {}
+): ProgressStats {
+  const children = node.children ?? [];
+  if (children.length === 0) {
+    return isSupplementTrackable(node)
+      ? computeTrackableIdStats([node.id], courseStatuses)
+      : { total: 0, required: 0, done: 0, learning: 0, skipped: 0, todo: 0, percentDone: 0 };
+  }
+  const ids = children.filter((c: Supplement) => isSupplementTrackable(c)).map((c) => c.id);
+  return computeTrackableIdStats(ids, courseStatuses);
 }
 
 export function computeCourseStats(
@@ -123,6 +153,16 @@ export function computeCourseStats(
 
   for (const chapter of course.chapters) {
     const stats = computeChapterStats(chapter, courseStatuses);
+    total += stats.total;
+    required += stats.required;
+    done += stats.done;
+    learning += stats.learning;
+    skipped += stats.skipped;
+    todo += stats.todo;
+  }
+
+  for (const spineNode of course.supplements ?? []) {
+    const stats = computeSpineSupplementStats(spineNode, courseStatuses);
     total += stats.total;
     required += stats.required;
     done += stats.done;

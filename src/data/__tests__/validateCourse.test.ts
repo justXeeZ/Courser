@@ -483,4 +483,31 @@ describe('Course schema & seed validation', () => {
       }).success
     ).toBe(false);
   });
+
+  it('validates supplements across spine, chapter, and lesson placements and rejects invalid IDs/prereqs/fields', () => {
+    const valid = structuredClone(COURSES[1]);
+    expect(() => parseCourseTree(valid)).not.toThrow();
+
+    const badPrefix = structuredClone(COURSES[1]);
+    badPrefix.supplements![0].id = 'wrong-prefix-node';
+    expect(() => parseCourseTree(badPrefix)).toThrow(/must be derived from course prefix/);
+
+    const dupCustomId = structuredClone(COURSES[1]);
+    dupCustomId.supplements![0].children![0].id = dupCustomId.chapters[0].id;
+    expect(() => parseCourseTree(dupCustomId)).toThrow(/Duplicate item id/);
+
+    const badPrereq = structuredClone(COURSES[1]);
+    badPrereq.chapters[0].supplements![0].prerequisites = ['demo201-missing-node'];
+    expect(() => parseCourseTree(badPrereq)).toThrow(/Unknown prerequisite id/);
+
+    const emptyFieldLabel = structuredClone(COURSES[1]);
+    emptyFieldLabel.supplements![0].customFields = [{ label: '   ', value: 'v', type: 'text' }];
+    expect(() => parseCourseTree(emptyFieldLabel)).toThrow();
+
+    const invalidDateField = structuredClone(COURSES[1]);
+    invalidDateField.supplements![0].customFields = [
+      { label: 'Exam Date', value: '31/02/2026', type: 'date' },
+    ];
+    expect(() => parseCourseTree(invalidDateField)).toThrow(/DD\/MM\/YYYY/);
+  });
 });

@@ -1,9 +1,16 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowDown, ArrowUp, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
+import { useId } from 'react';
+import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
-import { formatLessonPositionTag } from '@/lib/courseIds';
-import type { Chapter, SubLesson } from '@/types/course';
+import { ReorderButtons } from '@/components/editor/ReorderButtons';
+import { SupplementEditorCard } from '@/components/editor/SupplementEditorCard';
+import { useStickyHeader } from '@/hooks/useStickyHeader';
+import {
+  deriveLessonSupplementId,
+  formatLessonPositionTag,
+  formatLessonSupplementTag,
+} from '@/lib/courseIds';
+import type { Chapter, SpineSupplement, SubLesson, Supplement } from '@/types/course';
 
 interface LessonEditorCardProps {
   lesson: SubLesson;
@@ -12,16 +19,23 @@ interface LessonEditorCardProps {
   chapterOrder: number;
   chapterId: string;
   derivedLessonId: string;
+  derivedSupplementIds?: string[];
   courseCode: string;
   allChapters: Chapter[];
+  allSpineSupplements?: SpineSupplement[];
   isExpanded: boolean;
+  expandedSupplements?: Record<string, boolean>;
   errorPrefix?: string;
   fieldErrors?: Record<string, string>;
   onToggleExpand: () => void;
+  onToggleSupplementExpand?: (nodeId: string) => void;
   onUpdate: (updater: (lesson: SubLesson) => SubLesson) => void;
   onMove: (direction: -1 | 1) => void;
   onRemove: () => void;
   onTogglePrerequisite: (prereqId: string) => void;
+  onAddSupplement?: () => void;
+  onUpdateSupplement?: (cnIdx: number, updater: (cn: Supplement) => Supplement) => void;
+  onRemoveSupplement?: (cnIdx: number) => void;
 }
 
 export function LessonEditorCard({
@@ -31,51 +45,33 @@ export function LessonEditorCard({
   chapterOrder,
   chapterId,
   derivedLessonId,
+  derivedSupplementIds = [],
   courseCode,
   allChapters,
+  allSpineSupplements = [],
   isExpanded,
+  expandedSupplements = {},
   errorPrefix,
   fieldErrors,
   onToggleExpand,
+  onToggleSupplementExpand,
   onUpdate,
   onMove,
   onRemove,
   onTogglePrerequisite,
+  onAddSupplement,
+  onUpdateSupplement,
+  onRemoveSupplement,
 }: LessonEditorCardProps) {
   const titleErrorKey = errorPrefix ? `${errorPrefix}.title` : undefined;
   const summaryErrorKey = errorPrefix ? `${errorPrefix}.summary` : undefined;
   const titleError = titleErrorKey ? fieldErrors?.[titleErrorKey] : undefined;
   const summaryError = summaryErrorKey ? fieldErrors?.[summaryErrorKey] : undefined;
-  const [isStuck, setIsStuck] = useState<boolean>(false);
-  const headerRef = useRef<HTMLDivElement | null>(null);
+  const { headerRef, isStuck } = useStickyHeader(isExpanded, 168);
   const titleId = useId();
   const sideId = useId();
   const summaryId = useId();
   const notesId = useId();
-
-  useEffect(() => {
-    if (!isExpanded) {
-      setIsStuck(false);
-      return;
-    }
-
-    const updateStuck = () => {
-      const el = headerRef.current;
-      if (!el) return;
-      const computedTop = parseFloat(window.getComputedStyle(el).top);
-      const targetTop = Number.isFinite(computedTop) ? computedTop : 168;
-      const rect = el.getBoundingClientRect();
-      setIsStuck(window.scrollY > 0 && Math.abs(rect.top - targetTop) <= 1.5);
-    };
-
-    updateStuck();
-    window.addEventListener('scroll', updateStuck, { passive: true });
-    window.addEventListener('resize', updateStuck);
-    return () => {
-      window.removeEventListener('scroll', updateStuck);
-      window.removeEventListener('resize', updateStuck);
-    };
-  }, [isExpanded]);
 
   const headerCornerClass = isExpanded
     ? isStuck
@@ -84,7 +80,7 @@ export function LessonEditorCard({
     : 'rounded-md';
 
   return (
-    <div data-edit-lesson={lesson.id} className="scroll-mt-48">
+    <div data-edit-lesson={lesson.id} className="editor-entry-peach scroll-mt-48">
       {/* Lesson Header Row — sticky below chapter header when expanded; identical colors in collapsed & expanded states */}
       <div
         ref={headerRef}
@@ -129,26 +125,13 @@ export function LessonEditorCard({
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            disabled={lessonIndex === 0}
-            onClick={() => onMove(-1)}
-            title="Move lesson up"
-            aria-label="Move lesson up"
-            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
-          >
-            <ArrowUp className="h-3 w-3" />
-          </button>
-          <button
-            type="button"
-            disabled={lessonIndex === totalLessons - 1}
-            onClick={() => onMove(1)}
-            title="Move lesson down"
-            aria-label="Move lesson down"
-            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
-          >
-            <ArrowDown className="h-3 w-3" />
-          </button>
+          <ReorderButtons
+            canMoveUp={lessonIndex > 0}
+            canMoveDown={lessonIndex < totalLessons - 1}
+            onMove={onMove}
+            upLabel="Move lesson up"
+            downLabel="Move lesson down"
+          />
           <button
             type="button"
             onClick={onRemove}
@@ -277,6 +260,7 @@ export function LessonEditorCard({
 
           <PrerequisitePicker
             chapters={allChapters}
+            spineSupplements={allSpineSupplements}
             currentId={lesson.id}
             currentKind="lesson"
             parentChapterId={chapterId}
@@ -296,6 +280,68 @@ export function LessonEditorCard({
               }))
             }
           />
+
+          {/* Lesson Child Supplements */}
+          {onAddSupplement && (
+            <div className="border-t border-[var(--border-subtle)] pt-3">
+              {(lesson.supplements?.length ?? 0) > 0 && (
+                <div className="mb-2.5 space-y-2">
+                  {lesson.supplements!.map((cn, cnIdx) => {
+                    const effectiveLessonSide =
+                      lesson.side ?? (lessonIndex % 2 === 0 ? 'left' : 'right');
+                    const disabledHorizontalSide =
+                      effectiveLessonSide === 'left' ? 'right' : 'left';
+                    return (
+                      <SupplementEditorCard
+                        key={cn.id}
+                        node={cn}
+                        placement="lesson"
+                        positionTag={formatLessonSupplementTag(
+                          chapterOrder,
+                          lessonIndex + 1,
+                          cnIdx + 1
+                        )}
+                        derivedId={
+                          derivedSupplementIds[cnIdx] ??
+                          deriveLessonSupplementId(
+                            courseCode,
+                            chapterOrder,
+                            lessonIndex + 1,
+                            cnIdx + 1,
+                            cn.title || `Child Supplement ${cnIdx + 1}`
+                          )
+                        }
+                        courseCode={courseCode}
+                        allChapters={allChapters}
+                        allSpineSupplements={allSpineSupplements}
+                        isExpanded={Boolean(expandedSupplements[cn.id])}
+                        allowUpDown={true}
+                        disabledHorizontalSide={disabledHorizontalSide}
+                        errorPrefix={
+                          errorPrefix ? `${errorPrefix}.supplements.${cnIdx}` : undefined
+                        }
+                        fieldErrors={fieldErrors}
+                        onToggleExpand={() => onToggleSupplementExpand?.(cn.id)}
+                        onUpdate={(updater) =>
+                          onUpdateSupplement?.(cnIdx, (prev) => updater(prev) as Supplement)
+                        }
+                        onRemove={() => onRemoveSupplement?.(cnIdx)}
+                      />
+                    );
+                  })}
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={onAddSupplement}
+                className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--tag-teal-text)] transition-colors hover:bg-[var(--tag-teal-bg)]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Child Supplement
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

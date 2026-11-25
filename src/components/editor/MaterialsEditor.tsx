@@ -2,8 +2,6 @@ import { useEffect, useRef, useState, type DragEvent } from 'react';
 import {
   AlertCircle,
   AlertTriangle,
-  ArrowDown,
-  ArrowUp,
   ClipboardList,
   Download,
   FileUp,
@@ -18,6 +16,7 @@ import {
 } from 'lucide-react';
 import { AssessmentBuilderModal } from '@/components/assessment/AssessmentBuilderModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
+import { ReorderButtons } from '@/components/editor/ReorderButtons';
 import { ResourceBadge } from '@/components/ResourceBadge';
 import { buildAssessmentExport, parseAssessmentImport } from '@/lib/assessmentExchange';
 import { deriveFileId, slugify } from '@/lib/courseIds';
@@ -681,27 +680,16 @@ export function MaterialsEditor({
                         <Pin className="h-3 w-3" />
                       </button>
 
-                      <button
-                        type="button"
-                        disabled={!prevEntry}
-                        onClick={() => prevEntry && handleSwapMaterials(rIdx, prevEntry.rIdx)}
-                        title="Move material up"
-                        aria-label="Move material up"
-                        className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
-                      >
-                        <ArrowUp className="h-3 w-3" />
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={!nextEntry}
-                        onClick={() => nextEntry && handleSwapMaterials(rIdx, nextEntry.rIdx)}
-                        title="Move material down"
-                        aria-label="Move material down"
-                        className="rounded border border-slate-300 bg-white p-1 text-slate-600 hover:bg-slate-100 disabled:opacity-30 dark:border-slate-600 dark:bg-[#121926] dark:text-slate-300 dark:hover:bg-slate-700"
-                      >
-                        <ArrowDown className="h-3 w-3" />
-                      </button>
+                      <ReorderButtons
+                        canMoveUp={Boolean(prevEntry)}
+                        canMoveDown={Boolean(nextEntry)}
+                        onMove={(dir) => {
+                          const target = dir === -1 ? prevEntry : nextEntry;
+                          if (target) handleSwapMaterials(rIdx, target.rIdx);
+                        }}
+                        upLabel="Move material up"
+                        downLabel="Move material down"
+                      />
 
                       <button
                         type="button"

@@ -1,13 +1,23 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
   Ban,
+  BookOpen,
   CheckCircle2,
   ChevronLeft,
   ChevronRight,
+  Circle,
   GitBranch,
+  Layers,
   Link2,
+  Sparkles,
 } from 'lucide-react';
-import { findCourseItem, getTrackableItems, isLeafChapter } from '@/lib/courseItems';
+import {
+  findCourseItem,
+  getTrackableItems,
+  isLeafChapter,
+  isSupplementTrackable,
+  type CourseItem,
+} from '@/lib/courseItems';
 import { formatLessonPositionTag } from '@/lib/courseIds';
 import { computeChapterStats } from '@/store/useProgressStore';
 import type { Chapter, CourseTree, LessonResource, LessonStatus, SubLesson } from '@/types/course';
@@ -141,17 +151,16 @@ export function LessonDrawer({
 
   const headerRight = <StatusSegmentedControl status={status} onChange={onChangeStatus} />;
 
-  const prevTitle = prevItem
-    ? prevItem.kind === 'lesson'
-      ? prevItem.lesson.title
-      : prevItem.chapter.title
-    : 'Start of course';
+  const getItemTitle = (item: CourseItem) =>
+    item.kind === 'lesson'
+      ? item.lesson.title
+      : item.kind === 'chapter'
+        ? item.chapter.title
+        : item.node.title;
 
-  const nextTitle = nextItem
-    ? nextItem.kind === 'lesson'
-      ? nextItem.lesson.title
-      : nextItem.chapter.title
-    : 'End of course';
+  const prevTitle = prevItem ? getItemTitle(prevItem) : 'Start of course';
+
+  const nextTitle = nextItem ? getItemTitle(nextItem) : 'End of course';
 
   const footer = (
     <>
@@ -255,15 +264,23 @@ export function LessonDrawer({
           </div>
           <div className="flex flex-wrap gap-1.5">
             {prereqItems.map((item) => {
-              const title = item.kind === 'chapter' ? item.chapter.title : item.lesson.title;
+              const title = getItemTitle(item);
               const isLeafChapterItem =
                 item.kind === 'chapter' && isLeafChapter(item.chapter);
+              const isTrackableSupplement =
+                item.kind === 'supplement' &&
+                isSupplementTrackable(item.node) &&
+                !(
+                  item.placement === 'spine' &&
+                  'children' in item.node &&
+                  (item.node.children?.length ?? 0) > 0
+                );
               const chapterStats =
                 item.kind === 'chapter' && !isLeafChapterItem
                   ? computeChapterStats(item.chapter, statuses)
                   : null;
               const isSkipped =
-                item.kind === 'lesson' || isLeafChapterItem
+                item.kind === 'lesson' || isLeafChapterItem || isTrackableSupplement
                   ? statuses[item.id] === 'skipped'
                   : Boolean(
                       chapterStats &&
@@ -271,7 +288,7 @@ export function LessonDrawer({
                         chapterStats.skipped === chapterStats.total
                     );
               const isDone =
-                item.kind === 'lesson' || isLeafChapterItem
+                item.kind === 'lesson' || isLeafChapterItem || isTrackableSupplement
                   ? statuses[item.id] === 'done'
                   : Boolean(
                       chapterStats &&
@@ -318,6 +335,61 @@ export function LessonDrawer({
             onOpenMaterialViewer={onOpenMaterialViewer}
             onOpenAssessment={onOpenAssessment}
           />
+          {(lesson.supplements?.length ?? 0) > 0 && (
+            <div className="mt-6">
+              <h3 className="mb-2.5 flex items-center gap-1.5 text-xs font-semibold tracking-wider text-[var(--text-muted)] uppercase">
+                <Layers className="h-3.5 w-3.5 shrink-0 text-[var(--accent-teal)]" />
+                Child Supplements ({lesson.supplements!.length})
+              </h3>
+              <ul className="divide-y divide-[var(--border-subtle)] overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)]">
+                {lesson.supplements!.map((cn) => {
+                  const trackable = isSupplementTrackable(cn);
+                  const cnStatus = trackable ? (statuses[cn.id] ?? 'todo') : 'todo';
+                  return (
+                    <li
+                      key={cn.id}
+                      className="flex items-center gap-2 px-3 py-2.5 transition-colors hover:bg-[var(--surface-hover)]"
+                    >
+                      {trackable ? (
+                        cnStatus === 'done' ? (
+                          <CheckCircle2 className="h-4 w-4 shrink-0 text-[var(--accent-done)]" />
+                        ) : cnStatus === 'learning' ? (
+                          <BookOpen className="h-4 w-4 shrink-0 text-[var(--status-learning-icon)]" />
+                        ) : cnStatus === 'skipped' ? (
+                          <Ban className="h-4 w-4 shrink-0 text-[var(--status-skipped-text)]" />
+                        ) : (
+                          <Circle className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                        )
+                      ) : (
+                        <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent-teal)]" />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => navigateToItem?.(cn.id)}
+                        className="flex min-w-0 flex-1 items-center gap-3 text-left"
+                      >
+                        <div className="min-w-0 flex-1">
+                          <div
+                            className={`text-sm font-medium ${
+                              trackable && (cnStatus === 'done' || cnStatus === 'skipped')
+                                ? 'text-[var(--text-muted)] line-through'
+                                : 'text-[var(--text-primary)]'
+                            }`}
+                          >
+                            {cn.title}
+                          </div>
+                          <div className="truncate text-xs text-[var(--text-muted)]">
+                            {cn.summary}
+                          </div>
+                        </div>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-[var(--text-muted)]" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          )}
         </div>
       ) : (
         <div className="space-y-4">

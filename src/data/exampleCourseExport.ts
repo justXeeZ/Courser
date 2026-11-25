@@ -197,5 +197,20 @@ export const EXAMPLE_COURSE_EXPORT: CourseExportEnvelope = {
         lessons: [],
       },
     ],
+    supplements: [
+      {
+        id: 'stat101-s1-formula-reference-sheet',
+        title: 'Formula Reference Sheet',
+        summary:
+          'Optional spine Supplement placed after Chapter 2 with typed custom fields.',
+        afterChapterOrder: 2,
+        trackable: false,
+        customFields: [
+          { label: 'Coverage', value: 'Ch 1–2', type: 'badge' },
+          { label: 'Format', value: '1-page double-sided', type: 'text' },
+        ],
+        resources: [],
+      },
+    ],
   },
 };

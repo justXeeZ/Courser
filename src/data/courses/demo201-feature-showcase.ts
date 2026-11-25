@@ -33,6 +33,23 @@ export const demo201FeatureShowcase: CourseTree = {
           recommended: true,
         },
       ],
+      supplements: [
+        {
+          id: 'demo201-ch1-s1-syllabus-reference-card',
+          title: 'Syllabus Reference Card',
+          summary:
+            'Informational chapter child supplement (trackable: false) demonstrating typed custom fields without affecting progress.',
+          notes:
+            'Informational supplements display a dashed border on the tree and an Info badge in the Syllabus Checklist.',
+          side: 'right',
+          trackable: false,
+          customFields: [
+            { label: 'Grading Policy', value: '40% Labs / 60% Exams', type: 'text' },
+            { label: 'Level', value: 'Undergraduate', type: 'badge' },
+          ],
+          resources: [],
+        },
+      ],
       lessons: [
         {
           id: 'demo201-ch1-l1-course-overview-tree-structure',
@@ -219,6 +236,20 @@ export const demo201FeatureShowcase: CourseTree = {
                   },
                 ],
               },
+            },
+          ],
+          supplements: [
+            {
+              id: 'demo201-ch2-l1-s1-recurrence-cheat-sheet',
+              title: 'Recurrence Cheat Sheet',
+              summary:
+                'Lesson child supplement (side: "down") attached directly below Asymptotic Notation & Recurrences.',
+              side: 'down',
+              customFields: [
+                { label: 'Focus', value: 'Master Theorem Cases', type: 'badge' },
+                { label: 'Tip', value: 'Compare f(n) vs n^(log_b a)', type: 'text' },
+              ],
+              resources: [],
             },
           ],
         },
@@ -408,6 +439,48 @@ export const demo201FeatureShowcase: CourseTree = {
         },
       ],
       lessons: [],
+    },
+  ],
+  supplements: [
+    {
+      id: 'demo201-s1-midterm-checkpoint',
+      title: 'Midterm Checkpoint',
+      summary:
+        'Spine Supplement positioned between Chapter 2 and Chapter 3 with typed custom fields and a child supplement.',
+      notes:
+        'Click this Teal spine supplement or its child to inspect typed custom fields (date, badge, text, link), prerequisites, and materials.',
+      afterChapterOrder: 2,
+      prerequisites: ['demo201-ch2-six-lesson-deep-dive'],
+      customFields: [
+        { label: 'Exam Date', value: '30/11/2026', type: 'date' },
+        { label: 'Weight', value: '25% of Grade', type: 'badge' },
+        { label: 'Room', value: 'Hall B-204', type: 'text' },
+        {
+          label: 'Formula Sheet',
+          value: 'https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/',
+          type: 'link',
+        },
+      ],
+      resources: [
+        {
+          title: 'Midterm Study Guide',
+          url: 'https://ocw.mit.edu/courses/6-006-introduction-to-algorithms-spring-2020/pages/quizzes/',
+          kind: 'document',
+        },
+      ],
+      children: [
+        {
+          id: 'demo201-s1-s1-office-hours-prep',
+          title: 'Office Hours Prep',
+          summary:
+            'Trackable child Supplement branching off the Midterm Checkpoint spine supplement.',
+          side: 'right',
+          customFields: [
+            { label: 'Schedule', value: 'Tue/Thu 14:00–16:00', type: 'text' },
+          ],
+          resources: [],
+        },
+      ],
     },
   ],
 };

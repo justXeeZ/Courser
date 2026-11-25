@@ -107,7 +107,7 @@ describe('ChapterDrawer', () => {
 
     // ArrowLeft / ArrowRight follow trackable items order
     fireEvent.keyDown(window, { key: 'ArrowLeft' });
-    expect(onSelectItem).toHaveBeenCalledWith('demo201-ch2-l6-midterm-practice-synthesis');
+    expect(onSelectItem).toHaveBeenCalledWith('demo201-s1-s1-office-hours-prep');
 
     fireEvent.keyDown(window, { key: 'ArrowRight' });
     expect(onSelectItem).toHaveBeenCalledWith('demo201-ch4-final-exam-course-retrospective');

@@ -1,10 +1,17 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import { ArrowDown, ArrowRight, ArrowUp, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useId, useState } from 'react';
+import { ArrowRight, ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
 import { LessonEditorCard } from '@/components/editor/LessonEditorCard';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
-import { formatChapterPositionTag } from '@/lib/courseIds';
-import type { Chapter, SubLesson } from '@/types/course';
+import { ReorderButtons } from '@/components/editor/ReorderButtons';
+import { SupplementEditorCard } from '@/components/editor/SupplementEditorCard';
+import { useStickyHeader } from '@/hooks/useStickyHeader';
+import {
+  deriveChapterSupplementId,
+  formatChapterPositionTag,
+  formatChapterSupplementTag,
+} from '@/lib/courseIds';
+import type { Chapter, SpineSupplement, SubLesson, Supplement } from '@/types/course';
 
 export function parseWeekRangeBounds(weekRange?: string): { from: string; to: string } {
   if (!weekRange) return { from: '', to: '' };
@@ -37,13 +44,18 @@ interface ChapterEditorCardProps {
   totalChapters: number;
   derivedChapterId: string;
   derivedLessonIds: string[];
+  derivedSupplementIds?: string[];
+  derivedLessonSupplementIds?: Record<string, string[]>;
   courseCode: string;
   allChapters: Chapter[];
+  allSpineSupplements?: SpineSupplement[];
   isExpanded?: boolean;
   expandedLessons: Record<string, boolean>;
+  expandedSupplements?: Record<string, boolean>;
   fieldErrors?: Record<string, string>;
   onToggleChapterExpand?: () => void;
   onToggleLessonExpand: (lessonId: string) => void;
+  onToggleSupplementExpand?: (nodeId: string) => void;
   onUpdateChapter: (updater: (ch: Chapter) => Chapter) => void;
   onMoveChapter: (direction: -1 | 1) => void;
   onRemoveChapter: () => void;
@@ -53,6 +65,16 @@ interface ChapterEditorCardProps {
   onMoveLesson: (lessonIndex: number, direction: -1 | 1) => void;
   onRemoveLesson: (lessonIndex: number) => void;
   onToggleLessonPrerequisite: (lessonIndex: number, prereqId: string) => void;
+  onAddChapterSupplement?: () => void;
+  onUpdateChapterSupplement?: (cnIdx: number, updater: (cn: Supplement) => Supplement) => void;
+  onRemoveChapterSupplement?: (cnIdx: number) => void;
+  onAddLessonSupplement?: (lessonIdx: number) => void;
+  onUpdateLessonSupplement?: (
+    lessonIdx: number,
+    cnIdx: number,
+    updater: (cn: Supplement) => Supplement
+  ) => void;
+  onRemoveLessonSupplement?: (lessonIdx: number, cnIdx: number) => void;
 }
 
 export function ChapterEditorCard({
@@ -61,13 +83,18 @@ export function ChapterEditorCard({
   totalChapters,
   derivedChapterId,
   derivedLessonIds,
+  derivedSupplementIds = [],
+  derivedLessonSupplementIds = {},
   courseCode,
   allChapters,
+  allSpineSupplements = [],
   isExpanded = true,
   expandedLessons,
+  expandedSupplements = {},
   fieldErrors,
   onToggleChapterExpand,
   onToggleLessonExpand,
+  onToggleSupplementExpand,
   onUpdateChapter,
   onMoveChapter,
   onRemoveChapter,
@@ -77,8 +104,15 @@ export function ChapterEditorCard({
   onMoveLesson,
   onRemoveLesson,
   onToggleLessonPrerequisite,
+  onAddChapterSupplement,
+  onUpdateChapterSupplement,
+  onRemoveChapterSupplement,
+  onAddLessonSupplement,
+  onUpdateLessonSupplement,
+  onRemoveLessonSupplement,
 }: ChapterEditorCardProps) {
-  const isLeafChapter = chapter.lessons.length === 0;
+  const isLeafChapter =
+    chapter.lessons.length === 0 && (chapter.supplements?.length ?? 0) === 0;
   const chapterResourceCount = chapter.resources?.length ?? 0;
   const chapterOrder = chapterIndex + 1;
   const chapterPrefix = `chapters.${chapterIndex}`;
@@ -90,8 +124,7 @@ export function ChapterEditorCard({
   const [weekFrom, setWeekFrom] = useState<string>(() => parseWeekRangeBounds(chapter.weekRange).from);
   const [weekTo, setWeekTo] = useState<string>(() => parseWeekRangeBounds(chapter.weekRange).to);
   const [chapterHeaderHeight, setChapterHeaderHeight] = useState<number>(48);
-  const [isStuck, setIsStuck] = useState<boolean>(false);
-  const headerRef = useRef<HTMLDivElement | null>(null);
+  const { headerRef, isStuck } = useStickyHeader(isExpanded, 120);
   const titleId = useId();
   const descriptionId = useId();
   const notesId = useId();
@@ -115,25 +148,6 @@ export function ChapterEditorCard({
       return () => observer.disconnect();
     }
   }, [isExpanded, chapter.title, chapterResourceCount, chapter.lessons.length]);
-
-  useEffect(() => {
-    const updateStuck = () => {
-      const el = headerRef.current;
-      if (!el) return;
-      const computedTop = parseFloat(window.getComputedStyle(el).top);
-      const targetTop = Number.isFinite(computedTop) ? computedTop : 120;
-      const rect = el.getBoundingClientRect();
-      setIsStuck(window.scrollY > 0 && Math.abs(rect.top - targetTop) <= 1.5);
-    };
-
-    updateStuck();
-    window.addEventListener('scroll', updateStuck, { passive: true });
-    window.addEventListener('resize', updateStuck);
-    return () => {
-      window.removeEventListener('scroll', updateStuck);
-      window.removeEventListener('resize', updateStuck);
-    };
-  }, [isExpanded]);
 
   useEffect(() => {
     const parsed = parseWeekRangeBounds(chapter.weekRange);
@@ -167,7 +181,7 @@ export function ChapterEditorCard({
             'calc(var(--editor-chapter-sticky-top, 120px) + var(--editor-chapter-header-height, 48px))',
         } as React.CSSProperties
       }
-      className="scroll-mt-36 rounded-lg border border-slate-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
+      className="editor-entry-amber scroll-mt-36 rounded-lg border border-slate-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#121926]"
     >
       {/* Compact Sticky Chapter Header Row (NO overflow-hidden on outer container!) */}
       <div
@@ -227,26 +241,13 @@ export function ChapterEditorCard({
         </button>
 
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
-            disabled={chapterIndex === 0}
-            onClick={() => onMoveChapter(-1)}
-            title="Move chapter up"
-            aria-label="Move chapter up"
-            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
-          >
-            <ArrowUp className="h-3.5 w-3.5" />
-          </button>
-          <button
-            type="button"
-            disabled={chapterIndex === totalChapters - 1}
-            onClick={() => onMoveChapter(1)}
-            title="Move chapter down"
-            aria-label="Move chapter down"
-            className="rounded border border-[var(--border-strong)] bg-[var(--surface-1)] p-1 text-[var(--text-secondary)] hover:bg-[var(--surface-hover)] disabled:opacity-30"
-          >
-            <ArrowDown className="h-3.5 w-3.5" />
-          </button>
+          <ReorderButtons
+            canMoveUp={chapterIndex > 0}
+            canMoveDown={chapterIndex < totalChapters - 1}
+            onMove={onMoveChapter}
+            upLabel="Move chapter up"
+            downLabel="Move chapter down"
+          />
           <button
             type="button"
             disabled={totalChapters <= 1}
@@ -385,7 +386,7 @@ export function ChapterEditorCard({
               aria-invalid={Boolean(descriptionError)}
               data-error-key={descriptionErrorKey}
               data-field-error={descriptionError ? 'true' : undefined}
-              className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500 ${
+              className={`w-full rounded-md border bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500 ${
                 descriptionError
                   ? 'border-red-500 ring-1 ring-red-500/30 dark:border-red-500'
                   : 'border-slate-300 dark:border-slate-600'
@@ -414,13 +415,14 @@ export function ChapterEditorCard({
               }
               placeholder="Overview notes, study guidance, or milestone instructions..."
               aria-label={`Chapter ${chapterOrder} notes`}
-              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+              className="w-full rounded-md border border-slate-300 bg-white px-2.5 py-1.5 text-xs text-slate-900 placeholder:text-slate-400 focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
             />
           </div>
         </div>
 
         <PrerequisitePicker
           chapters={allChapters}
+          spineSupplements={allSpineSupplements}
           currentId={chapter.id}
           currentKind="chapter"
           selectedIds={chapter.prerequisites ?? []}
@@ -458,32 +460,92 @@ export function ChapterEditorCard({
                   chapterOrder={chapterOrder}
                   chapterId={chapter.id}
                   derivedLessonId={derivedLessonIds[lIdx] ?? lesson.id}
+                  derivedSupplementIds={derivedLessonSupplementIds[lesson.id] ?? []}
                   courseCode={courseCode}
                   allChapters={allChapters}
+                  allSpineSupplements={allSpineSupplements}
                   isExpanded={Boolean(expandedLessons[lesson.id])}
+                  expandedSupplements={expandedSupplements}
                   errorPrefix={`${chapterPrefix}.lessons.${lIdx}`}
                   fieldErrors={fieldErrors}
                   onToggleExpand={() => onToggleLessonExpand(lesson.id)}
+                  onToggleSupplementExpand={onToggleSupplementExpand}
                   onUpdate={(updater) => onUpdateLesson(lIdx, updater)}
                   onMove={(dir) => onMoveLesson(lIdx, dir)}
                   onRemove={() => onRemoveLesson(lIdx)}
                   onTogglePrerequisite={(prereqId) =>
                     onToggleLessonPrerequisite(lIdx, prereqId)
                   }
+                  onAddSupplement={
+                    onAddLessonSupplement ? () => onAddLessonSupplement(lIdx) : undefined
+                  }
+                  onUpdateSupplement={
+                    onUpdateLessonSupplement
+                      ? (cnIdx, updater) => onUpdateLessonSupplement(lIdx, cnIdx, updater)
+                      : undefined
+                  }
+                  onRemoveSupplement={
+                    onRemoveLessonSupplement
+                      ? (cnIdx) => onRemoveLessonSupplement(lIdx, cnIdx)
+                      : undefined
+                  }
                 />
               ))}
             </div>
           )}
 
-          <div className="pt-3">
+          {(chapter.supplements?.length ?? 0) > 0 && (
+            <div className="mt-3 space-y-2.5">
+              {chapter.supplements!.map((cn, cnIdx) => (
+                <SupplementEditorCard
+                  key={cn.id}
+                  node={cn}
+                  placement="chapter"
+                  positionTag={formatChapterSupplementTag(chapterOrder, cnIdx + 1)}
+                  derivedId={
+                    derivedSupplementIds[cnIdx] ??
+                    deriveChapterSupplementId(
+                      courseCode,
+                      chapterOrder,
+                      cnIdx + 1,
+                      cn.title || `Child Supplement ${cnIdx + 1}`
+                    )
+                  }
+                  courseCode={courseCode}
+                  allChapters={allChapters}
+                  allSpineSupplements={allSpineSupplements}
+                  isExpanded={Boolean(expandedSupplements[cn.id])}
+                  errorPrefix={`${chapterPrefix}.supplements.${cnIdx}`}
+                  fieldErrors={fieldErrors}
+                  onToggleExpand={() => onToggleSupplementExpand?.(cn.id)}
+                  onUpdate={(updater) =>
+                    onUpdateChapterSupplement?.(cnIdx, (prev) => updater(prev) as Supplement)
+                  }
+                  onRemove={() => onRemoveChapterSupplement?.(cnIdx)}
+                />
+              ))}
+            </div>
+          )}
+
+          <div className="flex flex-wrap items-center gap-2 pt-3">
             <button
               type="button"
               onClick={onAddLesson}
-              className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--text-secondary)] transition-colors hover:bg-[var(--surface-hover)] hover:text-[var(--text-primary)]"
+              className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--tag-peach-text)] transition-colors hover:bg-[var(--tag-peach-bg)]"
             >
               <Plus className="h-3.5 w-3.5" />
               Add Sub-Lesson to Chapter {chapterOrder}
             </button>
+            {onAddChapterSupplement && (
+              <button
+                type="button"
+                onClick={onAddChapterSupplement}
+                className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--tag-teal-text)] transition-colors hover:bg-[var(--tag-teal-bg)]"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                Add Child Supplement to Chapter {chapterOrder}
+              </button>
+            )}
           </div>
         </div>
       </div>

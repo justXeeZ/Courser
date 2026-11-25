@@ -195,7 +195,8 @@ describe('CourseEditorPage & editor components', () => {
     renderEditor('/editor/new');
 
     // Add a second chapter so Chapter 2 has Chapter 1 + Lesson 1 as eligible prerequisites
-    fireEvent.click(screen.getByRole('button', { name: /Add Chapter/i }));
+    fireEvent.click(within(screen.getByTestId('editor-sticky-bar')).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Chapter/i }));
 
     const chapterCards = document.querySelectorAll('[data-edit-chapter]');
     expect(chapterCards).toHaveLength(2);
@@ -403,7 +404,8 @@ describe('CourseEditorPage & editor components', () => {
 
     // Add a second lesson inside Chapter 1 and a second chapter
     fireEvent.click(screen.getByRole('button', { name: /Add Sub-Lesson to Chapter 1/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Add Chapter/i }));
+    fireEvent.click(within(screen.getByTestId('editor-sticky-bar')).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Chapter/i }));
 
     const chapter1Card = document.querySelectorAll('[data-edit-chapter]')[0] as HTMLElement;
     const ch1Lessons = chapter1Card.querySelectorAll('[data-edit-lesson]');
@@ -488,13 +490,14 @@ describe('CourseEditorPage & editor components', () => {
     renderEditor('/editor/new');
 
     const stickyBar = screen.getByTestId('editor-sticky-bar');
-    const addChapterButtons = screen.getAllByRole('button', { name: /Add Chapter/i });
-    expect(addChapterButtons).toHaveLength(1);
-    expect(within(stickyBar).getByRole('button', { name: /Add Chapter/i })).toBe(
-      addChapterButtons[0]
+    const addButtons = screen.getAllByRole('button', { name: /^Add$/i });
+    expect(addButtons).toHaveLength(1);
+    expect(within(stickyBar).getByRole('button', { name: /^Add$/i })).toBe(
+      addButtons[0]
     );
 
-    fireEvent.click(addChapterButtons[0]);
+    fireEvent.click(addButtons[0]);
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Chapter/i }));
 
     const chapters = document.querySelectorAll('[data-edit-chapter]');
     expect(chapters).toHaveLength(2);
@@ -970,7 +973,8 @@ describe('CourseEditorPage & editor components', () => {
     expect(lessonSummaryInputs[1].placeholder).toContain('Brief summary');
 
     // Adding a new Chapter opens both the new chapter and its initial sub-lesson expanded
-    fireEvent.click(screen.getByRole('button', { name: /Add Chapter/i }));
+    fireEvent.click(within(screen.getByTestId('editor-sticky-bar')).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Chapter/i }));
     expect(screen.getByLabelText('Chapter 2 title')).toBeInTheDocument();
     expect(screen.getAllByLabelText('Sub-Lesson Title')).toHaveLength(3);
   });
@@ -1237,5 +1241,75 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.change(fromInput, { target: { value: '5' } });
     fireEvent.change(toInput, { target: { value: '2' } });
     expect(screen.getByText(/To week must be greater than or equal to From week/i)).toBeInTheDocument();
+  });
+
+  it('adds spine and lesson supplements via + Add menu, supports typed custom fields with DD/MM/YYYY date validation & reordering, disables colliding side, and saves cleanly', () => {
+    renderEditor('/editor/new');
+
+    // Add a child supplement to Lesson 1 (Lesson 1 is at index 0 -> auto-placed on left -> Right is disabled)
+    fireEvent.click(screen.getByRole('button', { name: /Add Child Supplement$/i }));
+    const supplementCard = document.querySelector('[data-edit-supplement]') as HTMLElement;
+    const sideSelect = within(supplementCard).getByLabelText('Branch Side') as HTMLSelectElement;
+    const rightOption = within(sideSelect).getByRole('option', {
+      name: /Right/i,
+    }) as HTMLOptionElement;
+    expect(rightOption.disabled).toBe(true);
+
+    // Add two typed custom fields (badge + date), reorder, and validate invalid date highlights exact field
+    fireEvent.click(within(supplementCard).getByRole('button', { name: /Add Field/i }));
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 1 label'), {
+      target: { value: 'Weight' },
+    });
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 1 type'), {
+      target: { value: 'badge' },
+    });
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 1 value'), {
+      target: { value: '20%' },
+    });
+
+    fireEvent.click(within(supplementCard).getByRole('button', { name: /Add Field/i }));
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 2 label'), {
+      target: { value: 'Due Date' },
+    });
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 2 type'), {
+      target: { value: 'date' },
+    });
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 2 day'), {
+      target: { value: '31' },
+    });
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 2 month'), {
+      target: { value: '02' },
+    });
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 2 year'), {
+      target: { value: '2026' },
+    });
+
+    // Reorder field 2 up
+    fireEvent.click(within(supplementCard).getByRole('button', { name: 'Move custom field 2 up' }));
+    expect(
+      (within(supplementCard).getByLabelText('Custom field 1 label') as HTMLInputElement).value
+    ).toBe('Due Date');
+
+    // Invalid date blocks Save and highlights field 1 value
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
+    expect(
+      screen.getAllByText(/Please enter a valid date in DD\/MM\/YYYY format/i).length
+    ).toBeGreaterThanOrEqual(2);
+
+    // Fix date -> error clears live
+    fireEvent.change(within(supplementCard).getByLabelText('Custom field 1 day'), {
+      target: { value: '15' },
+    });
+    expect(
+      screen.queryByText(/Please enter a valid date in DD\/MM\/YYYY format/i)
+    ).not.toBeInTheDocument();
+
+    // Add a spine supplement from the + Add toolbar menu and save
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Supplement/i }));
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
+
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 });
