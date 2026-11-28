@@ -4,11 +4,11 @@ All notable user-visible changes to **Courser** (formerly College Course Trees) 
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Versions prior to a formal release are grouped chronologically from the project's git history.
 
-## [Unreleased]
+## [1.4.1]
 
 ### Changed
 - **Course Editor (`CourseEditorPage`, `EditorStickyBar`, `EditorCardHeader`, `CustomFieldsEditor`, `MaterialsEditor`, `ResourceKindSelect`)**:
-  - Unified chapter, sub-lesson, and supplement headers under shared `EditorCardHeader` (`primary` and `nested` levels), fixed sticky header height measurement on spine supplements and sub-lessons so child supplement headers stack flush without gaps, and added accent hover borders to dashed `"Add Sub-Lesson"` and `"Add Child Supplement"` buttons.
+  - Unified chapter, sub-lesson, and supplement headers under shared `EditorCardHeader` (`primary` and `nested` levels) with semantic `--surface-editor-header` (`#f7f5f0` Light / `#1b2436` Dark) background contrast, fixed sticky header height measurement on spine supplements and sub-lessons so child supplement headers stack flush without gaps, and added accent hover borders to dashed `"Add Sub-Lesson"` and `"Add Child Supplement"` buttons.
   - Replaced the redundant `ResourceBadge` + plain select in `MaterialsEditor` with a single tag-colored `ResourceKindSelect`, improved mobile row layout (`[Category][Title][Toolbar]` and `[Link/Upload][URL / Choose File]`), and switched material/chapter focus borders from blue to each node's `--border-focus` accent.
   - Refactored Supplement Custom Fields into `CustomFieldsEditor` matching `MaterialsEditor`'s borderless header and neutral `+ Add Field` button, moved it beneath `PrerequisitePicker` with `border-t` dividers, reordered fields to `Category → Label → Value` (`"Label"` placeholder), and improved mobile row layout.
   - Centered the `+ Add` dropdown menu below its trigger, extended `EditorStickyBar` breadcrumbs to display supplements (`S1`, `S1 › S1 / S1`, `Ch1 › Ch1 / S1`, `Ch1 › Ch1 / L1 › Ch1 / L1 / S1`) with mobile top-padding to prevent clipping, and unified Live Tree Preview jumping across chapters, sub-lessons, and supplements via `useEditorScrollJump` with exact sticky-stack `scroll-mt-*` offsets.

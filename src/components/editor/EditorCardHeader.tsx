@@ -102,7 +102,7 @@ export const EditorCardHeader = forwardRef<HTMLDivElement, EditorCardHeaderProps
           }
           onToggleExpand();
         }}
-        className={`${stickyPart} flex cursor-pointer flex-wrap items-center justify-between gap-2 border-[var(--border-subtle)] border-l-4 ${accentStyle.borderLeft} bg-[var(--surface-2)] ${containerPadding} ${cornerClass}`.trim()}
+        className={`${stickyPart} flex cursor-pointer flex-wrap items-center justify-between gap-2 border-[var(--border-subtle)] border-l-4 ${accentStyle.borderLeft} bg-[var(--surface-editor-header)] ${containerPadding} ${cornerClass}`.trim()}
       >
         <button
           type="button"

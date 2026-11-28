@@ -580,7 +580,7 @@ describe('CourseEditorPage & editor components', () => {
 
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'true');
     const expandedClasses = headerRow.className;
-    expect(expandedClasses).toContain('bg-[var(--surface-2)]');
+    expect(expandedClasses).toContain('bg-[var(--surface-editor-header)]');
     expect(expandedClasses).toContain('border-[var(--border-subtle)]');
     expect(expandedClasses).toContain('border-l-4');
     expect(expandedClasses).toContain('border-l-[var(--tag-peach-border)]');
@@ -596,7 +596,7 @@ describe('CourseEditorPage & editor components', () => {
     expect(toggleBtn).toHaveAttribute('aria-expanded', 'false');
     const collapsedClasses = headerRow.className;
 
-    expect(collapsedClasses).toContain('bg-[var(--surface-2)]');
+    expect(collapsedClasses).toContain('bg-[var(--surface-editor-header)]');
     expect(collapsedClasses).toContain('border-[var(--border-subtle)]');
     expect(collapsedClasses).toContain('border-l-[var(--tag-peach-border)]');
     expect(collapsedClasses).not.toContain('#ffe599');
