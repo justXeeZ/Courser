@@ -57,12 +57,12 @@ export function Navbar({ bookmarkCount, onOpenSearch }: NavbarProps) {
           <button
             type="button"
             onClick={onOpenSearch}
-            className="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-slate-500 bg-slate-800/80 px-2.5 text-xs text-slate-300 transition-colors hover:border-slate-300 hover:text-white"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center gap-2 rounded-md border border-slate-500 bg-slate-800/80 px-0 text-xs text-slate-300 transition-colors hover:border-slate-300 hover:text-white md:w-auto md:px-2.5"
             aria-label="Search courses and lessons"
           >
             <Search className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Search lessons...</span>
-            <kbd className="hidden rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] text-slate-400 sm:inline">
+            <span className="hidden md:inline">Search lessons...</span>
+            <kbd className="hidden rounded bg-slate-900 px-1.5 py-0.5 font-mono text-[11px] text-slate-400 md:inline">
               Ctrl K
             </kbd>
           </button>

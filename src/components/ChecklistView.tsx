@@ -6,7 +6,7 @@ import {
   ChevronDown,
   ChevronRight,
   Circle,
-  Sparkles,
+  Info,
 } from 'lucide-react';
 import {
   getOrderedSpineEntries,
@@ -115,7 +115,7 @@ export function ChecklistView({
               <StatusIcon status={status} />
             </button>
           ) : (
-            <Sparkles className="h-4 w-4 shrink-0 text-[var(--accent-teal)]" />
+            <Info className="h-5 w-5 shrink-0 text-[var(--accent-teal)]" aria-hidden="true" />
           )}
 
           <button
@@ -133,11 +133,6 @@ export function ChecklistView({
               >
                 {cn.title}
               </span>
-              {!trackable && (
-                <span className="rounded border border-[var(--tag-teal-border)] bg-[var(--tag-teal-bg)] px-1.5 py-0.5 text-[10px] font-medium text-[var(--tag-teal-text)]">
-                  Info
-                </span>
-              )}
               {trackable && status === 'learning' && (
                 <span className="inline-flex items-center gap-1 rounded border border-[var(--status-learning-border)] bg-[var(--status-learning-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--status-learning-text)]">
                   <BookOpen className="h-3 w-3 text-[var(--status-learning-icon)]" />
@@ -183,6 +178,8 @@ export function ChecklistView({
           const trackable = isLeaf && isSupplementTrackable(node);
           const leafStatus: LessonStatus = trackable ? (statuses[node.id] ?? 'todo') : 'todo';
           const stats = !isLeaf ? computeSpineSupplementStats(node, statuses) : null;
+          const isParentComplete =
+            !isLeaf && stats !== null && stats.total > 0 && stats.done === stats.required;
           const visibleChildren = children.filter(matchesSupplement);
           const isFilteredOut =
             statusFilter !== 'all' &&
@@ -228,7 +225,7 @@ export function ChecklistView({
                     </button>
                   )}
                   {isLeaf && !trackable && (
-                    <Sparkles className="mt-1 h-4 w-4 shrink-0 text-[var(--accent-teal)]" />
+                    <Info className="mt-0.5 h-5 w-5 shrink-0 text-[var(--accent-teal)]" aria-hidden="true" />
                   )}
 
                   <div className="min-w-0 flex-1">
@@ -237,7 +234,8 @@ export function ChecklistView({
                         type="button"
                         onClick={() => openSupplement(node.id)}
                         className={`font-roadmap break-words [overflow-wrap:anywhere] text-left text-lg font-bold hover:underline ${
-                          trackable && (leafStatus === 'done' || leafStatus === 'skipped')
+                          (trackable && (leafStatus === 'done' || leafStatus === 'skipped')) ||
+                          isParentComplete
                             ? 'text-[var(--text-muted)] line-through'
                             : 'text-[var(--text-primary)]'
                         }`}
@@ -304,6 +302,7 @@ export function ChecklistView({
         const { chapter } = entry;
         const stats = computeChapterStats(chapter, statuses);
         const isLeaf = isLeafChapter(chapter);
+        const isParentComplete = !isLeaf && stats.total > 0 && stats.done === stats.required;
         const isCollapsed = !isLeaf && Boolean(collapsedIds[chapter.id]);
         const leafStatus: LessonStatus = statuses[chapter.id] ?? 'todo';
         const leafMatchesFilter =
@@ -369,8 +368,9 @@ export function ChecklistView({
                         type="button"
                         onClick={() => onSelectChapter(chapter)}
                         className={`font-roadmap break-words [overflow-wrap:anywhere] text-left text-lg font-bold hover:underline ${
-                          isLeaf &&
-                          (leafStatus === 'done' || leafStatus === 'skipped')
+                          (isLeaf &&
+                            (leafStatus === 'done' || leafStatus === 'skipped')) ||
+                          isParentComplete
                             ? 'text-[var(--text-muted)] line-through'
                             : 'text-[var(--text-primary)]'
                         }`}
@@ -380,8 +380,9 @@ export function ChecklistView({
                     ) : (
                       <h2
                         className={`font-roadmap break-words [overflow-wrap:anywhere] text-lg font-bold ${
-                          isLeaf &&
-                          (leafStatus === 'done' || leafStatus === 'skipped')
+                          (isLeaf &&
+                            (leafStatus === 'done' || leafStatus === 'skipped')) ||
+                          isParentComplete
                             ? 'text-[var(--text-muted)] line-through'
                             : 'text-[var(--text-primary)]'
                         }`}

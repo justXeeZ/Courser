@@ -1,9 +1,9 @@
-import { useId } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
-import { DateFieldInput } from '@/components/editor/DateFieldInput';
+import { useEffect, useId, useState, type CSSProperties } from 'react';
+import { Plus } from 'lucide-react';
+import { CustomFieldsEditor } from '@/components/editor/CustomFieldsEditor';
+import { EditorCardHeader } from '@/components/editor/EditorCardHeader';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
-import { ReorderButtons } from '@/components/editor/ReorderButtons';
 import { useStickyHeader } from '@/hooks/useStickyHeader';
 import {
   deriveSpineChildSupplementId,
@@ -12,7 +12,6 @@ import {
 import type {
   Chapter,
   CustomField,
-  CustomFieldType,
   SpineSupplement,
   Supplement,
   SupplementSide,
@@ -46,13 +45,6 @@ interface SupplementEditorCardProps {
   onMoveChild?: (childIdx: number, direction: -1 | 1) => void;
   onRemoveChild?: (childIdx: number) => void;
 }
-
-const FIELD_TYPES: { value: CustomFieldType; label: string }[] = [
-  { value: 'text', label: 'Text' },
-  { value: 'link', label: 'Link' },
-  { value: 'badge', label: 'Badge' },
-  { value: 'date', label: 'Date' },
-];
 
 export function SupplementEditorCard({
   node,
@@ -90,7 +82,33 @@ export function SupplementEditorCard({
   const trackableId = useId();
 
   const isSpine = placement === 'spine';
-  const { headerRef, isStuck } = useStickyHeader(isExpanded, isSpine ? 120 : 168);
+  const [headerHeight, setHeaderHeight] = useState<number>(48);
+  const { headerRef, isStuck } = useStickyHeader(
+    isExpanded,
+    isSpine ? 120 : placement === 'lesson' ? 210 : 168
+  );
+
+  useEffect(() => {
+    if (!isSpine) return;
+    const el = headerRef.current;
+    if (!el) return;
+
+    const measureHeader = () => {
+      const rectHeight = el.getBoundingClientRect().height;
+      const h = rectHeight > 0 ? rectHeight : el.offsetHeight;
+      if (h > 0) {
+        setHeaderHeight(h);
+      }
+    };
+
+    measureHeader();
+
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(measureHeader);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+  }, [isSpine, isExpanded, node.title, derivedId, node.resources?.length, headerRef]);
 
   const titleErrorKey = errorPrefix ? `${errorPrefix}.title` : undefined;
   const summaryErrorKey = errorPrefix ? `${errorPrefix}.summary` : undefined;
@@ -110,94 +128,76 @@ export function SupplementEditorCard({
     }));
   };
 
-  const moveField = (idx: number, direction: -1 | 1) => {
-    const target = idx + direction;
-    if (target < 0 || target >= customFields.length) return;
-    const next = [...customFields];
-    [next[idx], next[target]] = [next[target], next[idx]];
-    updateFields(next);
-  };
-
   const stickyTopClass = isSpine
     ? 'top-[var(--editor-chapter-sticky-top,120px)] z-20'
-    : 'top-[var(--editor-lesson-sticky-top,168px)] z-10';
-
-  const headerCornerClass = isExpanded
-    ? isStuck
-      ? `sticky ${stickyTopClass} rounded-t-none border-b`
-      : `sticky ${stickyTopClass} ${isSpine ? 'rounded-t-lg' : 'rounded-t-md'} border-b`
-    : isSpine
-      ? 'rounded-lg'
-      : 'rounded-md';
+    : placement === 'lesson'
+      ? 'top-[var(--editor-lesson-supplement-sticky-top,210px)] z-[5]'
+      : 'top-[var(--editor-lesson-sticky-top,168px)] z-10';
 
   return (
     <div
       data-edit-supplement={node.id}
-      className={`editor-entry-teal ${isSpine ? 'scroll-mt-36 rounded-lg' : 'scroll-mt-48 rounded-md'} border border-[var(--border-subtle)] bg-[var(--surface-1)]`}
+      style={
+        isSpine
+          ? ({
+              '--editor-supplement-header-height': `${headerHeight}px`,
+              '--editor-lesson-sticky-top':
+                'calc(var(--editor-chapter-sticky-top, 120px) + var(--editor-supplement-header-height, 48px))',
+            } as CSSProperties)
+          : undefined
+      }
+      className={`editor-entry-teal ${
+        isSpine
+          ? 'scroll-mt-[var(--editor-chapter-sticky-top,120px)] rounded-lg border border-slate-200 bg-white shadow-xs dark:border-slate-700/80 dark:bg-[#121926]'
+          : placement === 'lesson'
+            ? 'scroll-mt-[var(--editor-lesson-supplement-sticky-top,210px)]'
+            : 'scroll-mt-[var(--editor-lesson-sticky-top,168px)]'
+      }`}
     >
-      <div
+      <EditorCardHeader
         ref={headerRef}
-        data-sticky-header={isSpine ? 'supplement-spine' : 'supplement-child'}
-        data-stuck={isStuck ? 'true' : 'false'}
-        onClick={(e) => {
-          const target = e.target as HTMLElement | null;
-          if (target?.closest('button, a, input, select, textarea, [data-no-row-toggle]')) {
-            return;
-          }
-          onToggleExpand();
-        }}
-        className={`flex cursor-pointer flex-wrap items-center justify-between gap-2 border-[var(--border-subtle)] border-l-4 border-l-[var(--tag-teal-border)] bg-[var(--surface-2)] px-3 py-2 ${headerCornerClass}`}
-      >
-        <button
-          type="button"
-          onClick={onToggleExpand}
-          aria-expanded={isExpanded}
-          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} supplement ${positionTag} ${node.title || 'Untitled Supplement'}`}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        >
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
-          ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
-          )}
-          <span className="shrink-0 rounded border border-[var(--tag-teal-border)] bg-[var(--tag-teal-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-teal-text)]">
-            {positionTag}
-          </span>
-          <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
-            {node.title || 'Untitled Supplement'}
-          </span>
-          <span className="hidden rounded bg-[var(--surface-inset)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] sm:inline">
-            {derivedId}
-          </span>
+        level={isSpine ? 'primary' : 'nested'}
+        accent="teal"
+        dataStickyHeader={isSpine ? 'supplement-spine' : 'supplement-child'}
+        isExpanded={isExpanded}
+        isStuck={isStuck}
+        stickyClassName={stickyTopClass}
+        positionTag={positionTag}
+        title={node.title || 'Untitled Supplement'}
+        derivedId={derivedId}
+        ariaLabel={`${isExpanded ? 'Collapse' : 'Expand'} supplement ${positionTag} ${node.title || 'Untitled Supplement'}`}
+        onToggleExpand={onToggleExpand}
+        extraTags={
           <span className="shrink-0 rounded border border-[var(--tag-teal-border)] bg-[var(--tag-teal-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-teal-text)]">
             {resources.length} {resources.length === 1 ? 'material' : 'materials'}
           </span>
-        </button>
-
-        <div className="flex shrink-0 items-center gap-1">
-          {onMove && (
-            <ReorderButtons
-              canMoveUp={canMoveUp}
-              canMoveDown={canMoveDown}
-              onMove={onMove}
-              upLabel="Move supplement up"
-              downLabel="Move supplement down"
-            />
-          )}
-          <button
-            type="button"
-            onClick={onRemove}
-            title="Delete supplement"
-            aria-label={`Delete ${node.title}`}
-            className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
+        }
+        reorderProps={
+          onMove
+            ? {
+                canMoveUp,
+                canMoveDown,
+                onMove,
+                upLabel: 'Move supplement up',
+                downLabel: 'Move supplement down',
+              }
+            : undefined
+        }
+        deleteProps={{
+          onDelete: onRemove,
+          title: 'Delete supplement',
+          ariaLabel: `Delete ${node.title}`,
+        }}
+      />
 
       {isExpanded && (
-        <div className="space-y-3 p-3.5">
+        <div
+          className={
+            isSpine
+              ? 'space-y-4 rounded-b-lg p-4'
+              : 'space-y-3 rounded-b-md border border-t-0 border-[var(--border-subtle)] bg-[var(--surface-1)] p-3.5'
+          }
+        >
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <div className="sm:col-span-2">
               <label
@@ -395,169 +395,6 @@ export function SupplementEditorCard({
             />
           </div>
 
-          {/* Custom Fields Editor (styled similarly to MaterialsEditor, without a left icon) */}
-          <div className="space-y-2 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-2)] p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold tracking-wide text-[var(--text-secondary)] uppercase">
-                Custom Fields ({customFields.length})
-              </span>
-              <button
-                type="button"
-                onClick={() =>
-                  updateFields([
-                    ...customFields,
-                    { label: '', value: '', type: 'text' },
-                  ])
-                }
-                className="inline-flex items-center gap-1 rounded border border-[var(--tag-teal-border)] bg-[var(--tag-teal-bg)] px-2 py-0.5 text-[11px] font-semibold text-[var(--tag-teal-text)] hover:opacity-90"
-              >
-                <Plus className="h-3 w-3" />
-                Add Field
-              </button>
-            </div>
-            {customFields.length > 0 && (
-              <div className="space-y-2">
-                {customFields.map((field, fIdx) => {
-                  const labelErrorKey = errorPrefix
-                    ? `${errorPrefix}.customFields.${fIdx}.label`
-                    : undefined;
-                  const valueErrorKey = errorPrefix
-                    ? `${errorPrefix}.customFields.${fIdx}.value`
-                    : undefined;
-                  const labelError = labelErrorKey ? fieldErrors?.[labelErrorKey] : undefined;
-                  const valueError = valueErrorKey ? fieldErrors?.[valueErrorKey] : undefined;
-
-                  return (
-                    <div
-                      key={fIdx}
-                      className="space-y-1.5 rounded-md border border-[var(--border-subtle)] bg-[var(--surface-1)] p-2.5"
-                    >
-                      <div className="grid grid-cols-1 gap-2 sm:grid-cols-12 sm:items-start">
-                        <div className="sm:col-span-4">
-                          <input
-                            type="text"
-                            value={field.label}
-                            onChange={(e) => {
-                              const next = customFields.map((f, idx) =>
-                                idx === fIdx ? { ...f, label: e.target.value } : f
-                              );
-                              updateFields(next);
-                            }}
-                            placeholder="Label (e.g. Weight)"
-                            aria-label={`Custom field ${fIdx + 1} label`}
-                            aria-invalid={Boolean(labelError)}
-                            data-error-key={labelErrorKey}
-                            data-field-error={labelError ? 'true' : undefined}
-                            className={`w-full rounded border bg-[var(--surface-inset)] px-2 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none ${
-                              labelError
-                                ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
-                                : 'border-[var(--border-strong)]'
-                            }`}
-                          />
-                          {labelError && (
-                            <p
-                              role="alert"
-                              className="mt-1 text-[11px] text-[var(--status-danger-text)]"
-                            >
-                              {labelError}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="sm:col-span-2">
-                          <select
-                            value={field.type}
-                            onChange={(e) => {
-                              const nextType = e.target.value as CustomFieldType;
-                              const next = customFields.map((f, idx) =>
-                                idx === fIdx ? { ...f, type: nextType } : f
-                              );
-                              updateFields(next);
-                            }}
-                            aria-label={`Custom field ${fIdx + 1} type`}
-                            className="w-full rounded border border-[var(--border-strong)] bg-[var(--surface-inset)] px-2 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none"
-                          >
-                            {FIELD_TYPES.map((ft) => (
-                              <option key={ft.value} value={ft.value}>
-                                {ft.label}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-
-                        <div className="sm:col-span-4">
-                          {field.type === 'date' ? (
-                            <DateFieldInput
-                              value={field.value}
-                              onChange={(nextValue) => {
-                                const next = customFields.map((f, idx) =>
-                                  idx === fIdx ? { ...f, value: nextValue } : f
-                                );
-                                updateFields(next);
-                              }}
-                              ariaLabelPrefix={`Custom field ${fIdx + 1}`}
-                              hasError={Boolean(valueError)}
-                              errorKey={valueErrorKey}
-                            />
-                          ) : (
-                            <input
-                              type="text"
-                              value={field.value}
-                              onChange={(e) => {
-                                const next = customFields.map((f, idx) =>
-                                  idx === fIdx ? { ...f, value: e.target.value } : f
-                                );
-                                updateFields(next);
-                              }}
-                              placeholder={field.type === 'link' ? 'https://...' : 'Value'}
-                              aria-label={`Custom field ${fIdx + 1} value`}
-                              aria-invalid={Boolean(valueError)}
-                              data-error-key={valueErrorKey}
-                              data-field-error={valueError ? 'true' : undefined}
-                              className={`w-full rounded border bg-[var(--surface-inset)] px-2 py-1 text-xs text-[var(--text-primary)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none ${
-                                valueError
-                                  ? 'border-[var(--status-danger-border)] ring-1 ring-[var(--status-danger-border)]/30'
-                                  : 'border-[var(--border-strong)]'
-                              }`}
-                            />
-                          )}
-                          {valueError && (
-                            <p
-                              role="alert"
-                              className="mt-1 text-[11px] text-[var(--status-danger-text)]"
-                            >
-                              {valueError}
-                            </p>
-                          )}
-                        </div>
-
-                        <div className="flex items-center justify-end gap-1 sm:col-span-2">
-                          <ReorderButtons
-                            canMoveUp={fIdx > 0}
-                            canMoveDown={fIdx < customFields.length - 1}
-                            onMove={(dir) => moveField(fIdx, dir)}
-                            upLabel={`Move custom field ${fIdx + 1} up`}
-                            downLabel={`Move custom field ${fIdx + 1} down`}
-                          />
-                          <button
-                            type="button"
-                            onClick={() =>
-                              updateFields(customFields.filter((_, idx) => idx !== fIdx))
-                            }
-                            aria-label={`Remove custom field ${fIdx + 1}`}
-                            className="inline-flex items-center justify-center rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] hover:bg-[var(--danger-solid-bg)] hover:text-white"
-                          >
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
           <PrerequisitePicker
             chapters={allChapters}
             spineSupplements={allSpineSupplements}
@@ -574,6 +411,13 @@ export function SupplementEditorCard({
                 return { ...prev, prerequisites: next.length > 0 ? next : undefined };
               });
             }}
+          />
+
+          <CustomFieldsEditor
+            customFields={customFields}
+            onChange={updateFields}
+            errorPrefix={errorPrefix}
+            fieldErrors={fieldErrors}
           />
 
           <MaterialsEditor
@@ -636,7 +480,7 @@ export function SupplementEditorCard({
               <button
                 type="button"
                 onClick={onAddChild}
-                className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--tag-teal-text)] transition-colors hover:bg-[var(--tag-teal-bg)]"
+                className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-3 py-1.5 text-xs font-medium text-[var(--tag-teal-text)] transition-colors hover:border-[var(--tag-teal-border)] hover:bg-[var(--tag-teal-bg)]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Child Supplement

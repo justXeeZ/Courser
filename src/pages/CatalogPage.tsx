@@ -42,9 +42,9 @@ export function CatalogPage() {
   return (
     <main id="main-content" className="flex min-h-[calc(100vh-64px)] flex-col bg-[var(--surface-canvas)] text-[var(--text-primary)]">
       {/* Light & Dark Hero */}
-      <section className="border-b border-[var(--border-subtle)] bg-gradient-to-b from-[var(--surface-1)] to-[var(--surface-canvas)]">
+      <section className="border-b border-[var(--border-subtle)] bg-[var(--surface-1)] dark:bg-gradient-to-b dark:from-violet-950/35 dark:via-[var(--surface-1)] dark:to-[var(--surface-canvas)]">
         <div className="mx-auto max-w-5xl px-4 pt-10 sm:px-6 sm:pt-14">
-          <h1 className="mb-2 text-3xl font-bold tracking-tight text-[var(--text-primary)] sm:mb-3 sm:text-5xl dark:bg-gradient-to-b dark:from-amber-50 dark:to-purple-400 dark:bg-clip-text dark:text-transparent">
+          <h1 className="mb-2 bg-gradient-to-b from-stone-900 to-violet-700 bg-clip-text text-3xl font-bold tracking-tight text-transparent sm:mb-3 sm:text-5xl dark:from-amber-50 dark:to-purple-400">
             {BRAND.name}
           </h1>
           <p className="max-w-2xl text-base text-[var(--text-secondary)] sm:text-lg">

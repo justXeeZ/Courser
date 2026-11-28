@@ -294,6 +294,33 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.focus(screen.getByLabelText(/Course Code/i));
     expect(within(stickyBar).getByText('Course Overview')).toBeInTheDocument();
     expect(within(stickyBar).queryByText('Course Introduction')).not.toBeInTheDocument();
+
+    // Add & focus a lesson child supplement -> shows Ch1 › Ch1 / L1 › Ch1 / L1 / S1
+    const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
+    fireEvent.click(within(lessonCard).getByRole('button', { name: /Add Child Supplement$/i }));
+    const lessonSupTitle = within(lessonCard).getByLabelText('Supplement Title');
+    fireEvent.focus(lessonSupTitle);
+    expect(within(stickyBar).getByText('Ch1 / L1 / S1')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('Child Supplement 1')).toBeInTheDocument();
+
+    // Add a spine supplement & spine child supplement -> shows S1 › S1 / S1
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Supplement/i }));
+    expect(within(stickyBar).getByText('S1')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('Supplement 1')).toBeInTheDocument();
+
+    const spineCard = Array.from(document.querySelectorAll('[data-edit-supplement]')).find((el) =>
+      el.querySelector('[data-sticky-header="supplement-spine"]')
+    ) as HTMLElement;
+    fireEvent.click(within(spineCard).getByRole('button', { name: /Add Child Supplement/i }));
+    const spineChildCard = spineCard.querySelector('[data-edit-supplement]') as HTMLElement;
+    fireEvent.focus(within(spineChildCard).getByLabelText('Supplement Title'));
+    expect(within(stickyBar).getByText('S1')).toBeInTheDocument();
+    expect(within(stickyBar).getByText('S1 / S1')).toBeInTheDocument();
+
+    // Nav has vertical padding so overflow-x-auto does not clip tag borders on mobile
+    const nav = within(stickyBar).getByRole('navigation', { name: /Editing context/i });
+    expect(nav.className).toContain('py-0.5');
   });
 
   it('remaps saved progress and bookmarks when renaming a lesson and course code on save', () => {
@@ -1184,6 +1211,34 @@ describe('CourseEditorPage & editor components', () => {
     const chapterTitleInput = screen.getByLabelText('Chapter 1 title') as HTMLInputElement;
     expect(chapterTitleInput).toBeInTheDocument();
     expect(document.activeElement).toBe(chapterTitleInput);
+
+    // Chapter and Lesson cards align scroll-mt-* to the stacked sticky header CSS variables
+    const chCard = document.querySelector('[data-edit-chapter]') as HTMLElement;
+    const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
+    expect(chCard.className).toContain('scroll-mt-[var(--editor-chapter-sticky-top,120px)]');
+    expect(lessonCard.className).toContain('scroll-mt-[var(--editor-lesson-sticky-top,168px)]');
+
+    // Add a spine supplement, collapse all, click its node in Live Tree Preview -> jumps, expands, scrolls, and focuses Supplement Title
+    const currentStickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(currentStickyBar).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Supplement/i }));
+    fireEvent.click(within(currentStickyBar).getByRole('button', { name: /Collapse all/i }));
+    expect(screen.queryByLabelText('Supplement Title')).not.toBeInTheDocument();
+
+    scrollIntoViewMock.mockClear();
+    fireEvent.click(screen.getByRole('tab', { name: /Live Tree Preview/i }));
+    const supplementNode = document.querySelector(
+      'g[data-node-kind="supplement"]'
+    ) as SVGGElement;
+    expect(supplementNode).not.toBeNull();
+    fireEvent.click(supplementNode);
+
+    const supplementTitleInput = screen.getByLabelText('Supplement Title') as HTMLInputElement;
+    expect(supplementTitleInput).toBeInTheDocument();
+    expect(document.activeElement).toBe(supplementTitleInput);
+    expect(scrollIntoViewMock).toHaveBeenCalledTimes(1);
+    const supCard = document.querySelector('[data-edit-supplement]') as HTMLElement;
+    expect(supCard.className).toContain('scroll-mt-[var(--editor-chapter-sticky-top,120px)]');
   });
 
   it('toggles chapter and sublesson expand/collapse when clicking the outer header row side area without intercepting action buttons', () => {
@@ -1311,5 +1366,203 @@ describe('CourseEditorPage & editor components', () => {
     fireEvent.click(within(stickyBar).getByRole('button', { name: /^Save$/i }));
 
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('matches Custom Fields container and neutral Add Field button to MaterialsEditor, and stacks child supplement sticky headers directly below parent supplement headers', () => {
+    renderEditor('/editor/new');
+
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Supplement/i }));
+
+    const spineCard = document.querySelector('[data-edit-supplement]') as HTMLElement;
+    const spineHeader = spineCard.querySelector(
+      '[data-sticky-header="supplement-spine"]'
+    ) as HTMLElement;
+
+    // Default height matches min-h-12 (48px), and updates dynamically when header height changes
+    expect(spineCard.style.getPropertyValue('--editor-supplement-header-height')).toBe('48px');
+    vi.spyOn(spineHeader, 'getBoundingClientRect').mockReturnValue({
+      top: 0,
+      bottom: 52,
+      left: 0,
+      right: 800,
+      width: 800,
+      height: 52,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    });
+    fireEvent.change(within(spineCard).getByLabelText('Supplement Title'), {
+      target: { value: 'Supplement 1 Updated' },
+    });
+    fireEvent.click(within(spineCard).getByRole('button', { name: /Add Field/i }));
+
+    // Custom Fields header & Add Field button match MaterialsEditor's borderless layout and neutral button styling
+    const addFieldBtn = within(spineCard).getByRole('button', { name: /Add Field/i });
+    const addMaterialBtn = within(spineCard).getByRole('button', { name: /Add Material/i });
+    expect(addFieldBtn.className).toBe(addMaterialBtn.className);
+    expect(addFieldBtn.className).not.toContain('--tag-teal-bg');
+
+    const customFieldsSection = addFieldBtn.closest('div')?.parentElement as HTMLElement;
+    expect(customFieldsSection.className).toContain('border-t');
+    expect(customFieldsSection.className).not.toContain('bg-[var(--surface-2)]');
+    expect(customFieldsSection.className).not.toContain('rounded-md');
+
+    const customFieldsContainer = within(spineCard).getByTestId(
+      'editor-custom-fields-container'
+    );
+    expect(customFieldsContainer.className).toContain('rounded-lg');
+    expect(customFieldsContainer.className).toContain('border-slate-200');
+    expect(customFieldsContainer.className).toContain('dark:border-slate-700/80');
+    expect(customFieldsContainer.className).toContain('dark:bg-[#121926]');
+
+    // Add a child supplement to the spine supplement -> parent dynamically sets --editor-lesson-sticky-top
+    fireEvent.click(within(spineCard).getByRole('button', { name: /Add Child Supplement/i }));
+    expect(spineCard.style.getPropertyValue('--editor-supplement-header-height')).toBe('52px');
+    expect(spineCard.style.getPropertyValue('--editor-lesson-sticky-top')).toBe(
+      'calc(var(--editor-chapter-sticky-top, 120px) + var(--editor-supplement-header-height, 48px))'
+    );
+
+    const childHeader = spineCard.querySelector(
+      '[data-sticky-header="supplement-child"]'
+    ) as HTMLElement;
+    expect(childHeader.className).toContain('top-[var(--editor-lesson-sticky-top,168px)]');
+    expect(childHeader.className).toContain('z-10');
+
+    // Lesson child supplement stacks below LessonEditorCard header via --editor-lesson-supplement-sticky-top
+    const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
+    expect(lessonCard.style.getPropertyValue('--editor-lesson-supplement-sticky-top')).toBe(
+      'calc(var(--editor-lesson-sticky-top, 168px) + var(--editor-lesson-header-height, 42px))'
+    );
+    fireEvent.click(within(lessonCard).getByRole('button', { name: /Add Child Supplement$/i }));
+    const lessonSupHeader = lessonCard.querySelector(
+      '[data-sticky-header="supplement-child"]'
+    ) as HTMLElement;
+    expect(lessonSupHeader.className).toContain(
+      'top-[var(--editor-lesson-supplement-sticky-top,210px)]'
+    );
+
+    // Spine supplement header matches chapter header padding; child supplement header matches lesson header padding
+    const chapterHeader = document.querySelector('[data-sticky-header="chapter"]') as HTMLElement;
+    expect(chapterHeader.className).toContain('min-h-12');
+    expect(chapterHeader.className).toContain('px-4');
+    expect(chapterHeader.className).toContain('py-2');
+    expect(spineHeader.className).toContain('min-h-12');
+    expect(spineHeader.className).toContain('px-4');
+    expect(spineHeader.className).toContain('py-2');
+
+    const lessonHeader = document.querySelector('[data-sticky-header="lesson"]') as HTMLElement;
+    expect(lessonHeader.className).toContain('px-3');
+    expect(lessonHeader.className).toContain('py-2');
+    expect(childHeader.className).toContain('px-3');
+    expect(childHeader.className).toContain('py-2');
+    expect(lessonSupHeader.className).toContain('px-3');
+    expect(lessonSupHeader.className).toContain('py-2');
+
+    // Dashed add buttons have hover border-color classes
+    const addSubLessonBtn = screen.getByRole('button', { name: /Add Sub-Lesson to Chapter 1/i });
+    expect(addSubLessonBtn.className).toContain('hover:border-[var(--tag-peach-border)]');
+    const addChildSupBtns = screen.getAllByRole('button', { name: /Add Child Supplement/i });
+    for (const btn of addChildSupBtns) {
+      expect(btn.className).toContain('hover:border-[var(--tag-teal-border)]');
+    }
+
+    // + Add dropdown menu is centered below the trigger button
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Add$/i }));
+    const addMenu = screen.getByRole('menu', { name: /Add course item/i });
+    expect(addMenu.className).toContain('left-1/2');
+    expect(addMenu.className).toContain('-translate-x-1/2');
+    expect(addMenu.className).not.toContain('right-0');
+  });
+
+  it('renders tag-colored ResourceKindSelect without duplicate badge, mobile-row material & custom-field layouts, accent focus tokens, and Prerequisites -> Custom Fields -> Materials order', () => {
+    renderEditor('/editor/new');
+
+    // Chapter fields use --border-focus (no hardcoded blue focus)
+    const ch1Title = screen.getByLabelText('Chapter 1 title');
+    const ch1WeekFrom = screen.getByLabelText('Chapter 1 week from');
+    expect(ch1Title.className).toContain('focus:border-[var(--border-focus)]');
+    expect(ch1Title.className).not.toContain('focus:border-blue-500');
+    expect(ch1WeekFrom.className).toContain('focus:border-[var(--border-focus)]');
+    expect(ch1WeekFrom.className).not.toContain('focus:border-blue-500');
+
+    // Material row inside Lesson 1: tag-styled kind dropdown, no redundant badge, mobile ordering, --border-focus
+    const lessonCard = document.querySelector('[data-edit-lesson]') as HTMLElement;
+    const lessonScope = within(lessonCard);
+    fireEvent.click(lessonScope.getByRole('button', { name: /Add Material/i }));
+
+    const kindSelect = lessonScope.getByLabelText(/Resource kind/i) as HTMLSelectElement;
+    const kindWrapper = lessonScope.getByTestId('resource-kind-select-wrapper');
+    expect(kindWrapper.className).toContain('bg-sky-200');
+    expect(kindWrapper.parentElement?.querySelectorAll('span')).toHaveLength(0);
+    expect(kindSelect.className).toContain('focus:border-[var(--border-focus)]');
+    expect(kindSelect.className).not.toContain('focus:border-blue-500');
+
+    fireEvent.change(kindSelect, { target: { value: 'video' } });
+    expect(kindWrapper.className).toContain('bg-purple-300');
+
+    const matTitle = lessonScope.getByLabelText(/Material title/i);
+    const matUrl = lessonScope.getByLabelText(/Material URL/i);
+    expect(matTitle.className).toContain('order-2');
+    expect(matTitle.className).toContain('focus:border-[var(--border-focus)]');
+    expect(matTitle.className).not.toContain('focus:border-blue-500');
+    expect(matUrl.className).toContain('focus:border-[var(--border-focus)]');
+    expect(matUrl.className).not.toContain('focus:border-blue-500');
+
+    const sourceRow = lessonScope.getByTestId('material-source-row');
+    expect(sourceRow.className).toContain('order-4');
+    expect(sourceRow.className).toContain('flex');
+    expect(sourceRow.className).toContain('w-full');
+    expect(within(sourceRow).getByRole('group', { name: /Material source mode/i })).toBeInTheDocument();
+    expect(within(sourceRow).getByLabelText(/Material URL/i)).toBeInTheDocument();
+
+    // Switch to Upload mode -> Choose File sits inside material-source-row beside Link/Upload
+    fireEvent.click(lessonScope.getByRole('button', { name: /^Upload$/i }));
+    expect(within(sourceRow).getByLabelText(/Upload material file/i)).toBeInTheDocument();
+
+    // Supplement section ordering & custom field layout
+    const stickyBar = screen.getByTestId('editor-sticky-bar');
+    fireEvent.click(within(stickyBar).getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('menuitem', { name: /Add Supplement/i }));
+
+    const spineCard = document.querySelector('[data-edit-supplement]') as HTMLElement;
+    const spineScope = within(spineCard);
+    fireEvent.click(spineScope.getByRole('button', { name: /Add Field/i }));
+
+    // Prerequisites -> Custom Fields (with border-t) -> Course Materials (with border-t)
+    const prereqEl = spineCard.querySelector('[data-prereq-for]') as HTMLElement;
+    const customFieldsSection = spineScope.getByTestId('custom-fields-section');
+    const materialsHeading = spineScope.getByText(/Course Materials \(0\)/i);
+    const materialsSection = materialsHeading.closest('div')?.parentElement as HTMLElement;
+
+    expect(prereqEl.className).not.toContain('border-t');
+    expect(customFieldsSection.className).toContain('border-t');
+    expect(materialsSection.className).toContain('border-t');
+    expect(
+      Boolean(prereqEl.compareDocumentPosition(customFieldsSection) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+    expect(
+      Boolean(
+        customFieldsSection.compareDocumentPosition(materialsSection) & Node.DOCUMENT_POSITION_FOLLOWING
+      )
+    ).toBe(true);
+
+    // Custom field order: Type (1st) -> Toolbar (order-2 mobile / order-4 sm) -> Label (without e.g. Weight) -> Value
+    const typeSelect = spineScope.getByLabelText('Custom field 1 type');
+    const labelInput = spineScope.getByLabelText('Custom field 1 label') as HTMLInputElement;
+    const valueInput = spineScope.getByLabelText('Custom field 1 value') as HTMLInputElement;
+    expect(labelInput.placeholder).toBe('Label');
+    expect(labelInput.placeholder).not.toContain('Weight');
+    expect(
+      Boolean(typeSelect.compareDocumentPosition(labelInput) & Node.DOCUMENT_POSITION_FOLLOWING)
+    ).toBe(true);
+    expect(typeSelect.parentElement?.className).toContain('flex-1');
+    expect(typeSelect.parentElement?.className).toContain('sm:col-span-2');
+    expect(typeSelect.parentElement?.parentElement?.className).toContain('sm:contents');
+    expect(labelInput.parentElement?.className).toContain('order-3');
+    expect(labelInput.parentElement?.className).toContain('sm:order-2');
+    expect(valueInput.parentElement?.className).toContain('order-4');
+    expect(valueInput.parentElement?.className).toContain('sm:order-3');
   });
 });

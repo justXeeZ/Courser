@@ -1,21 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
 import { AlertCircle, ChevronDown, ChevronsUp, Layers, Plus, Save, Sparkles, X } from 'lucide-react';
-import { formatChapterPositionTag, formatLessonPositionTag } from '@/lib/courseIds';
 
-export interface FocusedChapterContext {
-  order: number;
+export type EditorBreadcrumbAccent = 'amber' | 'peach' | 'teal';
+
+export interface EditorBreadcrumbSegment {
+  accent: EditorBreadcrumbAccent;
+  tag: string;
   title: string;
 }
 
-export interface FocusedLessonContext {
-  order?: number;
-  title: string;
-}
+const BREADCRUMB_TAG_CLASSES: Record<EditorBreadcrumbAccent, string> = {
+  amber: 'border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] text-[var(--tag-amber-text)]',
+  peach: 'border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] text-[var(--tag-peach-text)]',
+  teal: 'border-[var(--tag-teal-border)] bg-[var(--tag-teal-bg)] text-[var(--tag-teal-text)]',
+};
 
 interface EditorStickyBarProps {
   courseCode: string;
-  focusedChapter: FocusedChapterContext | null;
-  focusedLesson: FocusedLessonContext | null;
+  breadcrumbs: EditorBreadcrumbSegment[];
   hasExpandedLessons: boolean;
   errorMsg?: string | null;
   onDismissError?: () => void;
@@ -28,8 +30,7 @@ interface EditorStickyBarProps {
 
 export function EditorStickyBar({
   courseCode,
-  focusedChapter,
-  focusedLesson,
+  breadcrumbs,
   hasExpandedLessons,
   errorMsg,
   onDismissError,
@@ -60,7 +61,7 @@ export function EditorStickyBar({
       observer.observe(el);
       return () => observer.disconnect();
     }
-  }, [errorMsg, focusedChapter, focusedLesson, onHeightChange]);
+  }, [errorMsg, breadcrumbs, onHeightChange]);
 
   useEffect(() => {
     if (!addMenuOpen) return;
@@ -88,43 +89,35 @@ export function EditorStickyBar({
       data-testid="editor-sticky-bar"
       className="sticky top-16 z-30 min-h-14 border-b border-[var(--border-subtle)] bg-[var(--surface-1)]"
     >
-      <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:gap-3 sm:px-6">
+      <div className="mx-auto flex min-h-14 max-w-5xl flex-wrap items-center justify-between gap-2 px-3 pt-2.5 pb-2 sm:gap-3 sm:px-6 sm:py-2">
         <nav
           aria-label="Editing context"
-          className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto text-xs sm:text-sm"
+          className="flex min-w-0 flex-1 items-center gap-1.5 overflow-x-auto py-0.5 text-xs sm:text-sm"
         >
           <span className="shrink-0 rounded bg-[var(--solid-bg)] px-2 py-0.5 font-mono text-xs font-semibold text-[var(--solid-text)]">
             {displayCode}
           </span>
 
-          {focusedChapter ? (
-            <>
-              <span className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">
-                ›
+          {breadcrumbs.length > 0 ? (
+            breadcrumbs.map((segment, idx) => (
+              <span key={`${segment.tag}-${idx}`} className="contents">
+                <span className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">
+                  ›
+                </span>
+                <span
+                  className={`shrink-0 rounded border px-1.5 py-0.5 font-mono text-[11px] font-bold ${BREADCRUMB_TAG_CLASSES[segment.accent]}`}
+                >
+                  {segment.tag}
+                </span>
+                <span
+                  className={`truncate text-[var(--text-primary)] ${
+                    idx === breadcrumbs.length - 1 ? 'font-semibold' : 'font-medium'
+                  }`}
+                >
+                  {segment.title}
+                </span>
               </span>
-              <span className="shrink-0 rounded border border-[var(--tag-amber-border)] bg-[var(--tag-amber-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-amber-text)]">
-                {formatChapterPositionTag(focusedChapter.order)}
-              </span>
-              <span className="truncate font-medium text-[var(--text-primary)]">
-                {focusedChapter.title || 'Untitled Chapter'}
-              </span>
-
-              {focusedLesson && (
-                <>
-                  <span className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">
-                    ›
-                  </span>
-                  {focusedLesson.order !== undefined && (
-                    <span className="shrink-0 rounded border border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-peach-text)]">
-                      {formatLessonPositionTag(focusedChapter.order, focusedLesson.order)}
-                    </span>
-                  )}
-                  <span className="truncate font-semibold text-[var(--text-primary)]">
-                    {focusedLesson.title || 'Untitled Lesson'}
-                  </span>
-                </>
-              )}
-            </>
+            ))
           ) : (
             <>
               <span className="shrink-0 text-[var(--text-muted)]" aria-hidden="true">
@@ -156,7 +149,7 @@ export function EditorStickyBar({
                   <div
                     role="menu"
                     aria-label="Add course item"
-                    className="absolute right-0 z-40 mt-1.5 w-44 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] py-1 shadow-lg"
+                    className="absolute left-1/2 z-40 mt-1.5 w-44 -translate-x-1/2 overflow-hidden rounded-lg border border-[var(--border-subtle)] bg-[var(--surface-1)] py-1 shadow-lg"
                   >
                     <button
                       type="button"

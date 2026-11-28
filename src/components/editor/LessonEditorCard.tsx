@@ -1,8 +1,8 @@
-import { useId } from 'react';
-import { ChevronDown, ChevronUp, Plus, Trash2 } from 'lucide-react';
+import { useEffect, useId, useState, type CSSProperties } from 'react';
+import { Plus } from 'lucide-react';
+import { EditorCardHeader } from '@/components/editor/EditorCardHeader';
 import { PrerequisitePicker } from '@/components/editor/PrerequisitePicker';
 import { MaterialsEditor } from '@/components/editor/MaterialsEditor';
-import { ReorderButtons } from '@/components/editor/ReorderButtons';
 import { SupplementEditorCard } from '@/components/editor/SupplementEditorCard';
 import { useStickyHeader } from '@/hooks/useStickyHeader';
 import {
@@ -67,82 +67,81 @@ export function LessonEditorCard({
   const summaryErrorKey = errorPrefix ? `${errorPrefix}.summary` : undefined;
   const titleError = titleErrorKey ? fieldErrors?.[titleErrorKey] : undefined;
   const summaryError = summaryErrorKey ? fieldErrors?.[summaryErrorKey] : undefined;
+  const [lessonHeaderHeight, setLessonHeaderHeight] = useState<number>(42);
   const { headerRef, isStuck } = useStickyHeader(isExpanded, 168);
   const titleId = useId();
   const sideId = useId();
   const summaryId = useId();
   const notesId = useId();
 
-  const headerCornerClass = isExpanded
-    ? isStuck
-      ? 'sticky top-[var(--editor-lesson-sticky-top,168px)] z-10 rounded-t-none'
-      : 'sticky top-[var(--editor-lesson-sticky-top,168px)] z-10 rounded-t-md'
-    : 'rounded-md';
+  useEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const measureHeader = () => {
+      const rectHeight = el.getBoundingClientRect().height;
+      const h = rectHeight > 0 ? rectHeight : el.offsetHeight;
+      if (h > 0) {
+        setLessonHeaderHeight(h);
+      }
+    };
+
+    measureHeader();
+
+    if (typeof ResizeObserver === 'function') {
+      const observer = new ResizeObserver(measureHeader);
+      observer.observe(el);
+      return () => observer.disconnect();
+    }
+  }, [isExpanded, lesson.title, lesson.resources.length, headerRef]);
 
   return (
-    <div data-edit-lesson={lesson.id} className="editor-entry-peach scroll-mt-48">
+    <div
+      data-edit-lesson={lesson.id}
+      style={
+        {
+          '--editor-lesson-header-height': `${lessonHeaderHeight}px`,
+          '--editor-lesson-supplement-sticky-top':
+            'calc(var(--editor-lesson-sticky-top, 168px) + var(--editor-lesson-header-height, 42px))',
+        } as CSSProperties
+      }
+      className="editor-entry-peach scroll-mt-[var(--editor-lesson-sticky-top,168px)]"
+    >
       {/* Lesson Header Row — sticky below chapter header when expanded; identical colors in collapsed & expanded states */}
-      <div
+      <EditorCardHeader
         ref={headerRef}
-        data-sticky-header="lesson"
-        data-stuck={isStuck ? 'true' : 'false'}
-        onClick={(e) => {
-          const target = e.target as HTMLElement | null;
-          if (target?.closest('button, a, input, select, textarea, [data-no-row-toggle]')) {
-            return;
-          }
-          onToggleExpand();
-        }}
-        className={`flex cursor-pointer flex-wrap items-center justify-between gap-2 border border-[var(--border-subtle)] border-l-4 border-l-[var(--tag-peach-border)] bg-[var(--surface-2)] px-3 py-2 ${headerCornerClass}`}
-      >
-        <button
-          type="button"
-          onClick={onToggleExpand}
-          aria-expanded={isExpanded}
-          aria-label={`${isExpanded ? 'Collapse' : 'Expand'} lesson ${formatLessonPositionTag(chapterOrder, lessonIndex + 1)} ${lesson.title || 'Untitled Lesson'}`}
-          className="flex min-w-0 flex-1 items-center gap-2 text-left"
-        >
-          {isExpanded ? (
-            <ChevronUp className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
-          ) : (
-            <ChevronDown className="h-4 w-4 shrink-0 text-[var(--text-secondary)]" />
-          )}
-          <span className="shrink-0 rounded border border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] px-1.5 py-0.5 font-mono text-[11px] font-bold text-[var(--tag-peach-text)]">
-            {formatLessonPositionTag(chapterOrder, lessonIndex + 1)}
-          </span>
-          <span className="truncate text-sm font-semibold text-[var(--text-primary)]">
-            {lesson.title || 'Untitled Lesson'}
-          </span>
-          <span className="hidden rounded bg-[var(--surface-inset)] px-1.5 py-0.5 font-mono text-[11px] text-[var(--text-secondary)] sm:inline">
-            {derivedLessonId}
-          </span>
+        level="nested"
+        accent="peach"
+        dataStickyHeader="lesson"
+        isExpanded={isExpanded}
+        isStuck={isStuck}
+        stickyClassName="top-[var(--editor-lesson-sticky-top,168px)] z-10"
+        positionTag={formatLessonPositionTag(chapterOrder, lessonIndex + 1)}
+        title={lesson.title || 'Untitled Lesson'}
+        derivedId={derivedLessonId}
+        ariaLabel={`${isExpanded ? 'Collapse' : 'Expand'} lesson ${formatLessonPositionTag(chapterOrder, lessonIndex + 1)} ${lesson.title || 'Untitled Lesson'}`}
+        onToggleExpand={onToggleExpand}
+        extraTags={
           <span
             data-testid="lesson-resource-count-tag"
             className="shrink-0 rounded border border-[var(--tag-peach-border)] bg-[var(--tag-peach-bg)] px-1.5 py-0.5 text-[11px] font-medium text-[var(--tag-peach-text)]"
           >
             {lesson.resources.length} {lesson.resources.length === 1 ? 'material' : 'materials'}
           </span>
-        </button>
-
-        <div className="flex shrink-0 items-center gap-1">
-          <ReorderButtons
-            canMoveUp={lessonIndex > 0}
-            canMoveDown={lessonIndex < totalLessons - 1}
-            onMove={onMove}
-            upLabel="Move lesson up"
-            downLabel="Move lesson down"
-          />
-          <button
-            type="button"
-            onClick={onRemove}
-            title="Delete sub-lesson"
-            aria-label={`Delete ${lesson.title}`}
-            className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
-        </div>
-      </div>
+        }
+        reorderProps={{
+          canMoveUp: lessonIndex > 0,
+          canMoveDown: lessonIndex < totalLessons - 1,
+          onMove,
+          upLabel: 'Move lesson up',
+          downLabel: 'Move lesson down',
+        }}
+        deleteProps={{
+          onDelete: onRemove,
+          title: 'Delete sub-lesson',
+          ariaLabel: `Delete ${lesson.title}`,
+        }}
+      />
 
       {/* Expanded Lesson Body */}
       {isExpanded && (
@@ -335,7 +334,7 @@ export function LessonEditorCard({
               <button
                 type="button"
                 onClick={onAddSupplement}
-                className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--tag-teal-text)] transition-colors hover:bg-[var(--tag-teal-bg)]"
+                className="dashed-box inline-flex items-center gap-1.5 rounded-md bg-[var(--surface-2)] px-2.5 py-1 text-xs font-medium text-[var(--tag-teal-text)] transition-colors hover:border-[var(--tag-teal-border)] hover:bg-[var(--tag-teal-bg)]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add Child Supplement

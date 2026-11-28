@@ -5,12 +5,13 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 :root {
-  --surface-canvas: #f7f5f0;
+  --surface-canvas: #efede8;
   --surface-1: #fdfcfa;
   --surface-2: #efede8;
   --surface-inset: #ffffff;
   --surface-hover: #e8e4dc;
-  --surface-chapter-header: #fdfcfa;
+  --surface-chapter-header: #f7f5f0;
+  --surface-chapter-header: #f7f5f0;
   --surface-warm-muted: #efede8;
   --surface-warm-hover: #e5e1d8;
   --border-subtle: #e5e1d8;
@@ -168,10 +169,12 @@
   border-radius: 0.75rem;
 }
 
-.dashed-box {
-  border-width: 1.5px;
-  border-style: dashed;
-  border-color: var(--border-strong);
+@layer components {
+  .dashed-box {
+    border-width: 1.5px;
+    border-style: dashed;
+    border-color: var(--border-strong);
+  }
 }
 
 .recommended-group-box {

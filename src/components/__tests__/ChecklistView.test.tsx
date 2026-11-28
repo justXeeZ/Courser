@@ -106,7 +106,7 @@ describe('ChecklistView', () => {
     expect(screen.queryByText(/No items match the current filter/i)).not.toBeInTheDocument();
   });
 
-  it('renders spine, chapter, and lesson supplements without Supplement pill, with accent-colored n Materials tags and Info pill for trackable: false', () => {
+  it('renders spine, chapter, and lesson supplements without Supplement or Info pills, using Info icon for trackable: false', () => {
     const onSelectSupplement = vi.fn();
     const onToggleDone = vi.fn();
     render(
@@ -124,12 +124,49 @@ describe('ChecklistView', () => {
     expect(screen.queryByText('Supplement')).not.toBeInTheDocument();
     expect(screen.queryByText('Custom Node')).not.toBeInTheDocument();
     expect(screen.getAllByText(/1 Material$/).length).toBeGreaterThanOrEqual(1);
-    expect(screen.getByText('Info')).toBeInTheDocument();
+    expect(screen.queryByText('Info')).not.toBeInTheDocument();
+
+    const infoRow = screen.getByRole('button', { name: /Syllabus Reference Card/i }).closest('li')!;
+    expect(infoRow.querySelector('svg.lucide-info')).not.toBeNull();
+    expect(infoRow.querySelector('svg.lucide-sparkles')).toBeNull();
 
     fireEvent.click(screen.getByRole('button', { name: 'Midterm Checkpoint' }));
     expect(onSelectSupplement).toHaveBeenCalledWith('demo201-s1-midterm-checkpoint');
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle done for Office Hours Prep' }));
     expect(onToggleDone).toHaveBeenCalledWith('demo201-s1-s1-office-hours-prep');
+  });
+
+  it('strikes through parent chapter and parent spine supplement titles when all trackable children are done', () => {
+    const ch1 = demoCourse.chapters[0];
+    const spineSup = demoCourse.supplements![0];
+    const allDoneStatuses: Record<string, 'done'> = {};
+    for (const lesson of ch1.lessons) {
+      allDoneStatuses[lesson.id] = 'done';
+      for (const sup of lesson.supplements ?? []) {
+        allDoneStatuses[sup.id] = 'done';
+      }
+    }
+    for (const sup of ch1.supplements ?? []) {
+      allDoneStatuses[sup.id] = 'done';
+    }
+    for (const child of spineSup.children ?? []) {
+      allDoneStatuses[child.id] = 'done';
+    }
+
+    render(
+      <ChecklistView
+        course={demoCourse}
+        statuses={allDoneStatuses}
+        statusFilter="all"
+        onSelectLesson={vi.fn()}
+        onSelectChapter={vi.fn()}
+        onSelectSupplement={vi.fn()}
+        onToggleDone={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: ch1.title })).toHaveClass('line-through');
+    expect(screen.getByRole('button', { name: spineSup.title })).toHaveClass('line-through');
   });
 });

@@ -14,6 +14,7 @@ import { useCourses } from '@/store/useCourseStore';
 import { useProgress } from '@/store/useProgressStore';
 import { useNavigationGuard } from '@/context/NavigationGuardContext';
 import { useDialogFocus } from '@/hooks/useDialogFocus';
+import { useEditorScrollJump } from '@/hooks/useEditorScrollJump';
 import {
   deriveChapterId,
   deriveChapterSupplementId,
@@ -40,7 +41,7 @@ import {
 } from '@/lib/fileStore';
 import { CourseTreeCanvas } from '@/components/CourseTreeCanvas';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
-import { EditorStickyBar } from '@/components/editor/EditorStickyBar';
+import { EditorStickyBar, type EditorBreadcrumbSegment } from '@/components/editor/EditorStickyBar';
 import { ChapterEditorCard } from '@/components/editor/ChapterEditorCard';
 import { SupplementEditorCard } from '@/components/editor/SupplementEditorCard';
 import { ImportCourseDialog } from '@/components/editor/ImportCourseDialog';
@@ -522,6 +523,7 @@ export function CourseEditorPage() {
   const [expandedSupplements, setExpandedSupplements] = useState<Record<string, boolean>>({});
   const [focusedChapterId, setFocusedChapterId] = useState<string | null>(null);
   const [focusedLessonId, setFocusedLessonId] = useState<string | null>(null);
+  const [focusedSupplementId, setFocusedSupplementId] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [storeErrorMsg, setStoreErrorMsg] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -540,15 +542,13 @@ export function CourseEditorPage() {
   const unsavedDialogRef = useRef<HTMLDivElement | null>(null);
   const { registerGuard } = useNavigationGuard();
   const prevRouteSlugRef = useRef<string | undefined>(slug);
-  const pendingScrollTargetRef = useRef<{
-    attr: 'data-edit-chapter' | 'data-edit-supplement';
-    id: string;
-  } | null>(null);
-  const pendingPreviewJumpRef = useRef<
-    | { kind: 'chapter'; chapterId: string }
-    | { kind: 'lesson'; chapterId: string; lessonId: string }
-    | null
-  >(null);
+  const { scheduleJump } = useEditorScrollJump(activeTab === 'editor', [
+    draft.chapters,
+    draft.supplements,
+    collapsedChapters,
+    expandedLessons,
+    expandedSupplements,
+  ]);
 
   const isDirty = useMemo(
     () => JSON.stringify(draft) !== baselineJson,
@@ -569,6 +569,7 @@ export function CourseEditorPage() {
     setExpandedLessons({});
     setFocusedChapterId(null);
     setFocusedLessonId(null);
+    setFocusedSupplementId(null);
     setErrorMsg(null);
     setFieldErrors({});
     setPendingNavPath(null);
@@ -644,75 +645,26 @@ export function CourseEditorPage() {
     };
   }, [isDirty, location.pathname]);
 
-  useEffect(() => {
-    const target = pendingScrollTargetRef.current;
-    if (!target) return;
-    pendingScrollTargetRef.current = null;
-    const targetEl = Array.from(document.querySelectorAll(`[${target.attr}]`)).find(
-      (node) => node.getAttribute(target.attr) === target.id
-    );
-    if (targetEl && typeof targetEl.scrollIntoView === 'function') {
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-    const firstInput = targetEl?.querySelector<HTMLElement>('input, textarea');
-    if (firstInput && typeof firstInput.focus === 'function') {
-      try {
-        firstInput.focus({ preventScroll: true });
-      } catch {
-        firstInput.focus();
-      }
-    }
-  }, [draft.chapters, draft.supplements]);
-
-  useEffect(() => {
-    if (activeTab !== 'editor') return;
-    const jump = pendingPreviewJumpRef.current;
-    if (!jump) return;
-
-    const targetEl =
-      jump.kind === 'lesson'
-        ? Array.from(document.querySelectorAll('[data-edit-lesson]')).find(
-            (node) => node.getAttribute('data-edit-lesson') === jump.lessonId
-          )
-        : Array.from(document.querySelectorAll('[data-edit-chapter]')).find(
-            (node) => node.getAttribute('data-edit-chapter') === jump.chapterId
-          );
-
-    if (!targetEl) return;
-    pendingPreviewJumpRef.current = null;
-
-    if (typeof targetEl.scrollIntoView === 'function') {
-      targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-
-    const firstInput =
-      jump.kind === 'lesson'
-        ? targetEl.querySelector<HTMLElement>('input[aria-label="Sub-Lesson Title"], input, textarea')
-        : targetEl.querySelector<HTMLElement>(
-            'input[aria-label^="Chapter "][aria-label$=" title"], input, textarea'
-          );
-    if (firstInput && typeof firstInput.focus === 'function') {
-      try {
-        firstInput.focus({ preventScroll: true });
-      } catch {
-        firstInput.focus();
-      }
-    }
-  }, [activeTab, collapsedChapters, expandedLessons]);
-
   const updateFocusContextFromTarget = (target: EventTarget | null) => {
     if (!(target instanceof Element)) return;
     if (target.closest('[data-testid="editor-sticky-bar"]')) return;
 
+    const supplementEl = target.closest('[data-edit-supplement]') as HTMLElement | null;
     const lessonEl = target.closest('[data-edit-lesson]') as HTMLElement | null;
     const chapterEl = target.closest('[data-edit-chapter]') as HTMLElement | null;
 
     if (chapterEl) {
       setFocusedChapterId(chapterEl.dataset.editChapter ?? null);
       setFocusedLessonId(lessonEl?.dataset.editLesson ?? null);
+      setFocusedSupplementId(supplementEl?.dataset.editSupplement ?? null);
+    } else if (supplementEl) {
+      setFocusedChapterId(null);
+      setFocusedLessonId(null);
+      setFocusedSupplementId(supplementEl.dataset.editSupplement ?? null);
     } else if (target.closest('[data-edit-metadata]')) {
       setFocusedChapterId(null);
       setFocusedLessonId(null);
+      setFocusedSupplementId(null);
     }
   };
 
@@ -752,24 +704,92 @@ export function CourseEditorPage() {
     [activeTab, normalizedPreviewCourse]
   );
 
-  const focusedChapterEntry = useMemo(() => {
-    if (!focusedChapterId) return null;
-    const idx = draft.chapters.findIndex((c) => c.id === focusedChapterId);
-    if (idx === -1) return null;
-    return { chapter: draft.chapters[idx], order: idx + 1 };
-  }, [draft.chapters, focusedChapterId]);
+  const editorBreadcrumbs = useMemo<EditorBreadcrumbSegment[]>(() => {
+    const segments: EditorBreadcrumbSegment[] = [];
 
-  const focusedLessonEntry = useMemo(() => {
-    if (!focusedChapterEntry || !focusedLessonId) return null;
-    const lessonIdx = focusedChapterEntry.chapter.lessons.findIndex(
-      (l) => l.id === focusedLessonId
-    );
-    if (lessonIdx === -1) return null;
-    return {
-      lesson: focusedChapterEntry.chapter.lessons[lessonIdx],
-      order: lessonIdx + 1,
-    };
-  }, [focusedChapterEntry, focusedLessonId]);
+    if (focusedChapterId) {
+      const cIdx = draft.chapters.findIndex((c) => c.id === focusedChapterId);
+      if (cIdx === -1) return segments;
+      const ch = draft.chapters[cIdx];
+      segments.push({
+        accent: 'amber',
+        tag: formatChapterPositionTag(cIdx + 1),
+        title: ch.title || 'Untitled Chapter',
+      });
+
+      if (focusedLessonId) {
+        const lIdx = ch.lessons.findIndex((l) => l.id === focusedLessonId);
+        if (lIdx !== -1) {
+          const lesson = ch.lessons[lIdx];
+          segments.push({
+            accent: 'peach',
+            tag: formatLessonPositionTag(cIdx + 1, lIdx + 1),
+            title: lesson.title || 'Untitled Lesson',
+          });
+
+          if (focusedSupplementId) {
+            const sIdx = (lesson.supplements ?? []).findIndex(
+              (s) => s.id === focusedSupplementId
+            );
+            if (sIdx !== -1) {
+              const sup = lesson.supplements![sIdx];
+              segments.push({
+                accent: 'teal',
+                tag: formatLessonSupplementTag(cIdx + 1, lIdx + 1, sIdx + 1),
+                title: sup.title || 'Untitled Supplement',
+              });
+            }
+          }
+        }
+      } else if (focusedSupplementId) {
+        const sIdx = (ch.supplements ?? []).findIndex((s) => s.id === focusedSupplementId);
+        if (sIdx !== -1) {
+          const sup = ch.supplements![sIdx];
+          segments.push({
+            accent: 'teal',
+            tag: formatChapterSupplementTag(cIdx + 1, sIdx + 1),
+            title: sup.title || 'Untitled Supplement',
+          });
+        }
+      }
+
+      return segments;
+    }
+
+    if (focusedSupplementId) {
+      const spineList = draft.supplements ?? [];
+      for (let sIdx = 0; sIdx < spineList.length; sIdx++) {
+        const spineSup = spineList[sIdx];
+        if (spineSup.id === focusedSupplementId) {
+          segments.push({
+            accent: 'teal',
+            tag: formatSpineSupplementTag(sIdx + 1),
+            title: spineSup.title || 'Untitled Supplement',
+          });
+          return segments;
+        }
+        const cIdx = (spineSup.children ?? []).findIndex(
+          (c) => c.id === focusedSupplementId
+        );
+        if (cIdx !== -1) {
+          const child = spineSup.children![cIdx];
+          segments.push({
+            accent: 'teal',
+            tag: formatSpineSupplementTag(sIdx + 1),
+            title: spineSup.title || 'Untitled Supplement',
+          });
+          segments.push({
+            accent: 'teal',
+            tag: formatSpineChildSupplementTag(sIdx + 1, cIdx + 1),
+            title: child.title || 'Untitled Supplement',
+          });
+          return segments;
+        }
+      }
+    }
+
+    return segments;
+  }, [draft.chapters, draft.supplements, focusedChapterId, focusedLessonId, focusedSupplementId]);
 
   const YEAR_VALIDATION_ERROR = 'Year must be an integer from 1 to 10.';
   const yearError = (() => {
@@ -894,12 +914,13 @@ export function CourseEditorPage() {
       ],
     };
 
-    pendingScrollTargetRef.current = { attr: 'data-edit-chapter', id: newChapterId };
+    scheduleJump({ kind: 'chapter', id: newChapterId });
     setDraft((prev) => ({ ...prev, chapters: [...prev.chapters, newChapter] }));
     setCollapsedChapters((prev) => ({ ...prev, [newChapterId]: false }));
     setExpandedLessons((exp) => ({ ...exp, [newLessonId]: true }));
     setFocusedChapterId(newChapterId);
     setFocusedLessonId(newLessonId);
+    setFocusedSupplementId(null);
   };
 
   const moveChapter = (chapterIdx: number, direction: -1 | 1) => {
@@ -1163,8 +1184,11 @@ export function CourseEditorPage() {
       afterChapterOrder: draft.chapters.length,
       resources: [],
     };
-    pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: newId };
+    scheduleJump({ kind: 'supplement', id: newId });
     setExpandedSupplements((prev) => ({ ...prev, [newId]: true }));
+    setFocusedChapterId(null);
+    setFocusedLessonId(null);
+    setFocusedSupplementId(newId);
     setDraft((prev) => ({
       ...prev,
       supplements: [...(prev.supplements ?? []), newNode],
@@ -1395,6 +1419,7 @@ export function CourseEditorPage() {
     setFieldErrors({});
     setFocusedChapterId(null);
     setFocusedLessonId(null);
+    setFocusedSupplementId(null);
     setCollapsedChapters(buildCollapsedChaptersMap(imported));
     setExpandedLessons({});
     setImportBanner({ warnings });
@@ -1405,10 +1430,11 @@ export function CourseEditorPage() {
     const targetChapter = draft.chapters[chIdx] ?? draft.chapters.find((c) => c.id === clickedChapter.id);
     if (!targetChapter) return;
 
-    pendingPreviewJumpRef.current = { kind: 'chapter', chapterId: targetChapter.id };
+    scheduleJump({ kind: 'chapter', id: targetChapter.id });
     setCollapsedChapters((prev) => ({ ...prev, [targetChapter.id]: false }));
     setFocusedChapterId(targetChapter.id);
     setFocusedLessonId(null);
+    setFocusedSupplementId(null);
     setActiveTab('editor');
   };
 
@@ -1429,15 +1455,12 @@ export function CourseEditorPage() {
 
     if (!targetChapter || !targetLesson) return;
 
-    pendingPreviewJumpRef.current = {
-      kind: 'lesson',
-      chapterId: targetChapter.id,
-      lessonId: targetLesson.id,
-    };
+    scheduleJump({ kind: 'lesson', id: targetLesson.id });
     setCollapsedChapters((prev) => ({ ...prev, [targetChapter.id]: false }));
     setExpandedLessons((prev) => ({ ...prev, [targetLesson.id]: true }));
     setFocusedChapterId(targetChapter.id);
     setFocusedLessonId(targetLesson.id);
+    setFocusedSupplementId(null);
     setActiveTab('editor');
   };
 
@@ -1448,20 +1471,26 @@ export function CourseEditorPage() {
       const dNode = draft.supplements?.[sIdx];
       if (!dNode) continue;
       if (pNode.id === previewNodeId) {
-        pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: dNode.id };
+        scheduleJump({ kind: 'supplement', id: dNode.id });
         setExpandedSupplements((prev) => ({ ...prev, [dNode.id]: true }));
+        setFocusedChapterId(null);
+        setFocusedLessonId(null);
+        setFocusedSupplementId(dNode.id);
         setActiveTab('editor');
         return;
       }
       const childIdx = (pNode.children ?? []).findIndex((c) => c.id === previewNodeId);
       if (childIdx >= 0 && dNode.children?.[childIdx]) {
         const childId = dNode.children[childIdx].id;
-        pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: childId };
+        scheduleJump({ kind: 'supplement', id: childId });
         setExpandedSupplements((prev) => ({
           ...prev,
           [dNode.id]: true,
           [childId]: true,
         }));
+        setFocusedChapterId(null);
+        setFocusedLessonId(null);
+        setFocusedSupplementId(childId);
         setActiveTab('editor');
         return;
       }
@@ -1474,9 +1503,12 @@ export function CourseEditorPage() {
       const chCnIdx = (pCh.supplements ?? []).findIndex((cn) => cn.id === previewNodeId);
       if (chCnIdx >= 0 && dCh.supplements?.[chCnIdx]) {
         const supId = dCh.supplements[chCnIdx].id;
-        pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: supId };
+        scheduleJump({ kind: 'supplement', id: supId });
         setCollapsedChapters((prev) => ({ ...prev, [dCh.id]: false }));
         setExpandedSupplements((prev) => ({ ...prev, [supId]: true }));
+        setFocusedChapterId(dCh.id);
+        setFocusedLessonId(null);
+        setFocusedSupplementId(supId);
         setActiveTab('editor');
         return;
       }
@@ -1487,10 +1519,13 @@ export function CourseEditorPage() {
         const lCnIdx = (pL.supplements ?? []).findIndex((cn) => cn.id === previewNodeId);
         if (lCnIdx >= 0 && dL.supplements?.[lCnIdx]) {
           const supId = dL.supplements[lCnIdx].id;
-          pendingScrollTargetRef.current = { attr: 'data-edit-supplement', id: supId };
+          scheduleJump({ kind: 'supplement', id: supId });
           setCollapsedChapters((prev) => ({ ...prev, [dCh.id]: false }));
           setExpandedLessons((prev) => ({ ...prev, [dL.id]: true }));
           setExpandedSupplements((prev) => ({ ...prev, [supId]: true }));
+          setFocusedChapterId(dCh.id);
+          setFocusedLessonId(dL.id);
+          setFocusedSupplementId(supId);
           setActiveTab('editor');
           return;
         }
@@ -1625,22 +1660,7 @@ export function CourseEditorPage() {
       {activeTab === 'editor' && (
         <EditorStickyBar
           courseCode={draft.code}
-          focusedChapter={
-            focusedChapterEntry
-              ? {
-                  order: focusedChapterEntry.order,
-                  title: focusedChapterEntry.chapter.title,
-                }
-              : null
-          }
-          focusedLesson={
-            focusedLessonEntry
-              ? {
-                  order: focusedLessonEntry.order,
-                  title: focusedLessonEntry.lesson.title,
-                }
-              : null
-          }
+          breadcrumbs={editorBreadcrumbs}
           hasExpandedLessons={hasExpandedLessons || hasExpandedSupplements || hasExpandedChapters}
           errorMsg={displayErrorMsg}
           onDismissError={() => {
@@ -1657,6 +1677,7 @@ export function CourseEditorPage() {
               Object.fromEntries(draft.chapters.map((ch) => [ch.id, true]))
             );
             setFocusedLessonId(null);
+            setFocusedSupplementId(null);
           }}
           onSave={() => handleSave()}
         />

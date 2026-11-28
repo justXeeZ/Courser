@@ -169,7 +169,15 @@ describe('CatalogPage & CourseCard', () => {
     expect(mainEl).toHaveClass('bg-[var(--surface-canvas)]', 'text-[var(--text-primary)]');
 
     const heroHeading = screen.getByRole('heading', { level: 1, name: BRAND.name });
-    expect(heroHeading).toHaveClass('text-[var(--text-primary)]');
+    expect(heroHeading).toHaveClass(
+      'bg-gradient-to-b',
+      'from-stone-900',
+      'to-violet-700',
+      'bg-clip-text',
+      'text-transparent',
+      'dark:from-amber-50',
+      'dark:to-purple-400'
+    );
     expect(screen.getByText(BRAND.heroDescription)).toBeInTheDocument();
     expect(screen.getByText(BRAND.footerNote)).toBeInTheDocument();
   });

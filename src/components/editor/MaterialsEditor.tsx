@@ -17,7 +17,7 @@ import {
 import { AssessmentBuilderModal } from '@/components/assessment/AssessmentBuilderModal';
 import { ConfirmDialog } from '@/components/ConfirmDialog';
 import { ReorderButtons } from '@/components/editor/ReorderButtons';
-import { ResourceBadge } from '@/components/ResourceBadge';
+import { ResourceKindSelect } from '@/components/editor/ResourceKindSelect';
 import { buildAssessmentExport, parseAssessmentImport } from '@/lib/assessmentExchange';
 import { deriveFileId, slugify } from '@/lib/courseIds';
 import { putFile } from '@/lib/fileStore';
@@ -30,8 +30,6 @@ import {
 } from '@/lib/materialValidation';
 import { RESOURCE_BADGE_STYLES } from '@/lib/theme';
 import type { LessonResource, ResourceKind } from '@/types/course';
-
-const RESOURCE_KINDS = Object.keys(RESOURCE_BADGE_STYLES) as ResourceKind[];
 
 interface MaterialsEditorProps {
   resources: LessonResource[];
@@ -572,24 +570,13 @@ export function MaterialsEditor({
             : ''
         }`}
       >
-                <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-                  {/* Kind selector + badge */}
-                  <div className="flex items-center gap-1.5 sm:w-44 sm:shrink-0">
-                    <ResourceBadge kind={res.kind} />
-                    <select
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                  {/* Category dropdown styled as accent tag (no redundant badge beside it) */}
+                  <div className="order-1 shrink-0">
+                    <ResourceKindSelect
                       value={res.kind}
-                      onChange={(e) =>
-                        handleKindChange(rIdx, rowKey, e.target.value as ResourceKind)
-                      }
-                      aria-label="Resource kind"
-                      className="w-full rounded border border-slate-300 bg-white px-1.5 py-1 text-xs text-slate-900 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100"
-                    >
-                      {RESOURCE_KINDS.map((k) => (
-                        <option key={k} value={k}>
-                          {RESOURCE_BADGE_STYLES[k].label}
-                        </option>
-                      ))}
-                    </select>
+                      onChange={(nextKind) => handleKindChange(rIdx, rowKey, nextKind)}
+                    />
                   </div>
 
                   {/* Material title */}
@@ -599,15 +586,70 @@ export function MaterialsEditor({
                     onChange={(e) => updateRow(rIdx, { title: e.target.value })}
                     placeholder="Material title"
                     aria-label="Material title"
-                    className="min-w-[140px] flex-1 rounded border border-slate-300 bg-white px-2 py-1 text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                    className="order-2 min-w-0 flex-1 rounded border border-[var(--border-strong)] bg-[var(--surface-inset)] px-2 py-1 text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none sm:min-w-[140px]"
                   />
 
-                  {/* Source mode switcher + Pin + Delete */}
-                  <div className="flex flex-wrap items-center justify-between gap-1.5 sm:justify-end">
+                  {/* Pin + Reorder + Delete toolbar */}
+                  <div className="order-3 flex shrink-0 items-center gap-1 sm:order-4">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        updateRow(rIdx, {
+                          recommended: res.recommended ? undefined : true,
+                        })
+                      }
+                      aria-pressed={Boolean(res.recommended)}
+                      aria-label={
+                        res.recommended
+                          ? 'Unpin recommended material'
+                          : 'Pin as recommended'
+                      }
+                      title={
+                        res.recommended
+                          ? 'Pinned as recommended'
+                          : 'Pin as recommended'
+                      }
+                      className={`inline-flex items-center gap-1 rounded border px-1.5 py-1 text-[11px] font-medium transition-colors ${
+                        res.recommended
+                          ? 'border-[var(--recommended-border)] bg-[var(--recommended-label-bg)] text-[var(--recommended-accent)]'
+                          : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
+                      }`}
+                    >
+                      <Pin className="h-3 w-3" />
+                    </button>
+
+                    <ReorderButtons
+                      canMoveUp={Boolean(prevEntry)}
+                      canMoveDown={Boolean(nextEntry)}
+                      onMove={(dir) => {
+                        const target = dir === -1 ? prevEntry : nextEntry;
+                        if (target) handleSwapMaterials(rIdx, target.rIdx);
+                      }}
+                      upLabel="Move material up"
+                      downLabel="Move material down"
+                    />
+
+                    <button
+                      type="button"
+                      onClick={() => handleRemoveMaterial(rIdx)}
+                      title="Delete material"
+                      aria-label="Remove material"
+                      className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
+
+                  {/* Mobile Row 2: Link/Upload switcher beside Link field or Upload control;
+                      Desktop (sm:contents): switcher returns to Row 1, source field spans Row 2 */}
+                  <div
+                    data-testid="material-source-row"
+                    className="order-4 flex w-full items-center gap-1.5 sm:contents"
+                  >
                     <div
                       role="group"
                       aria-label="Material source mode"
-                      className="inline-flex flex-wrap rounded border border-slate-300 bg-slate-100 p-0.5 dark:border-slate-600 dark:bg-[#0d131f]"
+                      className="inline-flex shrink-0 flex-wrap rounded border border-slate-300 bg-slate-100 p-0.5 sm:order-3 dark:border-slate-600 dark:bg-[#0d131f]"
                     >
                       <button
                         type="button"
@@ -652,96 +694,68 @@ export function MaterialsEditor({
                       )}
                     </div>
 
-                    <div className="flex items-center gap-1">
-                      <button
-                        type="button"
-                        onClick={() =>
+                    {mode === 'link' && (
+                      <input
+                        type="url"
+                        value={res.url ?? ''}
+                        onChange={(e) =>
                           updateRow(rIdx, {
-                            recommended: res.recommended ? undefined : true,
+                            url: e.target.value,
+                            file: undefined,
+                            assessment: undefined,
                           })
                         }
-                        aria-pressed={Boolean(res.recommended)}
-                        aria-label={
-                          res.recommended
-                            ? 'Unpin recommended material'
-                            : 'Pin as recommended'
-                        }
-                        title={
-                          res.recommended
-                            ? 'Pinned as recommended'
-                            : 'Pin as recommended'
-                        }
-                        className={`inline-flex items-center gap-1 rounded border px-1.5 py-1 text-[11px] font-medium transition-colors ${
-                          res.recommended
-                            ? 'border-[var(--recommended-border)] bg-[var(--recommended-label-bg)] text-[var(--recommended-accent)]'
-                            : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-300 dark:hover:bg-slate-700'
+                        placeholder="https://..."
+                        aria-label="Material URL"
+                        className="min-w-0 flex-1 rounded border border-[var(--border-strong)] bg-[var(--surface-inset)] px-2.5 py-1 font-mono text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none sm:order-5 sm:w-full sm:basis-full"
+                      />
+                    )}
+
+                    {mode === 'upload' && !res.file && (
+                      <div
+                        onDragOver={(e) => {
+                          e.preventDefault();
+                          setDraggingKey(rowKey);
+                        }}
+                        onDragEnter={(e) => {
+                          e.preventDefault();
+                          setDraggingKey(rowKey);
+                        }}
+                        onDragLeave={() => setDraggingKey(null)}
+                        onDrop={(e) => handleDrop(e, rIdx, rowKey)}
+                        className={`flex min-w-0 flex-1 items-center justify-end gap-1.5 rounded-md transition-colors sm:order-5 sm:w-full sm:basis-full sm:flex-col sm:justify-center sm:border sm:border-dashed sm:px-3 sm:py-3 sm:text-center ${
+                          draggingKey === rowKey
+                            ? 'sm:border-[var(--border-focus)] sm:bg-[var(--surface-hover)]'
+                            : 'sm:border-slate-300 sm:bg-slate-50 sm:dark:border-slate-600 sm:dark:bg-[#0d131f]'
                         }`}
                       >
-                        <Pin className="h-3 w-3" />
-                      </button>
+                        <Upload className="hidden h-4 w-4 text-slate-500 sm:block dark:text-slate-400" />
+                        <p className="hidden text-xs text-slate-600 sm:block dark:text-slate-300">
+                          Drag &amp; drop a file here, or choose from your computer
+                        </p>
+                        <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700">
+                          <Upload className="h-3 w-3 sm:hidden" />
+                          <span>Choose File</span>
+                          <input
+                            type="file"
+                            aria-label="Upload material file"
+                            className="sr-only"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                void processFileUpload(rIdx, rowKey, file);
+                              }
+                              e.target.value = '';
+                            }}
+                          />
+                        </label>
+                      </div>
+                    )}
 
-                      <ReorderButtons
-                        canMoveUp={Boolean(prevEntry)}
-                        canMoveDown={Boolean(nextEntry)}
-                        onMove={(dir) => {
-                          const target = dir === -1 ? prevEntry : nextEntry;
-                          if (target) handleSwapMaterials(rIdx, target.rIdx);
-                        }}
-                        upLabel="Move material up"
-                        downLabel="Move material down"
-                      />
-
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMaterial(rIdx)}
-                        title="Delete material"
-                        aria-label="Remove material"
-                        className="rounded border border-[var(--status-danger-border)] bg-[var(--surface-1)] p-1 text-[var(--status-danger-text)] transition-colors hover:border-[var(--danger-solid-bg)] hover:bg-[var(--danger-solid-bg)] hover:text-white focus-visible:border-[var(--danger-solid-bg)] focus-visible:bg-[var(--danger-solid-bg)] focus-visible:text-white focus-visible:ring-2 focus-visible:ring-[var(--border-focus)] focus-visible:ring-offset-2"
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-
-                {mode === 'link' ? (
-                  <input
-                    type="url"
-                    value={res.url ?? ''}
-                    onChange={(e) =>
-                      updateRow(rIdx, {
-                        url: e.target.value,
-                        file: undefined,
-                        assessment: undefined,
-                      })
-                    }
-                    placeholder="https://..."
-                    aria-label="Material URL"
-                    className="w-full rounded border border-slate-300 bg-white px-2.5 py-1 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
-                  />
-                ) : mode === 'upload' ? (
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
-                      <span>
-                        Expected for{' '}
-                        <strong className="font-medium text-slate-700 dark:text-slate-300">
-                          {res.kind}
-                        </strong>
-                        : <code className="font-mono">{expectedHint}</code>
-                      </span>
-
-                      {feedback.autoSuggested && feedback.suggestedKind && (
-                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
-                          <Sparkles className="h-3 w-3" />
-                          Auto-suggested kind: {RESOURCE_BADGE_STYLES[feedback.suggestedKind].label}
-                        </span>
-                      )}
-                    </div>
-
-                    {res.file ? (
-                      <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-xs dark:border-slate-600 dark:bg-[#0d131f]">
+                    {mode === 'upload' && res.file && (
+                      <div className="flex min-w-0 flex-1 flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs sm:order-5 sm:w-full sm:basis-full sm:py-1.5 dark:border-slate-600 dark:bg-[#0d131f]">
                         <div className="flex min-w-0 items-center gap-2">
-                          <FileUp className="h-3.5 w-3.5 shrink-0 text-blue-600 dark:text-blue-400" />
+                          <FileUp className="h-3.5 w-3.5 shrink-0 text-[var(--border-focus)]" />
                           <span className="truncate font-medium text-slate-900 dark:text-slate-100">
                             {res.file.name}
                           </span>
@@ -765,45 +779,28 @@ export function MaterialsEditor({
                           Remove file
                         </button>
                       </div>
-                    ) : (
-                      <div
-                        onDragOver={(e) => {
-                          e.preventDefault();
-                          setDraggingKey(rowKey);
-                        }}
-                        onDragEnter={(e) => {
-                          e.preventDefault();
-                          setDraggingKey(rowKey);
-                        }}
-                        onDragLeave={() => setDraggingKey(null)}
-                        onDrop={(e) => handleDrop(e, rIdx, rowKey)}
-                        className={`flex flex-col items-center justify-center gap-1.5 rounded-md border border-dashed px-3 py-3 text-center transition-colors ${
-                          draggingKey === rowKey
-                            ? 'border-blue-500 bg-blue-50/70 dark:border-blue-400 dark:bg-blue-950/30'
-                            : 'border-slate-300 bg-slate-50 dark:border-slate-600 dark:bg-[#0d131f]'
-                        }`}
-                      >
-                        <Upload className="h-4 w-4 text-slate-500 dark:text-slate-400" />
-                        <p className="text-xs text-slate-600 dark:text-slate-300">
-                          Drag &amp; drop a file here, or choose from your computer
-                        </p>
-                        <label className="inline-flex cursor-pointer items-center gap-1 rounded border border-slate-300 bg-white px-2.5 py-1 text-xs font-medium text-slate-800 hover:bg-slate-100 dark:border-slate-600 dark:bg-[#1b2436] dark:text-slate-200 dark:hover:bg-slate-700">
-                          <span>Choose File</span>
-                          <input
-                            type="file"
-                            aria-label="Upload material file"
-                            className="sr-only"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                void processFileUpload(rIdx, rowKey, file);
-                              }
-                              e.target.value = '';
-                            }}
-                          />
-                        </label>
-                      </div>
                     )}
+                  </div>
+                </div>
+
+                {mode === 'upload' && (
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 dark:text-slate-400">
+                      <span>
+                        Expected for{' '}
+                        <strong className="font-medium text-slate-700 dark:text-slate-300">
+                          {res.kind}
+                        </strong>
+                        : <code className="font-mono">{expectedHint}</code>
+                      </span>
+
+                      {feedback.autoSuggested && feedback.suggestedKind && (
+                        <span className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[11px] font-medium text-blue-700 dark:bg-blue-950/60 dark:text-blue-300">
+                          <Sparkles className="h-3 w-3" />
+                          Auto-suggested kind: {RESOURCE_BADGE_STYLES[feedback.suggestedKind].label}
+                        </span>
+                      )}
+                    </div>
 
                     {feedback.error && (
                       <div
@@ -842,7 +839,9 @@ export function MaterialsEditor({
                       </div>
                     )}
                   </div>
-                ) : (
+                )}
+
+                {mode === 'interactive' && (
                   <div className="space-y-2">
                     {res.assessment ? (
                       <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs dark:border-slate-600 dark:bg-[#0d131f]">
@@ -967,7 +966,7 @@ export function MaterialsEditor({
                             }));
                           }}
                           placeholder='{"format": "college-assessment", "version": 1, ...}'
-                          className="w-full rounded border border-slate-300 bg-white p-2 font-mono text-xs text-slate-900 placeholder:text-slate-400 focus:border-blue-500 focus:outline-none dark:border-slate-600 dark:bg-[#0d131f] dark:text-slate-100 dark:placeholder:text-slate-500"
+                          className="w-full rounded border border-[var(--border-strong)] bg-[var(--surface-inset)] p-2 font-mono text-xs text-[var(--text-primary)] placeholder:text-[var(--text-muted)] focus:border-[var(--border-focus)] focus:ring-2 focus:ring-[var(--border-focus)]/20 focus:outline-none"
                         />
 
                         {importError && (
